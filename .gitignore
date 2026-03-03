@@ -1,0 +1,14 @@
+out
+dist
+example
+node_modules
+bun.lockb
+.vscode-test/
+*.vsix
+addi-config.json
+addi-config.encrypt.txt
+.DS_Store
+.env
+.addi/private
+bin/
+release/

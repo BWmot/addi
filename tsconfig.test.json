@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "outDir": "out/test/vscode",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "sourceMap": true,
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "resolveJsonModule": true,
+    "types": ["vscode", "mocha", "node"]
+  },
+  "include": ["tests-e2e/**/*"],
+  "exclude": ["node_modules", ".vscode-test", "dist", "src", "tests/core/**/*"]
+}

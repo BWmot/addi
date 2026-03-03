@@ -1,0 +1,500 @@
+{
+  "name": "addi",
+  "icon": "resources/icon-bg.min.png",
+  "displayName": "Addi",
+  "description": "add more custom AI providers and models for your copilot",
+  "version": "1.0.0",
+  "publisher": "deepwn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deepwn/addi.git"
+  },
+  "homepage": "https://github.com/deepwn/addi",
+  "bugs": {
+    "url": "https://github.com/deepwn/addi/issues"
+  },
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "keywords": [
+    "AI",
+    "ChatGPT",
+    "Copilot",
+    "OpenAI",
+    "GPT-4",
+    "GPT-3.5",
+    "LLM",
+    "Language Model",
+    "Custom",
+    "OAI"
+  ],
+  "categories": [
+    "AI",
+    "Chat",
+    "Machine Learning",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguageModelChat:addi-provider",
+    "onStartupFinished"
+  ],
+  "enabledApiProposals": [
+    "chatProvider",
+    "contribLanguageModelToolSets",
+    "languageModelCapabilities",
+    "languageModelThinkingPart"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "icons": {},
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "addi-sidebar",
+          "title": "Addi",
+          "icon": "resources/icon.min.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "addiProviders",
+        "contents": "Welcome to Addi!\n\nGet started by adding your first AI provider. Or first check [Docs](https://github.com/deepwn/addi)\n\n[Add Provider](command:addi.addProvider)\n\n[Import Config](command:addi.importConfig)"
+      }
+    ],
+    "views": {
+      "addi-sidebar": [
+        {
+          "icon": "resources/icon.min.svg",
+          "id": "addiProviders",
+          "name": "Providers",
+          "commands": [
+            {
+              "command": "addi.addProvider",
+              "title": "Add Provider",
+              "icon": "$(add)"
+            }
+          ]
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "addi.addProvider",
+          "when": "view == addiProviders",
+          "group": "navigation@1"
+        },
+        {
+          "command": "addi.importConfig",
+          "when": "view == addiProviders",
+          "group": "navigation@2"
+        },
+        {
+          "command": "addi.exportConfig",
+          "when": "view == addiProviders",
+          "group": "navigation@3"
+        },
+        {
+          "command": "addi.openSettings",
+          "when": "view == addiProviders",
+          "group": "navigation@4"
+        }
+      ],
+      "panel/title": [
+        {
+          "command": "addi.showLogs",
+          "when": "panel == output",
+          "group": "navigation@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "addi.addProvider",
+          "when": "false"
+        },
+        {
+          "command": "addi.editProvider",
+          "when": "false"
+        },
+        {
+          "command": "addi.deleteProvider",
+          "when": "false"
+        },
+        {
+          "command": "addi.addModel",
+          "when": "false"
+        },
+        {
+          "command": "addi.editModels",
+          "when": "false"
+        },
+        {
+          "command": "addi.deleteModels",
+          "when": "false"
+        },
+        {
+          "command": "addi.setApiKey",
+          "when": "false"
+        },
+        {
+          "command": "addi.pullProviderModels",
+          "when": "false"
+        },
+        {
+          "command": "addi.copyProvider",
+          "when": "false"
+        },
+        {
+          "command": "addi.copyModel",
+          "when": "false"
+        },
+        {
+          "command": "addi.setSyncPassKey",
+          "when": "false"
+        },
+        {
+          "command": "addi.verifySyncPassKey",
+          "when": "false"
+        },
+        {
+          "command": "addi.resetAllSettings"
+        },
+        {
+          "command": "addi.cleanAllStorage"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "addi.setModelToCopilot",
+          "when": "view == addiProviders && viewItem == model",
+          "group": "inline@0"
+        },
+        {
+          "command": "addi.ineligibleModelInfo",
+          "when": "view == addiProviders && viewItem == model-ineligible",
+          "group": "inline@0"
+        },
+        {
+          "command": "addi.addModel",
+          "when": "view == addiProviders && (viewItem == provider || viewItem == provider-synced)",
+          "group": "inline@0"
+        },
+        {
+          "command": "addi.pullProviderModels",
+          "when": "view == addiProviders && (viewItem == provider || viewItem == provider-synced)",
+          "group": "inline@1"
+        },
+        {
+          "command": "addi.setApiKey",
+          "when": "view == addiProviders && viewItem == provider-no-key",
+          "group": "inline@0"
+        },
+        {
+          "command": "addi.editProvider",
+          "when": "view == addiProviders && (viewItem == provider-no-key || viewItem == provider || viewItem == provider-synced)",
+          "group": "modify@1"
+        },
+        {
+          "command": "addi.copyProvider",
+          "when": "view == addiProviders && (viewItem == provider-no-key || viewItem == provider || viewItem == provider-synced)",
+          "group": "modify@2"
+        },
+        {
+          "command": "addi.deleteProvider",
+          "when": "view == addiProviders && (viewItem == provider-no-key || viewItem == provider || viewItem == provider-synced)",
+          "group": "modify@99"
+        },
+        {
+          "command": "addi.editModels",
+          "when": "view == addiProviders && (viewItem == model || viewItem == model-no-key || viewItem == model-ineligible || viewItem == model-hidden)",
+          "group": "modify@1"
+        },
+        {
+          "command": "addi.copyModel",
+          "when": "view == addiProviders && (viewItem == model || viewItem == model-no-key || viewItem == model-ineligible || viewItem == model-hidden)",
+          "group": "modify@2"
+        },
+        {
+          "command": "addi.showModelsInPicker",
+          "when": "view == addiProviders && (viewItem == model || viewItem == model-no-key || viewItem == model-ineligible || viewItem == model-hidden)",
+          "group": "visibility@1"
+        },
+        {
+          "command": "addi.hideModelsFromPicker",
+          "when": "view == addiProviders && (viewItem == model || viewItem == model-no-key || viewItem == model-ineligible || viewItem == model-hidden)",
+          "group": "visibility@2"
+        },
+        {
+          "command": "addi.deleteModels",
+          "when": "view == addiProviders && (viewItem == model || viewItem == model-no-key || viewItem == model-ineligible || viewItem == model-hidden)",
+          "group": "modify@99"
+        },
+        {
+          "command": "addi.showProviderModelsInPicker",
+          "when": "view == addiProviders && (viewItem == provider-no-key || viewItem == provider || viewItem == provider-synced)",
+          "group": "visibility@1"
+        },
+        {
+          "command": "addi.hideProviderModelsFromPicker",
+          "when": "view == addiProviders && (viewItem == provider-no-key || viewItem == provider || viewItem == provider-synced)",
+          "group": "visibility@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Addi Settings",
+      "properties": {
+        "addi.defaultMaxInputTokens": {
+          "type": "number",
+          "default": 60000,
+          "description": "Max input tokens"
+        },
+        "addi.defaultMaxOutputTokens": {
+          "type": "number",
+          "default": 80000,
+          "description": "Max output tokens"
+        },
+        "addi.confirmDelete": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to require confirmation before deleting providers or models"
+        },
+        "addi.sortRule": {
+          "type": "string",
+          "enum": [
+            "none",
+            "alphabet",
+            "input tokens",
+            "output tokens"
+          ],
+          "default": "none",
+          "description": "Sort rule for providers and models"
+        },
+        "addi.sortTarget": {
+          "type": "string",
+          "enum": [
+            "providers",
+            "models",
+            "both"
+          ],
+          "default": "both",
+          "description": "Target to apply the sort rule"
+        },
+        "addi.syncConfiguration": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable to sync provider configuration (excluding API keys) across devices via VS Code settings sync. API keys are stored locally in VS Code SecretStorage and are not synced."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "addi.manage",
+        "title": "Provider & Model Management",
+        "shortTitle": "Management",
+        "icon": "$(settings-gear)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.ineligibleModelInfo",
+        "title": "need tools support to using in agent",
+        "icon": "$(question)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.addProvider",
+        "title": "Add Provider",
+        "shortTitle": "Add",
+        "icon": "$(add)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.editProvider",
+        "title": "Edit Provider",
+        "shortTitle": "Edit",
+        "icon": "$(edit)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.deleteProvider",
+        "title": "Delete Provider",
+        "shortTitle": "Delete",
+        "icon": "$(trash)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.setModelToCopilot",
+        "title": "Set Model to Copilot",
+        "shortTitle": "Set",
+        "icon": "$(comment)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.addModel",
+        "title": "Add Model",
+        "shortTitle": "Add",
+        "icon": "$(add)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.editModels",
+        "title": "Edit Models",
+        "shortTitle": "Edit",
+        "icon": "$(edit)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.deleteModels",
+        "title": "Delete Models",
+        "shortTitle": "Delete",
+        "icon": "$(trash)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.showModelsInPicker",
+        "title": "Show in Picker",
+        "shortTitle": "Show",
+        "icon": "$(eye)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.hideModelsFromPicker",
+        "title": "Hide from Picker",
+        "shortTitle": "Hide",
+        "icon": "$(eye-closed)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.showProviderModelsInPicker",
+        "title": "Show All Models in Picker",
+        "shortTitle": "Show All",
+        "icon": "$(eye)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.hideProviderModelsFromPicker",
+        "title": "Hide All Models from Picker",
+        "shortTitle": "Hide All",
+        "icon": "$(eye-closed)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.copyProvider",
+        "title": "Copy Provider",
+        "shortTitle": "Copy",
+        "icon": "$(copy)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.copyModel",
+        "title": "Copy Model",
+        "shortTitle": "Copy",
+        "icon": "$(copy)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.setApiKey",
+        "title": "Set Api Key",
+        "shortTitle": "Key",
+        "icon": "$(key)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.pullProviderModels",
+        "title": "Pull Models List",
+        "shortTitle": "Pull Models",
+        "icon": "$(broadcast)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.exportConfig",
+        "title": "Export Configuration",
+        "shortTitle": "Export",
+        "icon": "$(clone)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.importConfig",
+        "title": "Import Configuration",
+        "shortTitle": "Import",
+        "icon": "$(cloud-upload)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.showLogs",
+        "title": "Show Logs",
+        "shortTitle": "Logs",
+        "icon": "$(output)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.openSettings",
+        "title": "Open Settings",
+        "shortTitle": "Settings",
+        "icon": "$(settings-gear)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.resetAllSettings",
+        "title": "Reset All Addi Settings",
+        "shortTitle": "Reset Settings",
+        "icon": "$(settings)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.cleanAllStorage",
+        "title": "Clean All Addi Storage",
+        "shortTitle": "Clean Storage",
+        "icon": "$(trash)",
+        "category": "Addi"
+      }
+    ],
+    "languageModelChatProviders": [
+      {
+        "vendor": "addi-provider",
+        "displayName": "Addi"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "bun run compile:test && bun run compile && vscode-test",
+    "compile:test": "tsc -p tsconfig.test.json",
+    "package": "bun build ./src/presentation/extension.ts --outdir ./dist --target node --format cjs --external vscode --minify",
+    "watch": "bun build ./src/presentation/extension.ts --outdir ./dist --target node --format cjs --external vscode --watch",
+    "compile": "bun build ./src/presentation/extension.ts --outdir ./dist --target node --format cjs --external vscode",
+    "debug": "code --extensionDevelopmentPath=.",
+    "clean": "bun scripts/clean.ts",
+    "clean:all": "bun scripts/clean.ts --all",
+    "build": "bun scripts/build.ts",
+    "build:install": "bun scripts/build.ts --install",
+    "build:release": "bun scripts/build.ts --release",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.ts tests-e2e/**/*.ts *.json *.md .prettierrc",
+    "format:check": "prettier --check src/**/*.ts tests-e2e/**/*.ts *.json *.md .prettierrc"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9",
+    "@types/jest": "^30.0.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.3.3",
+    "@types/vscode": "^1.109.0",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
+    "eslint": "^9.39.3",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.8.1",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.50",
+    "@ai-sdk/google": "^3.0.34",
+    "@ai-sdk/openai": "^3.0.37",
+    "@ai-sdk/openai-compatible": "^2.0.31",
+    "ai": "^6.0.105"
+  }
+}
