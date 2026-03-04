@@ -27,10 +27,16 @@ const REPO_OWNER = "deepwn";
 const REPO_NAME = "addi";
 
 function getGitHubHeaders() {
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) {
+    logWarn("GITHUB_TOKEN 环境变量未设置");
+  }
+  // GitHub API 使用 Bearer 格式
   return {
-    "Authorization": `token ${process.env.GITHUB_TOKEN}`,
-    "Accept": "application/vnd.github.v3+json",
-    "User-Agent": "addi-build-script",
+    Authorization: token ? `Bearer ${token}` : '',
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'addi-build-script',
   };
 }
 
@@ -39,14 +45,23 @@ async function githubFetch<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T | null> {
+  const url = `${GITHUB_API_BASE}${endpoint}`;
+  
   try {
-    const response = await fetch(`${GITHUB_API_BASE}${endpoint}`, {
+    const response = await fetch(url, {
       ...options,
       headers: {
         ...getGitHubHeaders(),
         ...options.headers,
       },
     });
+
+    // 记录响应状态用于调试
+    if (!response.ok) {
+      const errorText = await response.text();
+      logError(`GitHub API 错误: ${response.status} ${response.statusText}`);
+      logError(`响应内容: ${errorText.substring(0, 200)}`);
+    }
 
     if (response.status === 404) {
       return null;
@@ -55,7 +70,17 @@ async function githubFetch<T = unknown>(
     const data = await response.json() as T;
     return data;
   } catch (error) {
-    logError(`GitHub API 请求失败: ${error}`);
+    // 详细的错误信息
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError(`GitHub API 请求失败: ${errorMessage}`);
+    logError(`请求 URL: ${url}`);
+    
+    // 检查是否是代理问题
+    if (errorMessage.includes("Unable to connect") || errorMessage.includes("ECONNREFUSED")) {
+      logWarn("无法连接到 GitHub，可能需要配置代理");
+      logWarn("设置代理: $env:HTTPS_PROXY=\"http://127.0.0.1:7890\"");
+    }
+    
     return null;
   }
 }
@@ -436,7 +461,7 @@ async function deleteExistingAssets(apiUrl: string, releaseId: number): Promise<
   }
 }
 
-// 上传 asset
+// 上传 asset (使用完整 URL，不经过 githubFetch)
 async function uploadAsset(
   uploadUrl: string,
   fileName: string,
@@ -448,6 +473,8 @@ async function uploadAsset(
     `?name=${encodeURIComponent(fileName)}`
   );
 
+  log(`   上传地址: ${uploadEndpoint}`, "gray");
+
   // 读取文件内容
   const fileContent = await readFile(filePath);
 
@@ -456,18 +483,42 @@ async function uploadAsset(
     errors?: Array<{ message: string }>;
   }
 
-  const data = await githubFetch<AssetResponse>(uploadEndpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/octet-stream" },
-    body: fileContent,
-  });
+  // 直接使用 fetch，不加 base URL
+  try {
+    const response = await fetch(uploadEndpoint, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`,
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/octet-stream",
+      },
+      body: fileContent,
+    });
 
-  if (data?.id) {
-    return true;
+    if (!response.ok) {
+      const errorText = await response.text();
+      logError(`上传失败: ${response.status} ${response.statusText}`);
+      logError(`响应: ${errorText.substring(0, 200)}`);
+      return false;
+    }
+
+    const data = await response.json() as AssetResponse;
+    if (data?.id) {
+      return true;
+    }
+    if (data?.errors) {
+      logError(`上传失败: ${JSON.stringify(data.errors)}`);
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError(`上传请求失败: ${errorMessage}`);
+    
+    if (errorMessage.includes("Unable to connect") || errorMessage.includes("ECONNREFUSED")) {
+      logWarn("无法连接到 GitHub，请检查网络或配置代理");
+    }
   }
-  if (data?.errors) {
-    logError(`上传失败: ${JSON.stringify(data.errors)}`);
-  }
+
   return false;
 }
 
