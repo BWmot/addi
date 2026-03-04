@@ -3,6 +3,7 @@ import { BaseCommandHandler } from './base';
 import { Provider } from '../../common/types';
 import { UserFeedback, IdGenerator } from '../../common/utils';
 import { logger } from '../../common/logger';
+import { CryptoService, ProviderApiKeys } from '../../infrastructure/crypto';
 
 /**
  * Configuration-related command handler
@@ -28,24 +29,12 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         return;
       }
 
-      // 2. Determine if API Keys should be included
-      const includeApiKeys = await vscode.window.showQuickPick(
-        [
-          { label: 'Yes', description: 'Include API Keys (from local storage)' },
-          { label: 'No', description: 'Exclude API Keys' },
-        ],
-        {
-          title: 'Include API Keys in Export?',
-          placeHolder: 'Choose whether to include API Keys',
-        }
-      );
-
-      if (!includeApiKeys) {
-        logger.debug('exportConfig canceled at API key inclusion selection');
+      // 2. Prompt for password (enter password to encrypt, empty to exclude ApiKey)
+      const password = await this.promptForEncryptionPassword();
+      if (password === undefined) {
+        logger.debug('exportConfig canceled at password prompt');
         return;
       }
-
-      const shouldIncludeApiKeys = includeApiKeys.label === 'Yes';
 
       // 3. Selection Destination
       const destination = await vscode.window.showQuickPick(['Save to File', 'Copy to Clipboard'], {
@@ -58,7 +47,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         return;
       }
 
-      const encoded = await this.encodeProvidersForExport(selectedProviders, shouldIncludeApiKeys);
+      const encoded = await this.encodeProvidersForExport(selectedProviders, password);
 
       if (destination === 'Save to File') {
         const defaultFileName = 'addi-config.json';
@@ -97,7 +86,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
       logger.info('Configuration exported', {
         providerCount: selectedProviders.length,
-        includeApiKeys: shouldIncludeApiKeys,
+        hasPassword: !!password,
         destination,
       });
 
@@ -160,6 +149,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
       // 2. Parse JSON and check format
       let providersToImport: Provider[];
+      let encryptedApiKeys: ProviderApiKeys | null = null;
       try {
         const parsed = JSON.parse(trimmedContent);
 
@@ -167,6 +157,21 @@ export class ConfigCommandHandler extends BaseCommandHandler {
           providersToImport = parsed;
         } else if (parsed.providers && Array.isArray(parsed.providers)) {
           providersToImport = parsed.providers;
+          // Check for encrypted API Keys
+          if (parsed.encryptionApiKey) {
+            const password = await this.promptForDecryptionPassword();
+            if (password === undefined) {
+              logger.debug('importConfig canceled at decryption password prompt');
+              return;
+            }
+            encryptedApiKeys = CryptoService.decryptApiKeys(parsed.encryptionApiKey, password);
+            if (!encryptedApiKeys) {
+              UserFeedback.showWarning(
+                'Failed to decrypt API Keys from config (wrong password?), API Keys will be skipped'
+              );
+              logger.warn('importConfig: failed to decrypt API keys');
+            }
+          }
         } else {
           throw new Error('Invalid configuration format');
         }
@@ -181,35 +186,14 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         );
       }
 
-      // 3. Ask about API Keys
-      const hasApiKeys = providersToImport.some((p) => !!p.apiKey);
-      let shouldImportApiKeys = false;
-
-      if (hasApiKeys) {
-        const includeApiKeys = await vscode.window.showQuickPick(
-          [
-            { label: 'Yes', description: 'Import API Keys from configuration' },
-            { label: 'No', description: 'Skip API Keys (keep local)' },
-          ],
-          {
-            title: 'Import API Keys?',
-            placeHolder: 'Configuration contains API Keys. Import them?',
-          }
-        );
-
-        if (!includeApiKeys) {
-          logger.debug('importConfig canceled at API key selection');
-          return;
-        }
-
-        shouldImportApiKeys = includeApiKeys.label === 'Yes';
-      }
-
-      // Strip API Keys if not importing them
-      if (!shouldImportApiKeys) {
+      // 3. Merge encrypted ApiKeys into providers if decryption was successful
+      if (encryptedApiKeys) {
         providersToImport = providersToImport.map((p) => {
-          const { apiKey: _apiKey, ...rest } = p;
-          return rest as Provider;
+          const encryptedKey = encryptedApiKeys[p.id];
+          if (encryptedKey) {
+            return { ...p, apiKey: encryptedKey };
+          }
+          return p;
         });
       }
 
@@ -253,12 +237,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
         await this.manager.saveProviders(mergedProviders);
 
-        // Import API Keys to SecretStorage if requested
-        if (shouldImportApiKeys) {
-          for (const provider of selectedToImport) {
-            if (provider.apiKey) {
-              await this.manager.setApiKey(provider.id, provider.apiKey);
-            }
+        // Import API Keys to SecretStorage
+        for (const provider of selectedToImport) {
+          if (provider.apiKey) {
+            await this.manager.setApiKey(provider.id, provider.apiKey);
           }
         }
 
@@ -414,35 +396,81 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     }
   }
 
+  /**
+   * Prompt user for encryption password during export
+   * @returns password string, or undefined if cancelled/empty
+   */
+  private async promptForEncryptionPassword(): Promise<string | undefined> {
+    const result = await vscode.window.showInputBox({
+      title: 'Export Configuration - API Key Security',
+      prompt: 'Enter a password to encrypt ApiKey (Leave empty to exclude ApiKey from export)',
+      password: true,
+      placeHolder: 'Password (minimum 8 characters)',
+      validateInput: (value) => {
+        if (value && value.length < 8) {
+          return 'Password must be at least 8 characters';
+        }
+        return undefined;
+      },
+    });
+
+    return result;
+  }
+
+  /**
+   * Prompt user for decryption password during import
+   * @returns password string, or undefined if cancelled
+   */
+  private async promptForDecryptionPassword(): Promise<string | undefined> {
+    const result = await vscode.window.showInputBox({
+      title: 'Import Configuration - Decrypt API Key',
+      prompt: 'This configuration contains encrypted API Keys. Enter password to decrypt:',
+      password: true,
+      placeHolder: 'Password',
+    });
+
+    return result;
+  }
+
   private async encodeProvidersForExport(
     providers: Provider[],
-    includeApiKeys: boolean
+    password: string | undefined
   ): Promise<string> {
+    // Collect API Keys for encryption
+    const apiKeys: ProviderApiKeys = {};
     const exportData = await Promise.all(
       providers.map(async (p) => {
         const { apiKey: _apiKey, ...providerData } = p;
-        let apiKeyValue: string | undefined;
 
-        if (includeApiKeys) {
+        if (password) {
           try {
-            apiKeyValue = await this.manager.getApiKey(p.id);
+            const apiKeyValue = await this.manager.getApiKey(p.id);
+            if (apiKeyValue) {
+              apiKeys[p.id] = apiKeyValue;
+            }
           } catch {
             // Ignore errors getting API key
           }
         }
 
-        return {
-          ...providerData,
-          ...(apiKeyValue && { apiKey: apiKeyValue }),
-        };
+        return providerData;
       })
     );
 
-    const exportMeta = {
+    const exportMeta: Record<string, unknown> = {
       version: 1,
       exportedAt: Date.now(),
-      apiKeysIncluded: includeApiKeys,
     };
+
+    // Add encrypted API Keys if password provided
+    if (password && Object.keys(apiKeys).length > 0) {
+      try {
+        exportMeta['encryptionApiKey'] = CryptoService.encryptApiKeys(apiKeys, password);
+      } catch (error) {
+        logger.error('Failed to encrypt API keys during export', error);
+        UserFeedback.showError('Failed to encrypt API keys, exporting without API keys');
+      }
+    }
 
     return JSON.stringify({ ...exportMeta, providers: exportData }, null, 2);
   }
