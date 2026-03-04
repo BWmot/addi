@@ -1,20 +1,22 @@
-<center style="text-align: center; background-color: lightblue; padding: 40px 40px; border-radius: 10px; margin-bottom: 20px;">
-  <img src="resources/icon-bg.min.png" width="128" height="128" alt="Addi Logo" />
-
-  <h1>Addi — Extend Your VS Code Copilot</h1>
-  <p><b>为 GitHub Copilot 添加自定义 AI 供应商与模型的 VS Code 扩展</b></p>
-    <a href="https://github.com/deepwn/addi/releases"><img alt="Release" src="https://img.shields.io/github/v/release/deepwn/addi?logo=github" /></a>
-    <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg" /></a>
-    <a href="https://github.com/deepwn/addi/issues"><img alt="Issues" src="https://img.shields.io/github/issues/deepwn/addi" /></a>
-    <a href="https://github.com/deepwn/addi/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/deepwn/addi" /></a>
-  </p>
-</center>
-
----
+# Addi — Extend Your VS Code Copilot with Custom AI Providers and Models
 
 ## 简介
 
 Addi 是一个 VS Code 扩展，让你在 GitHub Copilot 中使用自定义 AI 供应商与模型。通过桥接 AI SDK (Vercel) 与 VS Code 的 Language Model Chat API，Addi 支持多种 LLM 提供商，包括 OpenAI、Anthropic、Google、Ollama 等。
+
+<a href="https://github.com/deepwn/addi/releases"><img alt="Release" src="https://img.shields.io/github/v/release/deepwn/addi?logo=github" /></a>
+<a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg" /></a>
+<a href="https://github.com/deepwn/addi/issues"><img alt="Issues" src="https://img.shields.io/github/issues/deepwn/addi" /></a>
+<a href="https://github.com/deepwn/addi/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/deepwn/addi" /></a>
+
+> [!WARNING]
+> BREAKING CHANGE: 正式版本 `v1.0.0` 往后将保持配置兼容，但针对内部测试版 `v0.0.x` 将不考虑兼容，请务必注意非兼容问题！
+>
+> 由于 Copilot Chat API 的接口更新，以及对 Addi 配置项的优化重构，旧版本的模型配置已不再兼容新接口与正式版插件，请重新添加 Provider 和 Model。
+>
+> 如果你之前使用过 Addi，请务必删除旧的 Provider 和 Model 配置，或在首次更新到 `v1.0.0` 时，通过`Ctrl+P` 输入`Addi:` 选择运行 `Addi: Clean All Addi Storage` 和 `Addi: Reset All Addi Settings` 清空原有冲突配置，并按照新的流程重新添加，以确保兼容最新的 Copilot Chat API 和正式版 Addi 插件。
+>
+> 正式版本往后将专注于对自定义供应商和模型的管理，已去除内测版提供的mcp-server相关功能，在做好备份和工具脚本归档的前提下，可以清除 `~/.addi/bin` 等yaml文件和binary。
 
 ## 核心功能
 
