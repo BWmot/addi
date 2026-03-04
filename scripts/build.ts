@@ -8,7 +8,7 @@
  *   bun run build --release    - 编译并发布到 GitHub (需要交互确认)
  */
 
-import { rm, readdir, stat, mkdir } from "node:fs/promises";
+import { rm, readdir, stat, readFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -20,7 +20,45 @@ const isRelease = args.includes("--release");
 
 const PROJECT_ROOT = dirname(dirname(import.meta.path));
 const DIST_DIR = join(PROJECT_ROOT, "dist");
-const RELEASE_DIR = join(PROJECT_ROOT, "release");
+
+// GitHub API 基础配置
+const GITHUB_API_BASE = "https://api.github.com";
+const REPO_OWNER = "deepwn";
+const REPO_NAME = "addi";
+
+function getGitHubHeaders() {
+  return {
+    "Authorization": `token ${process.env.GITHUB_TOKEN}`,
+    "Accept": "application/vnd.github.v3+json",
+    "User-Agent": "addi-build-script",
+  };
+}
+
+// 使用 fetch 的通用请求函数
+async function githubFetch<T = unknown>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T | null> {
+  try {
+    const response = await fetch(`${GITHUB_API_BASE}${endpoint}`, {
+      ...options,
+      headers: {
+        ...getGitHubHeaders(),
+        ...options.headers,
+      },
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    const data = await response.json() as T;
+    return data;
+  } catch (error) {
+    logError(`GitHub API 请求失败: ${error}`);
+    return null;
+  }
+}
 
 // 颜色输出
 const colors = {
@@ -53,7 +91,7 @@ function logWarn(msg: string) {
 }
 
 // 执行命令
-function execCommand(command: string, args: string[], options: { cwd?: string; silent?: boolean } = {}): Promise<number> {
+function execCommand(command: string, args: string[], options: { cwd?: string; silent?: boolean } = {}): Promise<{ code: number; output: string }> {
   return new Promise((resolve) => {
     const proc = spawn(command, args, {
       cwd: options.cwd || PROJECT_ROOT,
@@ -72,17 +110,22 @@ function execCommand(command: string, args: string[], options: { cwd?: string; s
     }
 
     proc.on("close", (code) => {
+      const result = { code: code || 0, output };
+      _lastCommandOutput = output; // 保存输出供后续使用
       if (output && !options.silent) {
         console.log(output);
       }
-      resolve(code || 0);
+      resolve(result);
     });
 
     proc.on("error", () => {
-      resolve(1);
+      resolve({ code: 1, output: "" });
     });
   });
 }
+
+// 全局存储命令输出
+let _lastCommandOutput = "";
 
 // 确认交互
 async function confirm(message: string): Promise<boolean> {
@@ -120,9 +163,9 @@ async function needsInstall(): Promise<boolean> {
 async function installDependencies(): Promise<boolean> {
   logStep("安装依赖");
 
-  const code = await execCommand("bun", ["install"]);
+  const result = await execCommand("bun", ["install"]);
   
-  if (code !== 0) {
+  if (result.code !== 0) {
     logError("安装依赖失败");
     return false;
   }
@@ -164,9 +207,9 @@ async function needsCompile(): Promise<boolean> {
 async function compile(): Promise<boolean> {
   logStep("编译 TypeScript");
 
-  const code = await execCommand("bun", ["run", "compile"]);
+  const result = await execCommand("bun", ["run", "compile"]);
   
-  if (code !== 0) {
+  if (result.code !== 0) {
     logError("编译失败");
     return false;
   }
@@ -194,15 +237,15 @@ async function packageVsix(): Promise<boolean> {
   }
 
   // 运行编译（minify 版本）
-  let code = await execCommand("bun", ["run", "package"]);
+  let result = await execCommand("bun", ["run", "package"]);
   
-  if (code !== 0) {
+  if (result.code !== 0) {
     logError("编译失败");
     return false;
   }
 
   // 使用 vsce 打包
-  code = await execCommand("bunx", [
+  result = await execCommand("bunx", [
     "@vscode/vsce",
     "package",
     "--baseImagesUrl",
@@ -211,7 +254,7 @@ async function packageVsix(): Promise<boolean> {
     "--no-dependencies",
   ]);
 
-  if (code !== 0) {
+  if (result.code !== 0) {
     logError("打包失败");
     return false;
   }
@@ -245,9 +288,9 @@ async function installExtension(): Promise<boolean> {
   log(`   安装文件: ${vsixFile}`, "gray");
 
   // 使用 code 命令安装
-  const code = await execCommand("code", ["--install-extension", vsixPath, "--force"]);
+  const result = await execCommand("code", ["--install-extension", vsixPath, "--force"]);
 
-  if (code !== 0) {
+  if (result.code !== 0) {
     logError("安装失败，请确保 VS Code 已安装且在 PATH 中");
     return false;
   }
@@ -269,16 +312,9 @@ async function releaseToGitHub(): Promise<boolean> {
 
   const version = await getVersion();
   const tag = `v${version}`;
-  const repoOwner = "deepwn";
-  const repoName = "addi";
 
   log(`   版本: ${tag}`, "gray");
-  log(`   仓库: ${repoOwner}/${repoName}`, "gray");
-
-  // 确保 release 目录存在
-  if (!existsSync(RELEASE_DIR)) {
-    await mkdir(RELEASE_DIR, { recursive: true });
-  }
+  log(`   仓库: ${REPO_OWNER}/${REPO_NAME}`, "gray");
 
   // 查找 vsix 文件
   const vsixFiles = await readdir(PROJECT_ROOT);
@@ -290,43 +326,148 @@ async function releaseToGitHub(): Promise<boolean> {
   }
 
   const vsixPath = join(PROJECT_ROOT, vsixFile);
+  log(`   VSIX 文件: ${vsixFile}`, "gray");
 
-  // 上传到 GitHub
-  const apiUrl = `https://api.github.com/repos/${repoOwner}/${repoName}/releases`;
-  
-  // 创建 release
-  const releaseBody = JSON.stringify({
-    tag_name: tag,
-    target_commitish: "main",
-    name: tag,
-    body: `Release ${tag}`,
-    draft: false,
-    prerelease: false,
-  });
+  const apiUrl = `/repos/${REPO_OWNER}/${REPO_NAME}/releases`;
 
-  log("   创建 Release...", "gray");
+  // 检查 release 是否已存在
+  log("   检查 release 是否存在...", "gray");
+  const existingRelease = await getExistingRelease(apiUrl, tag);
 
-  // 使用 curl 上传 (更简单)
-  const uploadCode = await execCommand("curl", [
-    "-X", "POST",
-    "-H", `Authorization: token ${process.env.GITHUB_TOKEN}`,
-    "-H", "Accept: application/vnd.github.v3+json",
-    "-H", "Content-Type: application/json",
-    "-d", releaseBody,
-    apiUrl,
-  ], { silent: true });
+  let releaseId: number;
+  let uploadUrl: string;
 
-  if (uploadCode !== 0) {
-    // 可能已存在，尝试获取
-    log("   Release 已存在，获取现有 release...", "yellow");
+  if (existingRelease) {
+    log("   Release 已存在，更新...", "yellow");
+    releaseId = existingRelease.id;
+    uploadUrl = existingRelease.upload_url;
+    // 删除旧的 assets
+    await deleteExistingAssets(apiUrl, releaseId);
+  } else {
+    log("   创建新 Release...", "gray");
+    const releaseResult = await createRelease(apiUrl, tag);
+    if (!releaseResult) {
+      logError("创建 Release 失败");
+      return false;
+    }
+    releaseId = releaseResult.id;
+    uploadUrl = releaseResult.upload_url;
   }
 
-  // 上传 asset
+  // 上传 VSIX 文件
   log("   上传 VSIX 文件...", "gray");
-  
-  // 这里简化处理 - 实际上需要获取 upload_url
-  logWarn("GitHub 发布需要更完善的实现，请使用 scripts/release_github.ps1 或 .sh");
-  
+  const uploadSuccess = await uploadAsset(uploadUrl, vsixFile, vsixPath);
+  if (!uploadSuccess) {
+    logError("上传 VSIX 文件失败");
+    return false;
+  }
+
+  logSuccess(`发布成功: https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/tag/${tag}`);
+  return true;
+}
+
+// 获取已存在的 release
+async function getExistingRelease(
+  apiUrl: string,
+  tag: string
+): Promise<{ id: number; upload_url: string } | null> {
+  interface ReleaseResponse {
+    id: number;
+    upload_url: string;
+  }
+
+  const data = await githubFetch<ReleaseResponse>(`${apiUrl}/tags/${tag}`);
+  if (data?.id) {
+    return { id: data.id, upload_url: data.upload_url };
+  }
+  return null;
+}
+
+// 创建新 release
+async function createRelease(
+  apiUrl: string,
+  tag: string
+): Promise<{ id: number; upload_url: string } | null> {
+  const version = await getVersion();
+
+  interface ReleaseCreateResponse {
+    id: number;
+    upload_url: string;
+    errors?: Array<{ message: string }>;
+  }
+
+  const data = await githubFetch<ReleaseCreateResponse>(apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      tag_name: tag,
+      target_commitish: "main",
+      name: `v${version}`,
+      body: `Release v${version}\n\nInstall this extension in VS Code:\n1. Download the .vsix file\n2. Run "Extensions: Install from VSIX" in VS Code`,
+      draft: false,
+      prerelease: false,
+    }),
+  });
+
+  if (data?.id) {
+    return { id: data.id, upload_url: data.upload_url };
+  }
+  if (data?.errors) {
+    logError(`创建 Release 失败: ${JSON.stringify(data.errors)}`);
+  }
+  return null;
+}
+
+// 删除已存在的 assets
+async function deleteExistingAssets(apiUrl: string, releaseId: number): Promise<void> {
+  interface Asset {
+    id: number;
+    name: string;
+  }
+
+  const assets = await githubFetch<Asset[]>(`${apiUrl}/${releaseId}/assets`);
+  if (assets) {
+    for (const asset of assets) {
+      log(`   删除旧资产: ${asset.name}`, "gray");
+      await githubFetch(`${apiUrl}/${releaseId}/assets/${asset.id}`, {
+        method: "DELETE",
+      });
+    }
+  }
+}
+
+// 上传 asset
+async function uploadAsset(
+  uploadUrl: string,
+  fileName: string,
+  filePath: string
+): Promise<boolean> {
+  // 替换模板中的 {name}
+  const uploadEndpoint = uploadUrl.replace(
+    "{?name,label}",
+    `?name=${encodeURIComponent(fileName)}`
+  );
+
+  // 读取文件内容
+  const fileContent = await readFile(filePath);
+
+  interface AssetResponse {
+    id: number;
+    errors?: Array<{ message: string }>;
+  }
+
+  const data = await githubFetch<AssetResponse>(uploadEndpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/octet-stream" },
+    body: fileContent,
+  });
+
+  if (data?.id) {
+    return true;
+  }
+  if (data?.errors) {
+    logError(`上传失败: ${JSON.stringify(data.errors)}`);
+  }
   return false;
 }
 
