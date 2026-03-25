@@ -17,11 +17,11 @@ export class ConfigManager {
   }
 
   static getDefaultModelFamily(): string {
-    return 'Addi';
+    return 'addi';
   }
 
   static getDefaultModelVersion(): string {
-    return '';
+    return '1.0.0';
   }
 
   static getConfirmDelete(): boolean {

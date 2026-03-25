@@ -301,6 +301,30 @@ export class ProviderModelManager {
           changed = true;
         }
 
+        // family: 模型系列/家族名称 (必须存在，非用户可编辑字段)
+        const familyRaw = typeof mutableModel['family'] === 'string' ? mutableModel['family'].trim() : '';
+        if (!familyRaw) {
+          // 如果没有 family，则使用 'addi' 作为默认值
+          mutableModel['family'] = 'addi';
+          changed = true;
+          modelCritical = true;
+        } else if (familyRaw !== mutableModel['family']) {
+          mutableModel['family'] = familyRaw;
+          changed = true;
+        }
+
+        // version: 模型版本标识 (必须存在，非用户可编辑字段)
+        const versionRaw = typeof mutableModel['version'] === 'string' ? mutableModel['version'].trim() : '';
+        if (!versionRaw) {
+          // 如果没有 version，则使用 '1.0.0' 作为默认值
+          mutableModel['version'] = '1.0.0';
+          changed = true;
+          modelCritical = true;
+        } else if (versionRaw !== mutableModel['version']) {
+          mutableModel['version'] = versionRaw;
+          changed = true;
+        }
+
         if (!changed) {
           return model;
         }
@@ -429,8 +453,8 @@ export class ProviderModelManager {
         id,
         rid,
         name: modelData.name,
-        family: modelData.family,
-        version: modelData.version,
+        family: modelData.family || 'addi',
+        version: modelData.version || '1.0.0',
         maxInputTokens: modelData.maxInputTokens,
         maxOutputTokens: modelData.maxOutputTokens,
         capabilities: this.normalizeCapabilities(modelData.capabilities),

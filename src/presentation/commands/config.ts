@@ -392,6 +392,13 @@ export class ConfigCommandHandler extends BaseCommandHandler {
             `Model in provider "${provider.name}" is missing required fields (need id/rid and name)`
           );
         }
+        // Ensure family and version fields exist (non-editable but required fields)
+        if (!m.family) {
+          m.family = 'addi';
+        }
+        if (m.version === undefined || m.version === null) {
+          m.version = '1.0.0';
+        }
       }
     }
   }
