@@ -24,6 +24,10 @@ shell = "system"
 # Build target
 target = "node"
 
+[test]
+# Use mocha as the test runner for .test.ts files
+preload = ["./tests-unit/**/*.test.ts"]
+
 # Output format
 format = "cjs"
 
