@@ -9,7 +9,8 @@ export class InputValidator {
   }
 
   static validateVersion(version: string): string | null {
-    return /^\d+(\.\d+)*$/.test(version)
+    // Match semantic version format: major.minor.patch (max 3 parts)
+    return /^\d+(\.\d+){0,2}$/.test(version)
       ? null
       : 'Version format is invalid, it should consist of numbers and dots';
   }

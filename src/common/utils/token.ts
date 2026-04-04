@@ -15,7 +15,7 @@ export class TokenFormatter {
       if (!Number.isFinite(input) || input <= 0) {
         return undefined;
       }
-      return Math.floor(input);
+      return Math.min(Math.floor(input), this.LIMIT);
     }
     const trimmed = input
       .trim()
