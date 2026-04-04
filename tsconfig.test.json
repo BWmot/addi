@@ -13,6 +13,6 @@
     "resolveJsonModule": true,
     "types": ["vscode", "mocha", "node"]
   },
-  "include": ["tests-e2e/**/*"],
+  "include": ["tests-e2e/**/*", "tests-unit/**/*"],
   "exclude": ["node_modules", ".vscode-test", "dist", "src", "tests/core/**/*"]
 }
