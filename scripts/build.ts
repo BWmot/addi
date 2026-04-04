@@ -335,21 +335,19 @@ async function releaseToGitHub(): Promise<boolean> {
   let uploadUrl: string;
 
   if (existingRelease) {
-    log("   Release 已存在，更新...", "yellow");
-    releaseId = existingRelease.id;
-    uploadUrl = existingRelease.upload_url;
-    // 删除旧的 assets
-    await deleteExistingAssets(apiUrl, releaseId);
-  } else {
-    log("   创建新 Release...", "gray");
-    const releaseResult = await createRelease(apiUrl, tag);
-    if (!releaseResult) {
-      logError("创建 Release 失败");
-      return false;
-    }
-    releaseId = releaseResult.id;
-    uploadUrl = releaseResult.upload_url;
+    log("   Release 已存在，删除旧的...", "yellow");
+    // 删除旧的 release（包括所有 assets）
+    await deleteExistingRelease(apiUrl, existingRelease.id, tag);
   }
+
+  log("   创建新 Release...", "gray");
+  const releaseResult = await createRelease(apiUrl, tag);
+  if (!releaseResult) {
+    logError("创建 Release 失败");
+    return false;
+  }
+  releaseId = releaseResult.id;
+  uploadUrl = releaseResult.upload_url;
 
   // 上传 VSIX 文件
   log("   上传 VSIX 文件...", "gray");
@@ -378,6 +376,24 @@ async function getExistingRelease(
     return { id: data.id, upload_url: data.upload_url };
   }
   return null;
+}
+
+// 删除已存在的 release（包括所有 assets）
+async function deleteExistingRelease(
+  apiUrl: string,
+  releaseId: number,
+  tag: string
+): Promise<void> {
+  log(`   删除 tag: ${tag}`, "gray");
+  // 先删除对应的 git tag
+  await execCommand("git", ["tag", "-d", tag], { silent: true });
+  await execCommand("git", ["push", "origin", `:refs/tags/${tag}`], { silent: true });
+
+  // 删除 GitHub release
+  log(`   删除 GitHub release #${releaseId}`, "gray");
+  await githubFetch(`${apiUrl}/${releaseId}`, {
+    method: "DELETE",
+  });
 }
 
 // 创建新 release
@@ -413,24 +429,6 @@ async function createRelease(
     logError(`创建 Release 失败: ${JSON.stringify(data.errors)}`);
   }
   return null;
-}
-
-// 删除已存在的 assets
-async function deleteExistingAssets(apiUrl: string, releaseId: number): Promise<void> {
-  interface Asset {
-    id: number;
-    name: string;
-  }
-
-  const assets = await githubFetch<Asset[]>(`${apiUrl}/${releaseId}/assets`);
-  if (assets) {
-    for (const asset of assets) {
-      log(`   删除旧资产: ${asset.name}`, "gray");
-      await githubFetch(`${apiUrl}/${releaseId}/assets/${asset.id}`, {
-        method: "DELETE",
-      });
-    }
-  }
 }
 
 // 上传 asset (使用完整 URL，不经过 githubFetch)
