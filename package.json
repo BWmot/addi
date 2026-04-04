@@ -459,6 +459,7 @@
   },
   "scripts": {
     "test": "bun run compile:test && bun run compile && vscode-test",
+    "test:unit": "bun pm test",
     "compile:test": "tsc -p tsconfig.test.json",
     "package": "bun build ./src/presentation/extension.ts --outdir ./dist --target node --format cjs --external vscode --minify",
     "watch": "bun build ./src/presentation/extension.ts --outdir ./dist --target node --format cjs --external vscode --watch",
@@ -478,23 +479,24 @@
     "@types/bun": "^1.3.11",
     "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.5.2",
     "@types/vscode": "^1.110.0",
-    "@typescript-eslint/eslint-plugin": "^8.57.2",
-    "@typescript-eslint/parser": "^8.57.2",
+    "@typescript-eslint/eslint-plugin": "^8.58.0",
+    "@typescript-eslint/parser": "^8.58.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.1",
     "eslint": "^9.39.4",
     "lint-staged": "^15.5.2",
+    "mocha": "^11.7.5",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.64",
-    "@ai-sdk/google": "^3.0.53",
-    "@ai-sdk/openai": "^3.0.48",
-    "@ai-sdk/openai-compatible": "^2.0.37",
-    "ai": "^6.0.138"
+    "@ai-sdk/anthropic": "^3.0.66",
+    "@ai-sdk/google": "^3.0.58",
+    "@ai-sdk/openai": "^3.0.50",
+    "@ai-sdk/openai-compatible": "^2.0.38",
+    "ai": "^6.0.146"
   }
 }
