@@ -448,6 +448,20 @@
         "shortTitle": "Clean Storage",
         "icon": "$(trash)",
         "category": "Addi"
+      },
+      {
+        "command": "addi.restoreFromBackup",
+        "title": "Restore from Backup",
+        "shortTitle": "Restore Backup",
+        "icon": "$(debug-restart)",
+        "category": "Addi"
+      },
+      {
+        "command": "addi.manageBackups",
+        "title": "Manage Backups",
+        "shortTitle": "Manage Backups",
+        "icon": "$(folder)",
+        "category": "Addi"
       }
     ],
     "languageModelChatProviders": [
