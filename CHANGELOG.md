@@ -2,6 +2,36 @@
 
 All notable changes to the "addi" extension will be documented in this file.
 
+## [1.0.2] - 2026-04-04
+
+### Added
+
+- **Tool Approval Combination API**: Add proposed API support for `LanguageModelToolConfirmationMessages.approveCombination`
+- **Local Backup/Restore**: Add local backup and restore functionality for providers
+
+### Changed
+
+- **JSON Editor Enhancement**: Replaced plain textareas with enhanced JSON editors featuring:
+  - Format, Minify, Clear buttons positioned inside the editor
+  - Real-time JSON validation with red border on error
+  - Improved tooltip examples for Extra Body and Extra Headers
+
+### Fixed
+
+- **Command Registration**: Fixed restoreFromBackup and manageBackups commands not registered in package.json
+- **API Key Handling**: API key field only saves when explicitly modified
+- **Token Input Validation**: Applied LIMIT to numeric token input and fixed version regex
+
+## [1.0.1] - 2026-03-15
+
+### Changed
+
+- **Dependencies**: Updated npm dependencies and `@types/vscode` to `^1.110.0`
+
+### Fixed
+
+- **Model Add/Copy**: Fixed `family` and `version` fields missing when adding or copying models
+
 ## [1.0.0] - 2026-03-01
 
 ### Added
