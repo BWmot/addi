@@ -250,6 +250,63 @@
       .collapsible-content .form-group:last-child {
         margin-bottom: 0;
       }
+
+      /* JSON Editor Styles - Simple approach */
+      .json-editor-wrapper {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+        align-items: stretch;
+      }
+      .json-editor-container {
+        flex: 1;
+        border: 1px solid var(--vscode-input-border);
+        background: var(--vscode-editor-background);
+        height: 180px;
+      }
+      .json-editor-container:focus-within {
+        border-color: var(--vscode-focusBorder);
+      }
+      .json-editor-container.error {
+        border-color: var(--vscode-errorForeground);
+      }
+      .json-textarea {
+        width: 100%;
+        height: 100%;
+        padding: 10px;
+        margin: 0;
+        background: transparent;
+        border: none;
+        font-family: var(--vscode-editor-font-family);
+        font-size: 0.9em;
+        line-height: 1.5;
+        resize: none;
+        outline: none;
+        tab-size: 2;
+        box-sizing: border-box;
+        color: var(--vscode-editor-foreground);
+      }
+      .json-textarea::selection {
+        background: var(--vscode-editor-selectionBackground);
+      }
+      .json-editor-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-top: 4px;
+      }
+      .json-editor-actions button {
+        padding: 4px 8px;
+        font-size: 0.8em;
+        background: var(--vscode-button-secondaryBackground);
+        color: var(--vscode-button-secondaryForeground);
+        border: 1px solid var(--vscode-widget-border);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .json-editor-actions button:hover {
+        background: var(--vscode-button-secondaryHoverBackground);
+      }
     </style>
   </head>
   <body>
@@ -318,13 +375,25 @@
               <label>Global Extra Body (JSON)</label>
               <span class="tooltip">
                 <span class="info-icon">ⓘ</span>
-                <span class="tooltip-text"
-                  >Additional JSON properties to merge into the request body for all models in this
-                  provider.</span
-                >
+                <span class="tooltip-text">Additional JSON properties merged into the request body
+for ALL models in this provider.
+Model-level Extra Body overrides this setting.
+<b>Examples:</b>
+• DeepSeek: {"thinking": {"type": "enabled", "budget_tokens": 1000}}
+• Ollama: {"keep_alive": "5m"}
+• Generic: {"stream": false}</span>
               </span>
             </div>
-            <textarea id="p-extra-body" placeholder='{"stream": false}'></textarea>
+            <div class="json-editor-wrapper">
+              <div class="json-editor-container" id="p-extra-body-container">
+                <textarea id="p-extra-body" class="json-textarea" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+              </div>
+              <div class="json-editor-actions">
+                <button type="button" class="format-btn" title="Format JSON">Format</button>
+                <button type="button" class="minify-btn" title="Minify JSON">Minify</button>
+                <button type="button" class="clear-btn" title="Clear content">Clear</button>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -332,13 +401,24 @@
               <label>Global Extra Headers (JSON)</label>
               <span class="tooltip">
                 <span class="info-icon">ⓘ</span>
-                <span class="tooltip-text"
-                  >Additional HTTP headers to include in requests for all models in this
-                  provider.</span
-                >
+                <span class="tooltip-text">Additional HTTP headers included in ALL model requests.
+Model-level Extra Headers overrides this setting.
+<b>Examples:</b>
+• Auth: {"Authorization": "Bearer sk-xxx"}
+• Custom: {"X-Custom-Header": "value"}
+• Version: {"X-API-Version": "2024-01"}</span>
               </span>
             </div>
-            <textarea id="p-extra-header" placeholder='{"X-Custom-Header": "value"}'></textarea>
+            <div class="json-editor-wrapper">
+              <div class="json-editor-container" id="p-extra-header-container">
+                <textarea id="p-extra-header" class="json-textarea" placeholder='{"X-Custom-Header": "value"}' spellcheck="false"></textarea>
+              </div>
+              <div class="json-editor-actions">
+                <button type="button" class="format-btn" title="Format JSON">Format</button>
+                <button type="button" class="minify-btn" title="Minify JSON">Minify</button>
+                <button type="button" class="clear-btn" title="Clear content">Clear</button>
+              </div>
+            </div>
           </div>
 
           <!-- Collapsible Default Options Section -->
@@ -568,12 +648,24 @@
               <label>Extra Body (JSON)</label>
               <span class="tooltip">
                 <span class="info-icon">ⓘ</span>
-                <span class="tooltip-text"
-                  >Additional JSON properties to merge into the request body.</span
-                >
+                <span class="tooltip-text">Additional JSON properties merged into the request body.
+Overrides provider-level Extra Body.
+<b>Examples:</b>
+• DeepSeek: {"thinking": {"type": "enabled", "budget_tokens": 1000}}
+• Ollama: {"keep_alive": "5m"}
+• Generic: {"stream": false}</span>
               </span>
             </div>
-            <textarea id="m-extra-body" placeholder='{"stream": false}'></textarea>
+            <div class="json-editor-wrapper">
+              <div class="json-editor-container" id="m-extra-body-container">
+                <textarea id="m-extra-body" class="json-textarea" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+              </div>
+              <div class="json-editor-actions">
+                <button type="button" class="format-btn" title="Format JSON">Format</button>
+                <button type="button" class="minify-btn" title="Minify JSON">Minify</button>
+                <button type="button" class="clear-btn" title="Clear content">Clear</button>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -581,10 +673,24 @@
               <label>Extra Headers (JSON)</label>
               <span class="tooltip">
                 <span class="info-icon">ⓘ</span>
-                <span class="tooltip-text">Additional HTTP headers to include in the request.</span>
+                <span class="tooltip-text">Additional HTTP headers included in the request.
+Overrides provider-level Extra Headers.
+<b>Examples:</b>
+• Auth: {"Authorization": "Bearer sk-xxx"}
+• Custom: {"X-Custom-Header": "value"}
+• Version: {"X-API-Version": "2024-01"}</span>
               </span>
             </div>
-            <textarea id="m-extra-header" placeholder='{"X-Custom-Header": "value"}'></textarea>
+            <div class="json-editor-wrapper">
+              <div class="json-editor-container" id="m-extra-header-container">
+                <textarea id="m-extra-header" class="json-textarea" placeholder='{"X-Custom-Header": "value"}' spellcheck="false"></textarea>
+              </div>
+              <div class="json-editor-actions">
+                <button type="button" class="format-btn" title="Format JSON">Format</button>
+                <button type="button" class="minify-btn" title="Minify JSON">Minify</button>
+                <button type="button" class="clear-btn" title="Clear content">Clear</button>
+              </div>
+            </div>
           </div>
 
           <!-- Collapsible Advanced Options Section -->
@@ -852,6 +958,140 @@
       const btnCancel = document.getElementById('btn-cancel');
       const btnVerify = document.getElementById('btn-verify');
 
+      // ============================================
+      // JSON Editor Enhancement
+      // ============================================
+
+      /**
+       * Syntax highlight JSON string for preview display
+       */
+      function highlightJSON(json) {
+        if (!json || !json.trim()) return '';
+        // Escape HTML first
+        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // Apply syntax highlighting
+        return json
+          .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
+          .replace(/: "([^"]*)"(,?)$/gm, ': <span class="json-string">"$1"</span>$2')
+          .replace(/: (-?\d+\.?\d*)(,?)$/gm, ': <span class="json-number">$1</span>$2')
+          .replace(/: (true|false)(,?)$/gm, ': <span class="json-boolean">$1</span>$2')
+          .replace(/: (null)(,?)$/gm, ': <span class="json-null">$1</span>$2')
+          .replace(/([{}\[\]])/g, '<span class="json-bracket">$1</span>');
+      }
+
+      /**
+       * Validate JSON string
+       */
+      function validateJSON(str) {
+        if (!str || !str.trim()) return { valid: true, error: null };
+        try {
+          JSON.parse(str);
+          return { valid: true, error: null };
+        } catch (e) {
+          return { valid: false, error: e.message };
+        }
+      }
+
+      /**
+       * Format JSON string (pretty print)
+       */
+      function formatJSON(str) {
+        if (!str || !str.trim()) return '';
+        try {
+          return JSON.stringify(JSON.parse(str), null, 2);
+        } catch {
+          return str;
+        }
+      }
+
+      /**
+       * Minify JSON string
+       */
+      function minifyJSON(str) {
+        if (!str || !str.trim()) return '';
+        try {
+          return JSON.stringify(JSON.parse(str));
+        } catch {
+          return str;
+        }
+      }
+
+      /**
+       * Initialize JSON editor for a textarea element (simple version)
+       */
+      function initJsonEditor(containerId, textareaId) {
+        const container = document.getElementById(containerId);
+        const textarea = document.getElementById(textareaId);
+        // Buttons are in the wrapper, find it first
+        const wrapper = container?.closest('.json-editor-wrapper');
+        const formatBtn = wrapper?.querySelector('.format-btn');
+        const minifyBtn = wrapper?.querySelector('.minify-btn');
+        const clearBtn = wrapper?.querySelector('.clear-btn');
+
+        if (!container || !textarea) return;
+
+        // Validate and update border color
+        function validateContent() {
+          const value = textarea.value;
+          if (!value.trim()) {
+            container.classList.remove('error');
+            return;
+          }
+          const validation = validateJSON(value);
+          container.classList.toggle('error', !validation.valid);
+        }
+
+        // Tab key support
+        textarea.addEventListener('keydown', (e) => {
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + 2;
+          }
+        });
+
+        // Validate on input
+        textarea.addEventListener('input', validateContent);
+
+        // Format button
+        formatBtn?.addEventListener('click', () => {
+          const formatted = formatJSON(textarea.value);
+          if (formatted) {
+            textarea.value = formatted;
+            validateContent();
+            textarea.focus();
+          }
+        });
+
+        // Minify button
+        minifyBtn?.addEventListener('click', () => {
+          const minified = minifyJSON(textarea.value);
+          if (minified) {
+            textarea.value = minified;
+            validateContent();
+            textarea.focus();
+          }
+        });
+
+        // Clear button
+        clearBtn?.addEventListener('click', () => {
+          textarea.value = '';
+          validateContent();
+          textarea.focus();
+        });
+
+        // Initial validation
+        validateContent();
+      }
+
+      // Initialize all JSON editors
+      initJsonEditor('p-extra-body-container', 'p-extra-body');
+      initJsonEditor('p-extra-header-container', 'p-extra-header');
+      initJsonEditor('m-extra-body-container', 'm-extra-body');
+      initJsonEditor('m-extra-header-container', 'm-extra-header');
+
       // Token formatter logic - use 1000 as K multiplier (not 1024)
       function formatToken(val) {
         if (!val) return '';
@@ -924,6 +1164,10 @@
           pWeb.value = data.website || '';
           pExtraBody.value = data.extraBody || '';
           pExtraHeader.value = data.extraHeader || '';
+
+          // Update JSON editor previews after setting values
+          initJsonEditor('p-extra-body-container', 'p-extra-body');
+          initJsonEditor('p-extra-header-container', 'p-extra-header');
 
           // Load provider default options
           const providerOptions = data.options || {};
@@ -999,6 +1243,10 @@
 
           mExtraBody.value = data.extraBody || '';
           mExtraHeader.value = data.extraHeader || '';
+
+          // Update JSON editor previews after setting values
+          initJsonEditor('m-extra-body-container', 'm-extra-body');
+          initJsonEditor('m-extra-header-container', 'm-extra-header');
 
           // Set placeholders to show parent provider's global values (if model doesn't have value)
           const parentExtraBody = data.parentExtraBody || '';
