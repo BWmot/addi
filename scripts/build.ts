@@ -3,9 +3,10 @@
  * Build Script - 构建和发布 VS Code 扩展
  *
  * 用法:
- *   bun run build              - 编译 TypeScript 到 dist 目录
- *   bun run build --install    - 编译后本地安装插件
- *   bun run build --release    - 编译并发布到 GitHub (需要交互确认)
+ *   bun run build         - 编译并打包 VSIX
+ *   bun run build --release - 编译、打包并发布到 GitHub (需要交互确认)
+ *
+ * 本地安装: code --install-extension addi-*.vsix
  */
 
 import { rm, readdir, stat, readFile } from "node:fs/promises";
@@ -15,7 +16,6 @@ import { spawn } from "node:child_process";
 
 // 解析命令行参数
 const args = process.argv.slice(2);
-const isInstall = args.includes("--install");
 const isRelease = args.includes("--release");
 
 const PROJECT_ROOT = dirname(dirname(import.meta.path));
@@ -296,34 +296,6 @@ async function getVersion(): Promise<string> {
   return pkg.version;
 }
 
-// 安装到 VS Code (本地)
-async function installExtension(): Promise<boolean> {
-  logStep("安装插件到 VS Code");
-
-  // 查找最新的 vsix 文件
-  const vsixFiles = await readdir(PROJECT_ROOT);
-  const vsixFile = vsixFiles.find((f) => f.endsWith(".vsix"));
-
-  if (!vsixFile) {
-    logError("未找到 .vsix 文件，请先运行编译");
-    return false;
-  }
-
-  const vsixPath = join(PROJECT_ROOT, vsixFile);
-  log(`   安装文件: ${vsixFile}`, "gray");
-
-  // 使用 code 命令安装
-  const result = await execCommand("code", ["--install-extension", vsixPath, "--force"]);
-
-  if (result.code !== 0) {
-    logError("安装失败，请确保 VS Code 已安装且在 PATH 中");
-    return false;
-  }
-
-  logSuccess("插件已安装");
-  return true;
-}
-
 // 发布到 GitHub
 async function releaseToGitHub(): Promise<boolean> {
   logStep("发布到 GitHub");
@@ -569,15 +541,6 @@ async function main() {
   if (!packaged) {
     logError("打包失败");
     process.exit(1);
-  }
-
-  // --install: 本地安装
-  if (isInstall) {
-    const installed = await installExtension();
-    if (!installed) {
-      logError("安装失败");
-      process.exit(1);
-    }
   }
 
   // --release: 发布到 GitHub
