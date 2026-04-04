@@ -275,9 +275,11 @@ export class EditorViewManager {
     }
     const provider = this._currentItem.provider;
 
-    // Check if apiKey was provided in payload (it's undefined if not touched in webview)
-    const apiKeyProvided = data.apiKey !== undefined;
-    const trimmedApiKey = typeof data.apiKey === 'string' ? data.apiKey.trim() : undefined;
+    // Only update API Key if the user actually typed/changed the field.
+    // When the field is untouched, pApiKeyTouched is false and we skip the field entirely,
+    // preserving the existing SecretStorage value. An explicit clear is only triggered
+    // when the user types into the field and leaves it empty.
+    const apiKeyTouched = data.apiKeyTouched === true;
 
     const updates: Partial<Provider> = {
       name: data.name,
@@ -290,9 +292,13 @@ export class EditorViewManager {
       ...(data.options ? { options: data.options } : {}),
     };
 
-    if (apiKeyProvided) {
+    if (apiKeyTouched) {
+      const trimmedApiKey = typeof data.apiKey === 'string' ? data.apiKey.trim() : undefined;
+      // trimmedApiKey === '' → user cleared the field → delete the existing key
+      // trimmedApiKey non-empty → user entered new key → set it
       updates.apiKey = trimmedApiKey ?? '';
     }
+    // !apiKeyTouched → do NOT add apiKey to updates at all → caller preserves existing
 
     const success = await this._manager.updateProvider(provider.id, updates);
     if (success) {
