@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Model, Provider, ProviderType, ModelDraft, RemoteModelInfo } from '../../common/types';
-import { IStorageService } from '../../domain/interfaces';
+import { IStorageService, BackupEntry } from '../../domain/interfaces';
 import { ConfigManager, IdGenerator, InputValidator } from '../../common/utils';
 import { logger } from '../../common/logger';
 
@@ -50,6 +50,44 @@ export class ProviderModelManager {
 
   async deleteApiKey(providerId: string): Promise<void> {
     return this.storageService.deleteApiKey(providerId);
+  }
+
+  // ─── Backup / Restore ────────────────────────────────────────────────────
+
+  /**
+   * Create a local backup of all providers.
+   * Backups are stored in globalState (NOT synced via VS Code Settings Sync).
+   */
+  async createBackup(description?: string): Promise<string> {
+    return this.storageService.createBackup(description);
+  }
+
+  /**
+   * List all available backups (newest first).
+   */
+  listBackups(): BackupEntry[] {
+    return this.storageService.listBackups();
+  }
+
+  /**
+   * Restore from a backup. Returns the provider list — caller decides when/how to persist.
+   */
+  restoreBackup(backupId: string): Provider[] {
+    return this.storageService.restoreBackup(backupId);
+  }
+
+  /**
+   * Delete a specific backup.
+   */
+  deleteBackup(backupId: string): void {
+    this.storageService.deleteBackup(backupId);
+  }
+
+  /**
+   * Delete all local backups.
+   */
+  clearAllBackups(): void {
+    this.storageService.clearAllBackups();
   }
 
   refresh(): void {

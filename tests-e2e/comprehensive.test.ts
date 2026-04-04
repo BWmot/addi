@@ -9,6 +9,7 @@
  * - Provider management
  * - Model management
  * - Config import/export
+ * - Backup/restore
  * - Settings management
  */
 import * as vscode from 'vscode';
@@ -26,7 +27,8 @@ const TEST_PROVIDER: Provider = {
   models: [],
 };
 
-const TEST_MODEL: Model = {
+// Test model data (reserved for future model-specific tests)
+const _TEST_MODEL: Model = {
   id: 'test-model-' + Date.now(),
   rid: 'gpt-4',
   name: 'GPT-4',
@@ -194,6 +196,21 @@ suite('Command Registration', () => {
 
   test('should register addi.openSettings command', () => {
     assert.ok(commands.includes('addi.openSettings'), 'addi.openSettings should be registered');
+  });
+
+  // Backup/Restore Commands
+  test('should register addi.restoreFromBackup command', () => {
+    assert.ok(
+      commands.includes('addi.restoreFromBackup'),
+      'addi.restoreFromBackup should be registered'
+    );
+  });
+
+  test('should register addi.manageBackups command', () => {
+    assert.ok(
+      commands.includes('addi.manageBackups'),
+      'addi.manageBackups should be registered'
+    );
   });
 
   // Sync Commands
@@ -375,7 +392,7 @@ suite('Edge Cases', () => {
 
     const manager = new ProviderModelManager({
       getProviders: () => [longNameProvider],
-      saveProviders: async (providers: Provider[]) => {},
+      saveProviders: async (_providers: Provider[]) => {},
       getApiKey: async () => undefined,
       setApiKey: async () => {},
       deleteApiKey: async () => {},

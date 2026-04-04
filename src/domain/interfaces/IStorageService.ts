@@ -2,6 +2,18 @@ import { Provider } from '../../common/types';
 import { Disposable } from 'vscode';
 
 /**
+ * Backup entry containing a snapshot of the current providers.
+ */
+export interface BackupEntry {
+  id: string;
+  timestamp: number;
+  providerCount: number;
+  description: string;
+  /** Provider data stored in the backup (reconstructed on restore) */
+  providers: Provider[];
+}
+
+/**
  * Storage Service Interface - Domain Layer
  *
  * Defines the contract for data persistence operations.
@@ -73,4 +85,38 @@ export interface IStorageService {
    * Clear all plugin data (SecretStorage + globalState)
    */
   clearAllData(): Promise<void>;
+
+  // ========== Backup & Recovery ==========
+
+  /**
+   * Create a manual backup of the current config (e.g., before risky operations)
+   * @param description Optional description for this backup
+   * @returns The generated backup ID
+   */
+  createBackup(description?: string): Promise<string>;
+
+  /**
+   * List all available backups (newest first)
+   */
+  listBackups(): BackupEntry[];
+
+  /**
+   * Restore from a backup by its ID.
+   * Returns the provider list from the backup (does NOT auto-save —
+   * caller is responsible for prompting user and persisting).
+   * @param backupId The backup ID to restore from
+   * @returns The restored provider list, or empty array if not found
+   */
+  restoreBackup(backupId: string): Provider[];
+
+  /**
+   * Delete a specific backup
+   * @param backupId The backup ID to delete
+   */
+  deleteBackup(backupId: string): void;
+
+  /**
+   * Delete all backups
+   */
+  clearAllBackups(): void;
 }

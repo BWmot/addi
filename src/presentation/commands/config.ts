@@ -204,6 +204,18 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         return;
       }
 
+      // 4b. Auto-backup before merge (only if there are existing providers to protect)
+      const currentProviders = this.manager.getProviders();
+      if (currentProviders.length > 0) {
+        try {
+          await this.manager.createBackup('Auto-backup before import');
+          logger.debug('Auto-backup created before import');
+        } catch (err) {
+          logger.warn('Failed to create auto-backup before import', err);
+          // Non-fatal: proceed without backup
+        }
+      }
+
       // 5. Merge/Conflict Resolution
       await UserFeedback.showProgress('Importing configuration...', async () => {
         const currentProviders = this.manager.getProviders();
@@ -264,6 +276,18 @@ export class ConfigCommandHandler extends BaseCommandHandler {
   async resetAllSettings(): Promise<void> {
     logger.info('Command resetAllSettings invoked');
 
+    // Auto-backup before dangerous operation
+    const currentProviders = this.manager.getProviders();
+    if (currentProviders.length > 0) {
+      try {
+        await this.manager.createBackup('Auto-backup before reset settings');
+        logger.debug('Auto-backup created before reset settings');
+      } catch (err) {
+        logger.warn('Failed to create auto-backup before reset settings', err);
+        // Non-fatal: continue
+      }
+    }
+
     const confirmResult = await vscode.window.showWarningMessage(
       'This will reset all Addi settings (addi.*) to their default values. Your provider and model data will NOT be affected.',
       { modal: true },
@@ -312,6 +336,18 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       return;
     }
 
+    // Auto-backup before dangerous operation
+    const currentProviders = this.manager.getProviders();
+    if (currentProviders.length > 0) {
+      try {
+        await this.manager.createBackup('Auto-backup before clear storage');
+        logger.debug('Auto-backup created before cleanAllStorage');
+      } catch (err) {
+        logger.warn('Failed to create auto-backup before cleanAllStorage', err);
+        // Non-fatal: continue
+      }
+    }
+
     const warningResult = await vscode.window.showWarningMessage(
       'This will delete ALL plugin data including:\n' +
         '- All providers and their models\n' +
@@ -343,7 +379,144 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     }
   }
 
+  /**
+   * Restore providers from a local backup
+   */
+  async restoreFromBackup(): Promise<void> {
+    logger.info('Command restoreFromBackup invoked');
+
+    const backups = this.manager.listBackups();
+    if (backups.length === 0) {
+      UserFeedback.showInfo('No backups available. Backups are created automatically before import, reset, or clear operations.');
+      return;
+    }
+
+    // Build quick-pick items (newest first)
+    const items = backups.map((b) => ({
+      label: this.formatBackupLabel(b),
+      description: b.description,
+      backup: b,
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+      title: 'Restore from Backup',
+      placeHolder: 'Select a backup to restore',
+      canPickMany: false,
+    });
+
+    if (!selected) {
+      logger.debug('restoreFromBackup canceled by user');
+      return;
+    }
+
+    const backup = selected.backup;
+
+    // Confirm before overwriting
+    const confirmResult = await vscode.window.showWarningMessage(
+      `Restore backup from ${new Date(backup.timestamp).toLocaleString()}?\n` +
+        `This will replace your current providers with ${backup.providerCount} provider(s) from the backup.\n` +
+        `Your current data will be lost unless you have another backup.`,
+      { modal: true },
+      { title: 'Restore', isDangerous: true },
+      { title: 'Cancel', isCloseAffordance: true }
+    );
+
+    if (confirmResult?.title !== 'Restore') {
+      logger.debug('restoreFromBackup canceled by user');
+      return;
+    }
+
+    try {
+      // Get the backup snapshot (does NOT auto-save — caller controls persistence)
+      const restoredProviders = this.manager.restoreBackup(backup.id);
+
+      // Create a safety backup of current state before overwriting
+      await this.manager.createBackup('Auto-backup before restore');
+
+      // Persist the restored providers
+      await this.manager.saveProviders(restoredProviders);
+
+      this.refreshTreeView();
+      UserFeedback.showInfo(
+        `Restored ${restoredProviders.length} provider(s) from backup. ` +
+          'Note: API keys from SecretStorage are NOT included in backups. ' +
+          'You will need to re-enter them manually if needed.'
+      );
+      logger.info('restoreFromBackup: completed successfully', {
+        restoredCount: restoredProviders.length,
+        backupId: backup.id,
+      });
+    } catch (error) {
+      UserFeedback.showError(
+        `Failed to restore backup: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      this.logError('restoreFromBackup failed', error);
+    }
+  }
+
+  /**
+   * List and manage local backups
+   */
+  async manageBackups(): Promise<void> {
+    logger.info('Command manageBackups invoked');
+
+    const backups = this.manager.listBackups();
+    if (backups.length === 0) {
+      UserFeedback.showInfo('No backups available. Backups are created automatically before dangerous operations.');
+      return;
+    }
+
+    // Build quick-pick items
+    const items = backups.map((b) => ({
+      label: this.formatBackupLabel(b),
+      description: b.description,
+      detail: `${b.providerCount} provider(s) — ${b.providers.map((p) => p.name).join(', ')}`,
+      backup: b,
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+      title: 'Manage Backups',
+      placeHolder: 'Select a backup to delete (ESC to cancel)',
+      canPickMany: false,
+    });
+
+    if (!selected) {
+      logger.debug('manageBackups canceled by user');
+      return;
+    }
+
+    const confirmDelete = await vscode.window.showWarningMessage(
+      `Delete backup from ${new Date(selected.backup.timestamp).toLocaleString()}?`,
+      { modal: true },
+      { title: 'Delete', isDangerous: true },
+      { title: 'Cancel', isCloseAffordance: true }
+    );
+
+    if (confirmDelete?.title !== 'Delete') {
+      logger.debug('manageBackups: delete canceled by user');
+      return;
+    }
+
+    this.manager.deleteBackup(selected.backup.id);
+    UserFeedback.showInfo('Backup deleted.');
+    logger.info('manageBackups: deleted backup', { backupId: selected.backup.id });
+  }
+
   // ==================== Private Helper Methods ====================
+
+  private formatBackupLabel(backup: { timestamp: number; providerCount: number; description: string }): string {
+    const date = new Date(backup.timestamp);
+    const dateStr = date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const timeStr = date.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return `${dateStr} ${timeStr} — ${backup.providerCount} provider(s) — ${backup.description}`;
+  }
 
   private async selectProvidersForExport(providers: Provider[]) {
     const items = providers.map((p) => ({

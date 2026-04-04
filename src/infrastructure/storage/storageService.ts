@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import { Provider, ProviderConfig, ModelConfig, ModelStats, Model } from '../../common/types';
-import { IStorageService } from '../../domain/interfaces';
+import { IStorageService, BackupEntry } from '../../domain/interfaces';
 import { logger } from '../../common/logger';
 import { ApiKeyService } from './ApiKeyService';
+import { IdGenerator } from '../../common/utils';
 
 export class StorageService implements IStorageService {
   // 设计文档标准存储键
@@ -10,6 +11,8 @@ export class StorageService implements IStorageService {
   private static readonly CONFIG_MODIFIED_AT_KEY = 'addi.config.modifiedAt';
   private static readonly STATS_STORAGE_KEY = 'addi.local.stats'; // 本地存储
   private static readonly DEVICE_ID_KEY = 'addi.local.deviceId'; // SecretStorage
+  private static readonly BACKUPS_KEY = 'addi.local.backups'; // 本地备份（不同步）
+  private static readonly MAX_BACKUPS = 10; // 最多保留 10 份备份
   // Flag for VS Code settings sync
   private syncEnabled = false;
   private deviceId: string;
@@ -363,12 +366,16 @@ export class StorageService implements IStorageService {
       delete (restProvider as any).apiKey;
 
       // Handle secrets - store to SecretStorage (local only, not synced)
-      if (apiKey !== undefined && apiKey !== '') {
+      // null/undefined = preserve existing key (don't touch SecretStorage)
+      // '' = explicitly clear the key
+      // non-empty string = set new key
+      if (apiKey !== null && apiKey !== undefined && apiKey !== '') {
         await this.apiKeyService.setApiKey(p.id, apiKey);
       } else if (apiKey === '') {
         // Explicitly clear SecretStorage
         await this.apiKeyService.deleteApiKey(p.id);
       }
+      // apiKey === null || apiKey === undefined → do nothing (preserve)
 
       const modelsConfig: ModelConfig[] = (models as Model[]).map((model) => {
         // Destructure to remove stats properties
@@ -456,5 +463,98 @@ export class StorageService implements IStorageService {
    */
   getDeviceId(): string {
     return this.deviceId;
+  }
+
+  // ==================== Backup & Recovery ====================
+
+  private getBackupEntry(): BackupEntry[] {
+    return this.context.globalState.get<BackupEntry[]>(StorageService.BACKUPS_KEY, []);
+  }
+
+  private saveBackupEntries(entries: BackupEntry[]): void {
+    this.context.globalState.update(StorageService.BACKUPS_KEY, entries);
+  }
+
+  /**
+   * Create a manual backup of the current config
+   */
+  async createBackup(description?: string): Promise<string> {
+    const providers = this.getProviders();
+    const backupId = IdGenerator.generate();
+
+    const entry: BackupEntry = {
+      id: backupId,
+      timestamp: Date.now(),
+      providerCount: providers.length,
+      description: description || 'Manual backup',
+      providers: providers,
+    };
+
+    const entries = this.getBackupEntry();
+
+    // Prepend new backup (newest first), trim to MAX_BACKUPS
+    const updated = [entry, ...entries].slice(0, StorageService.MAX_BACKUPS);
+    this.saveBackupEntries(updated);
+
+    logger.info('Backup created', {
+      backupId,
+      providerCount: providers.length,
+      totalBackups: updated.length,
+    });
+
+    return backupId;
+  }
+
+  /**
+   * List all available backups (newest first)
+   */
+  listBackups(): BackupEntry[] {
+    return this.getBackupEntry();
+  }
+
+  /**
+   * Restore from a backup by its ID.
+   * Returns the provider list (does NOT auto-save — caller decides when/how to persist).
+   */
+  restoreBackup(backupId: string): Provider[] {
+    const entries = this.getBackupEntry();
+    const entry = entries.find((e) => e.id === backupId);
+
+    if (!entry) {
+      logger.warn('restoreBackup: backup not found', { backupId });
+      return [];
+    }
+
+    logger.info('Restoring from backup', {
+      backupId,
+      providerCount: entry.providerCount,
+      timestamp: entry.timestamp,
+    });
+
+    // Return the backed-up providers — caller (ConfigCommandHandler) will prompt
+    // the user and then call saveProviders() to persist the restored data.
+    return entry.providers;
+  }
+
+  /**
+   * Delete a specific backup
+   */
+  deleteBackup(backupId: string): void {
+    const entries = this.getBackupEntry();
+    const filtered = entries.filter((e) => e.id !== backupId);
+    if (filtered.length === entries.length) {
+      logger.debug('deleteBackup: backup not found', { backupId });
+      return;
+    }
+    this.saveBackupEntries(filtered);
+    logger.info('Backup deleted', { backupId, remaining: filtered.length });
+  }
+
+  /**
+   * Delete all backups
+   */
+  clearAllBackups(): void {
+    this.context.globalState.update(StorageService.BACKUPS_KEY, []);
+    logger.info('All backups cleared');
   }
 }

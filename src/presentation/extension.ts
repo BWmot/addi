@@ -293,6 +293,16 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('addi.cleanAllStorage', () => commandHandler.cleanAllStorage())
   );
+
+  // Register backup/restore commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand('addi.restoreFromBackup', () =>
+      commandHandler.restoreFromBackup()
+    )
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('addi.manageBackups', () => commandHandler.manageBackups())
+  );
 }
 
 export function deactivate() {}

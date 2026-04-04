@@ -129,6 +129,14 @@ export class CommandHandler {
     return this.configHandler.cleanAllStorage();
   }
 
+  async restoreFromBackup(): Promise<void> {
+    return this.configHandler.restoreFromBackup();
+  }
+
+  async manageBackups(): Promise<void> {
+    return this.configHandler.manageBackups();
+  }
+
   // ==================== Deprecated Commands ====================
 
   /**
