@@ -239,12 +239,12 @@
       "properties": {
         "addi.defaultMaxInputTokens": {
           "type": "number",
-          "default": 60000,
+          "default": 80000,
           "description": "Max input tokens"
         },
         "addi.defaultMaxOutputTokens": {
           "type": "number",
-          "default": 80000,
+          "default": 128000,
           "description": "Max output tokens"
         },
         "addi.confirmDelete": {
@@ -499,10 +499,10 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.66",
-    "@ai-sdk/google": "^3.0.58",
+    "@ai-sdk/anthropic": "^3.0.67",
+    "@ai-sdk/google": "^3.0.59",
     "@ai-sdk/openai": "^3.0.50",
-    "@ai-sdk/openai-compatible": "^2.0.38",
-    "ai": "^6.0.146"
+    "@ai-sdk/openai-compatible": "^2.0.40",
+    "ai": "^6.0.149"
   }
 }
