@@ -78,6 +78,23 @@ export class ApiKeyService {
   }
 
   /**
+   * Fallback: 删除所有已知的 API Keys (当 secrets.keys() 不可用时)
+   * 需要配合 globalState 中的 provider IDs 使用
+   */
+  async deleteAllApiKeys(): Promise<void> {
+    try {
+      // 从 globalState 获取 provider IDs
+      const providers = this.context.globalState.get<{ id: string }[]>('addi.config', []);
+      for (const provider of providers) {
+        await this.deleteApiKey(provider.id);
+      }
+      logger.info(`Deleted ${providers.length} API keys via fallback method`);
+    } catch (error) {
+      logger.error('ApiKeyService.deleteAllApiKeys: fallback failed', error);
+    }
+  }
+
+  /**
    * 检查 SecretStorage 中是否存在 API Key
    *
    * @param providerId Provider ID

@@ -362,11 +362,13 @@ interface LanguageModelToolDefinition {
 
 | 键名 | 类型 | 说明 |
 |------|------|------|
+| `addi.*` | GlobalState/SecretStorage | 所有 addi 相关数据的通配前缀 |
 | `addi.config` | GlobalState | Provider 和 Model 配置（同步） |
 | `addi.config.modifiedAt` | GlobalState | 配置修改时间戳 |
 | `addi.local.stats` | GlobalState | 模型速度历史等本地统计 |
 | `addi.local.deviceId` | SecretStorage | 设备唯一标识 |
 | `addi.local.apikeys.*` | SecretStorage | 各 Provider 的 API Keys |
+| `addi.local.backups` | GlobalState | 本地备份记录 |
 
 ### 数据分类
 
@@ -471,12 +473,24 @@ interface Model {
 
 ### 上下文菜单操作
 
-| 操作       | 命令 ID                        | 说明                            |
-| ---------- | ------------------------------ | ------------------------------- |
-| Show Model | `addi.showModelsInPicker`      | 设置 `isUserSelectable = true`  |
-| Hide Model | `addi.hideModelsFromPicker`    | 设置 `isUserSelectable = false` |
-| Show All   | `addi.showProviderModelsInPicker` | 显示 Provider 下所有模型 |
-| Hide All   | `addi.hideProviderModelsFromPicker` | 隐藏 Provider 下所有模型 |
+| 操作         | 命令 ID                        | 说明                              |
+| ------------ | ------------------------------ | --------------------------------- |
+| Show Model   | `addi.showModelsInPicker`      | 设置 `isUserSelectable = true`    |
+| Hide Model   | `addi.hideModelsFromPicker`    | 设置 `isUserSelectable = false`   |
+| Show All     | `addi.showProviderModelsInPicker` | 显示 Provider 下所有模型       |
+| Hide All     | `addi.hideProviderModelsFromPicker` | 隐藏 Provider 下所有模型     |
+| Initialize   | `addi.initExtension`          | 重置扩展，清除所有数据和设置      |
+
+### 扩展初始化
+
+**命令 ID**: `addi.initExtension`
+
+重置 Addi 扩展到初始状态，包括：
+- 清除所有 SecretStorage 数据（API Keys 等，以 `addi.*` 为前缀）
+- 清除所有 GlobalState 数据（Provider/Model 配置等，以 `addi.*` 为前缀）
+- 重置所有 VS Code Settings 为默认值
+
+此操作会显示确认对话框，操作前会自动创建备份。
 
 ### 实现逻辑
 

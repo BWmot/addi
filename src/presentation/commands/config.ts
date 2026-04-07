@@ -271,65 +271,12 @@ export class ConfigCommandHandler extends BaseCommandHandler {
   }
 
   /**
-   * Reset all plugin settings to their default values
+   * Initialize / Reset the extension.
+   * This combines storage clearing into one operation.
+   * Shows a confirmation dialog before proceeding.
    */
-  async resetAllSettings(): Promise<void> {
-    logger.info('Command resetAllSettings invoked');
-
-    // Auto-backup before dangerous operation
-    const currentProviders = this.manager.getProviders();
-    if (currentProviders.length > 0) {
-      try {
-        await this.manager.createBackup('Auto-backup before reset settings');
-        logger.debug('Auto-backup created before reset settings');
-      } catch (err) {
-        logger.warn('Failed to create auto-backup before reset settings', err);
-        // Non-fatal: continue
-      }
-    }
-
-    const confirmResult = await vscode.window.showWarningMessage(
-      'This will reset all Addi settings (addi.*) to their default values. Your provider and model data will NOT be affected.',
-      { modal: true },
-      { title: 'Reset Settings', isDangerous: true },
-      { title: 'Cancel', isCloseAffordance: true }
-    );
-
-    if (confirmResult?.title !== 'Reset Settings') {
-      logger.debug('resetAllSettings canceled by user');
-      return;
-    }
-
-    try {
-      const config = vscode.workspace.getConfiguration('addi');
-      const settingsToReset = [
-        'defaultMaxInputTokens',
-        'defaultMaxOutputTokens',
-        'confirmDelete',
-        'sortRule',
-        'sortTarget',
-        'syncConfiguration',
-      ];
-
-      for (const setting of settingsToReset) {
-        await config.update(setting, undefined, vscode.ConfigurationTarget.Global);
-      }
-
-      UserFeedback.showInfo('All Addi settings have been reset to default values');
-      logger.info('resetAllSettings: completed successfully');
-    } catch (error) {
-      UserFeedback.showError(
-        `Failed to reset settings: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-      this.logError('resetAllSettings failed', error);
-    }
-  }
-
-  /**
-   * Clear all plugin storage data
-   */
-  async cleanAllStorage(): Promise<void> {
-    logger.info('Command cleanAllStorage invoked');
+  async initExtension(): Promise<void> {
+    logger.info('Command initExtension invoked');
 
     if (!this.storageService) {
       UserFeedback.showError('Storage service not initialized');
@@ -340,42 +287,51 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     const currentProviders = this.manager.getProviders();
     if (currentProviders.length > 0) {
       try {
-        await this.manager.createBackup('Auto-backup before clear storage');
-        logger.debug('Auto-backup created before cleanAllStorage');
+        await this.manager.createBackup('Auto-backup before initialize extension');
+        logger.debug('Auto-backup created before initExtension');
       } catch (err) {
-        logger.warn('Failed to create auto-backup before cleanAllStorage', err);
+        logger.warn('Failed to create auto-backup before initExtension', err);
         // Non-fatal: continue
       }
     }
 
     const warningResult = await vscode.window.showWarningMessage(
-      'This will delete ALL plugin data including:\n' +
-        '- All providers and their models\n' +
-        '- All API keys from SecretStorage\n' +
-        '- Provider configuration and stats\n' +
-        'This action cannot be undone!',
-      { modal: true },
-      { title: 'Delete All Data', isDangerous: true },
+      'Initialize Addi Extension',
+      {
+        modal: true,
+        detail:
+          'This will clear ALL addi-related storage and reset all settings to defaults.\n\n' +
+          'You will need to reconfigure the extension after this operation.\n\n' +
+          'Continue?',
+      },
+      { title: 'Initialize', isDangerous: true },
       { title: 'Cancel', isCloseAffordance: true }
     );
 
     if (!warningResult || warningResult.title === 'Cancel') {
-      logger.debug('cleanAllStorage canceled by user');
+      logger.debug('initExtension canceled by user');
       return;
     }
 
     try {
-      await UserFeedback.showProgress('Clearing all storage...', async () => {
+      await UserFeedback.showProgress('Initializing extension...', async () => {
+        // Step 1: Clear all storage data using wildcard pattern
         await this.storageService!.clearAllData();
+
+        // Step 2: Refresh tree view
         this.refreshTreeView();
-        UserFeedback.showInfo('All plugin storage data has been cleared');
-        logger.info('cleanAllStorage: completed successfully');
+
+        // Step 3: Show success message
+        UserFeedback.showInfo(
+          'Addi extension has been initialized. Please reconfigure your providers.'
+        );
+        logger.info('initExtension: completed successfully');
       });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to clear storage: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to initialize extension: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
-      this.logError('cleanAllStorage failed', error);
+      this.logError('initExtension failed', error);
     }
   }
 

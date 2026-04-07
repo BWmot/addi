@@ -274,14 +274,9 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Register storage and settings reset commands
+  // Register init extension command
   context.subscriptions.push(
-    vscode.commands.registerCommand('addi.resetAllSettings', () =>
-      commandHandler.resetAllSettings()
-    )
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('addi.cleanAllStorage', () => commandHandler.cleanAllStorage())
+    vscode.commands.registerCommand('addi.initExtension', () => commandHandler.initExtension())
   );
 
   // Register backup/restore commands

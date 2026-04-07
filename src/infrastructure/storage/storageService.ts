@@ -231,52 +231,57 @@ export class StorageService implements IStorageService {
   }
 
   /**
-   * Clear all plugin data.
+   * Clear all plugin data using wildcard pattern "addi.*".
    * This includes:
    * - All secrets from SecretStorage (any key starting with "addi.")
-   * - All provider configuration from globalState (addi.config)
-   * - All local stats from globalState (addi.local.stats)
-   * - Sync key and verification status from globalState
-   * - Device ID from globalState
+   * - All keys from globalState (any key starting with "addi.")
+   * - Sync state
    */
   async clearAllData(): Promise<void> {
-    logger.info('Starting to clear all plugin data');
+    logger.info('Starting to clear all plugin data with wildcard pattern "addi.*"');
 
-    // 1. Clear ALL SecretStorage of this extension (keys starting with "addi.")
-    // This is more robust than trying to delete known keys - it handles any edge cases
+    // 1. Clear ALL SecretStorage keys matching "addi.*"
     try {
-      const allKeys = await this.context.secrets.keys();
+      const secretKeys = await this.context.secrets.keys();
+      const secretsDeleted = secretKeys.filter((key) => key.startsWith('addi.'));
 
-      for (const key of allKeys) {
+      for (const key of secretsDeleted) {
         await this.context.secrets.delete(key);
         logger.debug(`Deleted SecretStorage key: ${key}`);
       }
-      logger.info(`Cleared ${allKeys.length} SecretStorage keys`);
+      logger.info(`Cleared ${secretsDeleted.length} SecretStorage keys matching "addi.*"`);
     } catch (error) {
-      // keys() might not be available on all VS Code versions
-      logger.warn('Failed to use keys() method, falling back to known keys', error);
-
-      // Fallback: delete known keys
-      const providers = this.context.globalState.get<ProviderConfig[]>(
-        StorageService.CONFIG_KEY,
-        []
-      );
-      for (const provider of providers) {
-        await this.apiKeyService.deleteApiKey(provider.id);
-      }
-      await this.context.secrets.delete(StorageService.DEVICE_ID_KEY);
+      // keys() might not be available on older VS Code versions
+      logger.warn('Failed to use secrets.keys() method', error);
+      // Fallback: clear known api keys individually
+      await this.apiKeyService.deleteAllApiKeys();
     }
 
-    // 2. Clear all config from globalState
-    await this.context.globalState.update(StorageService.CONFIG_KEY, []);
-    await this.context.globalState.update(StorageService.CONFIG_MODIFIED_AT_KEY, undefined);
-    await this.context.globalState.update(StorageService.STATS_STORAGE_KEY, undefined);
-    logger.debug('Cleared all globalState data');
+    // 2. Clear ALL globalState keys matching "addi.*"
+    try {
+      // Use getKeys to get all globalState keys
+      const allKeys = this.context.globalState.keys();
+      const globalStateKeys = allKeys.filter((key) => key.startsWith('addi.'));
+
+      for (const key of globalStateKeys) {
+        await this.context.globalState.update(key, undefined);
+        logger.debug(`Cleared globalState key: ${key}`);
+      }
+      logger.info(`Cleared ${globalStateKeys.length} globalState keys matching "addi.*"`);
+    } catch (error) {
+      logger.warn('Failed to clear globalState keys', error);
+      // Fallback: clear known keys individually
+      await this.context.globalState.update(StorageService.CONFIG_KEY, undefined);
+      await this.context.globalState.update(StorageService.CONFIG_MODIFIED_AT_KEY, undefined);
+      await this.context.globalState.update(StorageService.STATS_STORAGE_KEY, undefined);
+      await this.context.globalState.update(StorageService.DEVICE_ID_KEY, undefined);
+      await this.context.globalState.update(StorageService.BACKUPS_KEY, undefined);
+    }
 
     // 3. Reset sync state
     this.syncEnabled = false;
     this.context.globalState.setKeysForSync([]);
-    logger.info('Cleared all plugin data successfully');
+    logger.info('Cleared all plugin data successfully with wildcard pattern');
 
     // Fire update event to refresh UI
     this._onDidUpdate.fire();

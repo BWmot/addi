@@ -121,12 +121,8 @@ export class CommandHandler {
     return this.configHandler.importConfig();
   }
 
-  async resetAllSettings(): Promise<void> {
-    return this.configHandler.resetAllSettings();
-  }
-
-  async cleanAllStorage(): Promise<void> {
-    return this.configHandler.cleanAllStorage();
+  async initExtension(): Promise<void> {
+    return this.configHandler.initExtension();
   }
 
   async restoreFromBackup(): Promise<void> {

@@ -150,10 +150,23 @@
           "when": "false"
         },
         {
-          "command": "addi.resetAllSettings"
+          "command": "addi.initExtension"
         },
         {
-          "command": "addi.cleanAllStorage"
+          "command": "addi.showModelsInPicker",
+          "when": "false"
+        },
+        {
+          "command": "addi.hideModelsFromPicker",
+          "when": "false"
+        },
+        {
+          "command": "addi.showProviderModelsInPicker",
+          "when": "false"
+        },
+        {
+          "command": "addi.hideProviderModelsFromPicker",
+          "when": "false"
         }
       ],
       "view/item/context": [
@@ -428,17 +441,10 @@
         "category": "Addi"
       },
       {
-        "command": "addi.resetAllSettings",
-        "title": "Reset All Addi Settings",
-        "shortTitle": "Reset Settings",
-        "icon": "$(settings)",
-        "category": "Addi"
-      },
-      {
-        "command": "addi.cleanAllStorage",
-        "title": "Clean All Addi Storage",
-        "shortTitle": "Clean Storage",
-        "icon": "$(trash)",
+        "command": "addi.initExtension",
+        "title": "Initialize Addi Extension",
+        "shortTitle": "Initialize",
+        "icon": "$(refresh)",
         "category": "Addi"
       },
       {

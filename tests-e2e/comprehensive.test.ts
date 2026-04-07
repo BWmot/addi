@@ -211,17 +211,10 @@ suite('Command Registration', () => {
   });
 
   // Storage Commands
-  test('should register addi.resetAllSettings command', () => {
+  test('should register addi.initExtension command', () => {
     assert.ok(
-      commands.includes('addi.resetAllSettings'),
-      'addi.resetAllSettings should be registered'
-    );
-  });
-
-  test('should register addi.cleanAllStorage command', () => {
-    assert.ok(
-      commands.includes('addi.cleanAllStorage'),
-      'addi.cleanAllStorage should be registered'
+      commands.includes('addi.initExtension'),
+      'addi.initExtension should be registered'
     );
   });
 
@@ -260,32 +253,18 @@ suite('Config Import/Export', () => {
 // ==================== Suite: Settings Management ====================
 
 suite('Settings Management', () => {
-  test('should reset all settings', async () => {
+  test('should initialize extension', async () => {
     const extension = vscode.extensions.getExtension('deepwn.addi');
     if (!extension || !extension.isActive) {
       await extension?.activate();
     }
 
     try {
-      await vscode.commands.executeCommand('addi.resetAllSettings');
-      assert.ok(true, 'Reset settings command executed');
-    } catch (e) {
-      assert.ok(true, 'Reset settings checked');
-    }
-  });
-
-  test('should clean all storage', async () => {
-    const extension = vscode.extensions.getExtension('deepwn.addi');
-    if (!extension || !extension.isActive) {
-      await extension?.activate();
-    }
-
-    try {
-      await vscode.commands.executeCommand('addi.cleanAllStorage');
-      assert.ok(true, 'Clean storage command executed');
+      await vscode.commands.executeCommand('addi.initExtension');
+      assert.ok(true, 'Init extension command executed');
     } catch (e) {
       // May fail in test environment due to confirmation dialog
-      assert.ok(true, 'Clean storage checked');
+      assert.ok(true, 'Init extension checked');
     }
   });
 });
