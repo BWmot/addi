@@ -136,20 +136,4 @@ export class CommandHandler {
   async manageBackups(): Promise<void> {
     return this.configHandler.manageBackups();
   }
-
-  // ==================== Deprecated Commands ====================
-
-  /**
-   * @deprecated API key sync has been removed
-   */
-  async setSyncPassKey(): Promise<void> {
-    // No-op: API key sync feature has been removed
-  }
-
-  /**
-   * @deprecated API key sync has been removed
-   */
-  async verifySyncPassKey(): Promise<void> {
-    // No-op: API key sync feature has been removed
-  }
 }

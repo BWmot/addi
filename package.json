@@ -150,14 +150,6 @@
           "when": "false"
         },
         {
-          "command": "addi.setSyncPassKey",
-          "when": "false"
-        },
-        {
-          "command": "addi.verifySyncPassKey",
-          "when": "false"
-        },
-        {
           "command": "addi.resetAllSettings"
         },
         {

@@ -274,16 +274,6 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Register deprecated sync commands (no-op, kept for backwards compatibility)
-  context.subscriptions.push(
-    vscode.commands.registerCommand('addi.setSyncPassKey', () => commandHandler.setSyncPassKey())
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('addi.verifySyncPassKey', () =>
-      commandHandler.verifySyncPassKey()
-    )
-  );
-
   // Register storage and settings reset commands
   context.subscriptions.push(
     vscode.commands.registerCommand('addi.resetAllSettings', () =>

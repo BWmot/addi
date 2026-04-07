@@ -207,22 +207,7 @@ suite('Command Registration', () => {
   });
 
   test('should register addi.manageBackups command', () => {
-    assert.ok(
-      commands.includes('addi.manageBackups'),
-      'addi.manageBackups should be registered'
-    );
-  });
-
-  // Sync Commands
-  test('should register addi.setSyncPassKey command', () => {
-    assert.ok(commands.includes('addi.setSyncPassKey'), 'addi.setSyncPassKey should be registered');
-  });
-
-  test('should register addi.verifySyncPassKey command', () => {
-    assert.ok(
-      commands.includes('addi.verifySyncPassKey'),
-      'addi.verifySyncPassKey should be registered'
-    );
+    assert.ok(commands.includes('addi.manageBackups'), 'addi.manageBackups should be registered');
   });
 
   // Storage Commands
@@ -335,16 +320,6 @@ suite('Language Model Integration', () => {
 // ==================== Suite: Sync Functionality ====================
 
 suite('Sync Functionality', () => {
-  test('should have sync passkey commands', async () => {
-    const commands = await vscode.commands.getCommands(true);
-
-    assert.ok(commands.includes('addi.setSyncPassKey'), 'setSyncPassKey should be registered');
-    assert.ok(
-      commands.includes('addi.verifySyncPassKey'),
-      'verifySyncPassKey should be registered'
-    );
-  });
-
   test('should toggle settings sync', async () => {
     const config = vscode.workspace.getConfiguration('addi');
     const originalValue = config.get<boolean>('syncConfiguration');
