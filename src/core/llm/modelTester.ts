@@ -4,6 +4,7 @@ import { AIProviderRegistry } from './aiRegistry';
 import { generateText, ModelMessage, Tool, jsonSchema } from 'ai';
 import { logger } from '../../common/logger';
 import { LLMService } from './llmService';
+import { ConfigManager } from '../../common/utils';
 
 export interface TestResult {
   success: boolean;
@@ -264,7 +265,7 @@ export class ModelTester {
     if (trimmedId) {
       return trimmedId;
     }
-    const trimmedFamily = (modelDraft.family ?? 'addi').trim();
+    const trimmedFamily = (modelDraft.family ?? ConfigManager.getDefaultModelFamily()).trim();
     if (trimmedFamily) {
       return trimmedFamily;
     }
@@ -272,7 +273,7 @@ export class ModelTester {
     if (draftRid) {
       return draftRid;
     }
-    return 'addi';
+    return ConfigManager.getDefaultModelFamily();
   }
 
   private static async detectLimit(

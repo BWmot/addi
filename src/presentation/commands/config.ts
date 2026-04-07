@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { BaseCommandHandler } from './base';
 import { Provider } from '../../common/types';
-import { UserFeedback, IdGenerator } from '../../common/utils';
+import { UserFeedback, IdGenerator, ConfigManager } from '../../common/utils';
 import { logger } from '../../common/logger';
 import { CryptoService, ProviderApiKeys } from '../../infrastructure/crypto';
 
@@ -518,6 +518,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     return selection?.map((s) => s.provider);
   }
 
+  /**
+   * Validate and auto-complete imported providers/models.
+   * Auto-fills missing fields with sensible defaults.
+   */
   private validateProviders(providers: Provider[]): void {
     for (const provider of providers) {
       if (!provider.id || !provider.name || !Array.isArray(provider.models)) {
@@ -529,12 +533,30 @@ export class ConfigCommandHandler extends BaseCommandHandler {
             `Model in provider "${provider.name}" is missing required fields (need id/rid and name)`
           );
         }
-        // Ensure family and version fields exist (non-editable but required fields)
+        // Auto-fill missing fields with defaults from ConfigManager
+        if (!m.id) {
+          m.id = IdGenerator.generate();
+        }
+        if (!m.rid) {
+          m.rid = m.name;
+        }
         if (!m.family) {
-          m.family = 'addi';
+          m.family = ConfigManager.getDefaultModelFamily();
         }
         if (m.version === undefined || m.version === null) {
-          m.version = '1.0.0';
+          m.version = ConfigManager.getDefaultModelVersion();
+        }
+        if (!m.maxInputTokens) {
+          m.maxInputTokens = ConfigManager.getDefaultMaxInputTokens();
+        }
+        if (!m.maxOutputTokens) {
+          m.maxOutputTokens = ConfigManager.getDefaultMaxOutputTokens();
+        }
+        // Auto-construct capabilities if missing
+        if (!m.capabilities) {
+          m.capabilities = {
+            toolCalling: true,
+          };
         }
       }
     }
@@ -582,10 +604,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
   ): Promise<string> {
     // Collect API Keys for encryption
     const apiKeys: ProviderApiKeys = {};
+
+    // Clean and filter providers/models for export
     const exportData = await Promise.all(
       providers.map(async (p) => {
-        const { apiKey: _apiKey, ...providerData } = p;
-
         if (password) {
           try {
             const apiKeyValue = await this.manager.getApiKey(p.id);
@@ -597,7 +619,43 @@ export class ConfigCommandHandler extends BaseCommandHandler {
           }
         }
 
-        return providerData;
+        // Strip unnecessary fields for clean export
+        const { apiKey: _apiKey, options: _providerOptions, order: _order, ...providerCore } = p;
+
+        // Filter models: strip runtime stats and empty optional fields
+        const cleanedModels = providerCore.models.map((m) => {
+          const {
+            speedHistory: _speedHistory,
+            averageSpeed: _averageSpeed,
+            options: _modelOptions,
+            ...modelCore
+          } = m;
+
+          // Remove empty extraBody/extraHeader
+          const cleanedModel: Record<string, unknown> = { ...modelCore };
+          if (!cleanedModel['extraBody']) {
+            delete cleanedModel['extraBody'];
+          }
+          if (!cleanedModel['extraHeader']) {
+            delete cleanedModel['extraHeader'];
+          }
+          if (!cleanedModel['isUserSelectable']) {
+            delete cleanedModel['isUserSelectable'];
+          }
+
+          return cleanedModel;
+        });
+
+        // Remove empty extraBody/extraHeader from provider
+        const cleanedProvider: Record<string, unknown> = { ...providerCore, models: cleanedModels };
+        if (!cleanedProvider['extraBody']) {
+          delete cleanedProvider['extraBody'];
+        }
+        if (!cleanedProvider['extraHeader']) {
+          delete cleanedProvider['extraHeader'];
+        }
+
+        return cleanedProvider;
       })
     );
 

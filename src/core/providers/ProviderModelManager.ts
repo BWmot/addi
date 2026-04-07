@@ -343,8 +343,8 @@ export class ProviderModelManager {
         const familyRaw =
           typeof mutableModel['family'] === 'string' ? mutableModel['family'].trim() : '';
         if (!familyRaw) {
-          // 如果没有 family，则使用 'addi' 作为默认值
-          mutableModel['family'] = 'addi';
+          // 如果没有 family，则使用配置项默认值
+          mutableModel['family'] = ConfigManager.getDefaultModelFamily().trim();
           changed = true;
           modelCritical = true;
         } else if (familyRaw !== mutableModel['family']) {
@@ -356,8 +356,8 @@ export class ProviderModelManager {
         const versionRaw =
           typeof mutableModel['version'] === 'string' ? mutableModel['version'].trim() : '';
         if (!versionRaw) {
-          // 如果没有 version，则使用 '1.0.0' 作为默认值
-          mutableModel['version'] = '1.0.0';
+          // 如果没有 version，则使用配置项默认值
+          mutableModel['version'] = ConfigManager.getDefaultModelVersion().trim();
           changed = true;
           modelCritical = true;
         } else if (versionRaw !== mutableModel['version']) {
@@ -493,8 +493,8 @@ export class ProviderModelManager {
         id,
         rid,
         name: modelData.name,
-        family: modelData.family || 'addi',
-        version: modelData.version || '1.0.0',
+        family: modelData.family || ConfigManager.getDefaultModelFamily(),
+        version: modelData.version || ConfigManager.getDefaultModelVersion(),
         maxInputTokens: modelData.maxInputTokens,
         maxOutputTokens: modelData.maxOutputTokens,
         capabilities: this.normalizeCapabilities(modelData.capabilities),

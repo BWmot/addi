@@ -9,19 +9,19 @@ export class ConfigManager {
   }
 
   static getDefaultMaxInputTokens(): number {
-    return this.getConfiguration().get<number>('defaultMaxInputTokens', 60000);
+    return this.getConfiguration().get<number>('defaultMaxInputTokens', 80000);
   }
 
   static getDefaultMaxOutputTokens(): number {
-    return this.getConfiguration().get<number>('defaultMaxOutputTokens', 80000);
+    return this.getConfiguration().get<number>('defaultMaxOutputTokens', 128000);
   }
 
   static getDefaultModelFamily(): string {
-    return 'addi';
+    return 'addi'; // 目前默认值写死为 'addi'，但不允许用户设置中编辑
   }
 
   static getDefaultModelVersion(): string {
-    return '1.0.0';
+    return '1.0.0'; // 目前默认值写死为 '1.0.0'，后续可以改为从配置项获取
   }
 
   static getConfirmDelete(): boolean {

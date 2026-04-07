@@ -200,8 +200,8 @@ export class ProviderCommandHandler extends BaseCommandHandler {
             return { added, updated, totalRemote: 0, mutated: false } satisfies ModelSyncResult;
           }
 
-          const defaultFamily = ConfigManager.getDefaultModelFamily().trim() || 'addi';
-          const defaultVersion = ConfigManager.getDefaultModelVersion().trim() || '1.0.0';
+          const defaultFamily = ConfigManager.getDefaultModelFamily().trim();
+          const defaultVersion = ConfigManager.getDefaultModelVersion().trim();
           const defaultMaxInputTokens = ConfigManager.getDefaultMaxInputTokens();
           const defaultMaxOutputTokens = ConfigManager.getDefaultMaxOutputTokens();
 
