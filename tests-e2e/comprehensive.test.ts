@@ -212,10 +212,7 @@ suite('Command Registration', () => {
 
   // Storage Commands
   test('should register addi.initExtension command', () => {
-    assert.ok(
-      commands.includes('addi.initExtension'),
-      'addi.initExtension should be registered'
-    );
+    assert.ok(commands.includes('addi.initExtension'), 'addi.initExtension should be registered');
   });
 
   // Utility Commands

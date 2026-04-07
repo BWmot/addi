@@ -1,203 +1,136 @@
-# 开发规范与注意事项
+# 开发规范
 
-> 更新时间：2026-03-01
-
-本文档是 Addi 项目的开发规范和注意事项，包含开发环境要求、开发步骤、代码规范等内容。
+> 更新时间：2026-04-07
 
 ---
 
-## 目录
+## 环境要求
 
-1. [开发环境要求](#开发环境要求)
-2. [快速开始](#快速开始)
-3. [项目结构](#项目结构)
-4. [代码规范](#代码规范)
-5. [常见开发任务](#常见开发任务)
-6. [调试指南](#调试指南)
-7. [测试指南](#测试指南)
-8. [注意事项](#注意事项)
-
----
-
-## 开发环境要求
-
-### 必需工具
-
-| 工具    | 版本要求 | 说明              |
-| ------- | -------- | ----------------- |
-| VS Code | 1.109+   | 用于 Proposed API |
-| Bun     | 最新版   | 运行时和包管理    |
-
-### 安装依赖
+| 工具    | 版本要求 | 说明            |
+| ------- | -------- | --------------- |
+| VS Code | 1.109+   | Proposed API 支持 |
+| Bun     | 最新版   | 包管理          |
 
 ```powershell
-# 安装依赖
-bun install
+bun install    # 安装依赖
+bun run watch  # 开发模式（监听编译）
 ```
 
----
-
-## 快速开始
-
-### 开发模式
-
-```powershell
-# 启动监视模式 (自动编译)
-bun run watch
-```
-
-### 调试
-
-1. 按 `F5` 启动调试
-2. 选择 "Extension" 调试配置
-3. 在新的 VS Code 窗口中测试
-
-### 测试
-
-```powershell
-# 运行所有测试
-bun run test
-
-# 监视模式 (自动编译 + 测试)
-bun run watch
-```
+按 `F5` 启动调试。
 
 ---
 
 ## 项目结构
 
 ```
-addi/
-├── src/
-│   ├── common/              # 通用工具和类型定义
-│   │   ├── logger.ts       # 日志工具
-│   │   └── types/          # 类型定义
-│   │       ├── provider.ts # Provider 类型
-│   │       ├── model.ts    # Model 类型
-│   │       ├── messages.ts # 消息类型
-│   │       ├── capabilities.ts
-│   │       ├── config.ts
-│   │       ├── tool.ts
-│   │       └── index.ts
-│   ├── core/
-│   │   ├── llm/            # LLM 核心逻辑
-│   │   │   ├── aiRegistry.ts       # 提供商注册
-│   │   │   ├── llmService.ts      # 主服务
-│   │   │   ├── messageConverter.ts # 消息转换
-│   │   │   ├── modelTester.ts     # 模型测试
-│   │   │   ├── toolOrchestrator.ts # 工具编排
-│   │   │   └── toolRegistry.ts   # 工具注册
-│   │   └── providers/
-│   │       ├── AddiChatProvider.ts    # 主聊天提供者
-│   │       └── ProviderModelManager.ts
-│   ├── infrastructure/
-│   │   └── storage/        # 存储服务
-│   ├── presentation/
-│   │   ├── commands/       # VS Code 命令
-│   │   ├── extension.ts    # 扩展入口
-│   │   └── views/         # UI 视图
-│   ├── domain/            # 领域层
-│   │   ├── events/
-│   │   └── interfaces/
-│   └── proposedApi/        # VS Code Proposed API 类型
-├── scripts/               # 构建脚本
-├── docs/                  # 文档
-└── resources/             # 静态资源
+src/
+├── common/           # 通用类型、工具
+│   ├── types/        # Provider, Model, Tool 等类型
+│   ├── utils/         # 工具函数
+│   └── logger.ts      # 日志
+├── core/
+│   ├── llm/          # LLM 核心
+│   │   ├── aiRegistry.ts       # Provider 注册
+│   │   ├── llmService.ts       # 主服务
+│   │   ├── messageConverter.ts # 消息转换
+│   │   └── toolOrchestrator.ts  # 工具编排
+│   └── providers/
+│       ├── AddiChatProvider.ts  # VS Code ChatProvider
+│       └── ProviderModelManager.ts
+├── infrastructure/
+│   ├── storage/      # 存储服务 (Memento + SecretStorage)
+│   └── crypto/       # AES-256-GCM 加密
+├── presentation/
+│   ├── commands/     # VS Code 命令
+│   └── views/         # UI
+├── domain/           # 领域层
+└── proposedApi/     # VS Code Proposed API 类型
 ```
 
 ---
 
 ## 代码规范
 
-### 命名规范
+### 命名
 
-| 类型   | 规范             | 示例                                     |
-| ------ | ---------------- | ---------------------------------------- |
-| 类名   | PascalCase       | `LLMService`, `AIRegistry`               |
-| 接口   | PascalCase       | `ProviderFactory`, `ModelCapabilities`   |
-| 方法   | camelCase        | `getProviderInstance()`, `chat()`        |
-| 变量   | camelCase        | `providerInstance`, `modelList`          |
-| 常量   | UPPER_SNAKE_CASE | `DEFAULT_MAX_TOKENS`                     |
-| 文件名 | kebab-case       | `llm-service.ts`, `message-converter.ts` |
+| 类型     | 规范             | 示例                          |
+| -------- | ---------------- | ----------------------------- |
+| 类/接口  | PascalCase       | `LLMService`, `ProviderFactory` |
+| 方法/变量 | camelCase        | `getProvider()`, `modelList`  |
+| 常量     | UPPER_SNAKE_CASE | `DEFAULT_MAX_TOKENS`          |
+| 文件     | kebab-case       | `llm-service.ts`              |
 
-### 导入规范
-
-```typescript
-// 优先使用绝对导入
-import { LLMService } from './core/llm/llmService';
-import { logger } from './common/logger';
-
-// 避免使用相对路径深度导入
-// ❌ import { xxx } from '../../../../common/logger';
-// ✅ import { logger } from '../common/logger';
-```
-
-### 日志规范
+### 日志
 
 ```typescript
 import { logger } from './common/logger';
 
-// 不同级别的日志
 logger.debug('Debug info', { data: 'value' }, 'ComponentName');
 logger.info('Info message');
 logger.warn('Warning message');
 logger.error('Error message', error);
-
-// 格式: logger.debug(message, data?, componentName?)
 ```
 
-### 错误处理规范
+### 错误处理
 
 ```typescript
-// 使用 try-catch 包装异步操作
 try {
   const result = await someAsyncOperation();
   return result;
 } catch (error) {
   logger.error('Operation failed', error, 'ComponentName');
-  throw error; // 根据需要决定是否重新抛出
+  throw error;
 }
 ```
 
-### 类型规范
+### 类型
+
+- 优先 `interface`，需要灵活性时用 `type`
+- 避免 `any`，用 `unknown` 替代
+
+---
+
+## 存储键规范
+
+所有存储键必须以 `addi.` 前缀：
+
+| 键                          | 存储   | 说明             |
+| --------------------------- | ------ | ---------------- |
+| `addi.config`               | Memento | Provider 配置    |
+| `addi.config.modifiedAt`    | Memento | 配置修改时间     |
+| `addi.local.stats`          | State   | 本地模型统计     |
+| `addi.local.deviceId`       | Secret  | 设备 ID          |
+| `addi.local.apikeys.{id}`   | Secret  | API Key          |
+| `addi.local.backups`        | State   | 配置备份         |
+
+---
+
+## Provider 注册
+
+在 `src/core/llm/aiRegistry.ts` 的 `ensureInitialized()` 中注册：
 
 ```typescript
-// 优先使用接口而非类型别名（当需要扩展时）
-interface User {
-  name: string;
-  age: number;
-}
-
-// 使用类型别名当不需要扩展时
-type Status = 'loading' | 'success' | 'error';
-
-// 避免使用 any，使用 unknown 替代
-function parse(data: unknown): string {
-  if (typeof data === 'string') {
-    return data;
-  }
-  throw new Error('Invalid data');
-}
-```
-
-### 注释规范
-
-```typescript
-/**
- * 获取或创建提供商实例
- * @param provider - Provider 配置
- * @returns AI Provider 实例
- */
-function getProviderInstance(provider: Provider): AIProviderInstance {
-  // ... 实现
-}
+this.register({
+  id: 'provider-id',
+  label: 'Display Name',
+  create: (p) => {
+    return createProvider({
+      baseURL: p.apiEndpoint,
+      apiKey: p.apiKey,
+    });
+  },
+});
 ```
 
 ---
 
-## 常见开发任务
+## 常用命令
 
-### 添加新的 Provider
+```powershell
+bun install      # 安装
+bun run watch    # 开发模式
+bun run test     # 测试
+```
 
 1. 在 `src/core/llm/aiRegistry.ts` 中注册 Provider 工厂
 2. 配置 Provider 的 API Endpoint

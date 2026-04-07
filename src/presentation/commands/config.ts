@@ -343,7 +343,9 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
     const backups = this.manager.listBackups();
     if (backups.length === 0) {
-      UserFeedback.showInfo('No backups available. Backups are created automatically before import, reset, or clear operations.');
+      UserFeedback.showInfo(
+        'No backups available. Backups are created automatically before import, reset, or clear operations.'
+      );
       return;
     }
 
@@ -418,7 +420,9 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
     const backups = this.manager.listBackups();
     if (backups.length === 0) {
-      UserFeedback.showInfo('No backups available. Backups are created automatically before dangerous operations.');
+      UserFeedback.showInfo(
+        'No backups available. Backups are created automatically before dangerous operations.'
+      );
       return;
     }
 
@@ -460,7 +464,11 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
   // ==================== Private Helper Methods ====================
 
-  private formatBackupLabel(backup: { timestamp: number; providerCount: number; description: string }): string {
+  private formatBackupLabel(backup: {
+    timestamp: number;
+    providerCount: number;
+    description: string;
+  }): string {
     const date = new Date(backup.timestamp);
     const dateStr = date.toLocaleDateString(undefined, {
       year: 'numeric',

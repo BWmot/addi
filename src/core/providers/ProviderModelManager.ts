@@ -340,7 +340,8 @@ export class ProviderModelManager {
         }
 
         // family: 模型系列/家族名称 (必须存在，非用户可编辑字段)
-        const familyRaw = typeof mutableModel['family'] === 'string' ? mutableModel['family'].trim() : '';
+        const familyRaw =
+          typeof mutableModel['family'] === 'string' ? mutableModel['family'].trim() : '';
         if (!familyRaw) {
           // 如果没有 family，则使用 'addi' 作为默认值
           mutableModel['family'] = 'addi';
@@ -352,7 +353,8 @@ export class ProviderModelManager {
         }
 
         // version: 模型版本标识 (必须存在，非用户可编辑字段)
-        const versionRaw = typeof mutableModel['version'] === 'string' ? mutableModel['version'].trim() : '';
+        const versionRaw =
+          typeof mutableModel['version'] === 'string' ? mutableModel['version'].trim() : '';
         if (!versionRaw) {
           // 如果没有 version，则使用 '1.0.0' 作为默认值
           mutableModel['version'] = '1.0.0';
