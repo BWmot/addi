@@ -130,6 +130,7 @@ export class LLMService {
       }
     } catch (error) {
       this.handleError(error);
+      throw error;
     }
   }
 
@@ -188,6 +189,8 @@ export class LLMService {
 
   /**
    * Build AI SDK options object.
+   * Note: abortSignal is NOT included here - it's created in executeStreaming/executeNonStreaming
+   * and properly connected to the VS Code cancellation token.
    */
   private buildAiOptions(
     provider: Provider,
@@ -206,7 +209,6 @@ export class LLMService {
       model: aiModel,
       system,
       messages,
-      abortSignal: new AbortController().signal,
       maxOutputTokens: modelOptions.maxOutputTokens ?? model.maxOutputTokens,
       temperature: modelOptions.temperature,
       topP: modelOptions.topP,
@@ -219,8 +221,6 @@ export class LLMService {
       headers: Object.keys(extraHeaders).length > 0 ? extraHeaders : undefined,
       extraBody: Object.keys(extraBody).length > 0 ? extraBody : undefined,
       onFinish: ({ usage }: any) => {
-        // Note: In streaming mode, timing is already captured in executeStreaming.
-        // This callback only fires for non-streaming mode to ensure we still get stats.
         if (options.onStats && usage && !options._streamingReported) {
           options.onStats({
             firstTokenTime: Date.now(),
@@ -231,14 +231,12 @@ export class LLMService {
       },
     };
 
-    // Add tools if present
     if (Object.keys(tools).length > 0) {
       baseOptions.tools = tools;
       baseOptions.maxSteps = modelOptions.maxSteps ?? 100;
       baseOptions.toolChoice = modelOptions.toolChoice;
     }
 
-    // Merge remaining extraBody params (excluding those already explicitly handled)
     const handledParams = [
       'temperature',
       'topP',
@@ -274,42 +272,80 @@ export class LLMService {
     executionOptions: ExecutionOptions
   ): Promise<void> {
     const abortController = new AbortController();
-    token.onCancellationRequested(() => abortController.abort());
+    token.onCancellationRequested(() => {
+      logger.debug('Cancellation requested, aborting stream');
+      abortController.abort();
+    });
 
     let firstTokenTime: number | undefined;
-    const result = await streamText({ ...options, abortSignal: abortController.signal });
-
+    let hasReportedContent = false;
+    let hasFinished = false;
+    let finishReason: string | undefined;
     let tokenCount = 0;
-    for await (const part of result.fullStream) {
-      if (!firstTokenTime) {
-        firstTokenTime = Date.now();
-      }
-      if (token.isCancellationRequested) {
-        break;
+
+    try {
+      const result = streamText({ ...options, abortSignal: abortController.signal });
+
+      for await (const part of result.fullStream) {
+        if (token.isCancellationRequested) {
+          break;
+        }
+
+        if (!firstTokenTime && part.type !== 'finish' && part.type !== 'error') {
+          firstTokenTime = Date.now();
+        }
+
+        if (part.type === 'finish') {
+          hasFinished = true;
+          finishReason = part.finishReason;
+          if (part.finishReason === 'content-filter') {
+            progress.report(new vscode.LanguageModelTextPart('[Content filtered]'));
+            hasReportedContent = true;
+          }
+          continue;
+        }
+
+        if (part.type === 'error') {
+          const error = part.error as any;
+          const errorMsg = error?.message || String(part.error);
+          logger.error('Stream error part received', { error: errorMsg });
+          throw error;
+        }
+
+        this.processResponsePart(part, progress, executionOptions);
+
+        if (part.type === 'text-delta' && part.text) {
+          hasReportedContent = true;
+          const textLength = part.text.length;
+          tokenCount += Math.ceil(textLength / 4);
+        }
       }
 
-      // Process the response part - let errors propagate to caller (executeDirect -> handleError)
-      this.processResponsePart(part, progress, executionOptions);
-
-      // Count text delta tokens (the actual output tokens from the model)
-      if (part.type === 'text-delta' && part.text) {
-        // Estimate token count from text - this is an approximation
-        // A more accurate approach would require a tokenizer
-        const textLength = part.text.length;
-        // Rough estimate: ~4 characters per token on average
-        tokenCount += Math.ceil(textLength / 4);
+      if (!hasReportedContent && !token.isCancellationRequested) {
+        if (finishReason === 'content-filter') {
+          throw vscode.LanguageModelError.Blocked('Message blocked by model content safety filters.');
+        }
+        if (!hasFinished) {
+          logger.warn('Stream completed without any content reported');
+        }
       }
-    }
-
-    // Report stats after streaming completes
-    if (executionOptions.onStats && firstTokenTime) {
-      const endTime = Date.now();
-      executionOptions._streamingReported = true;
-      executionOptions.onStats({
-        firstTokenTime,
-        endTime,
-        tokenCount,
-      });
+    } catch (error) {
+      if (!hasReportedContent) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Streaming error before any content reported', { error: errorMessage });
+        progress.report(new vscode.LanguageModelTextPart(`[Error: ${errorMessage}]`));
+      }
+      throw error;
+    } finally {
+      if (executionOptions.onStats && firstTokenTime) {
+        const endTime = Date.now();
+        executionOptions._streamingReported = true;
+        executionOptions.onStats({
+          firstTokenTime,
+          endTime,
+          tokenCount,
+        });
+      }
     }
   }
 
@@ -325,26 +361,37 @@ export class LLMService {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     executionOptions: ExecutionOptions
   ): Promise<void> {
-    const result = await generateText(options);
-    const steps = (result.steps as any[]) || [];
+    let hasReportedContent = false;
 
-    // Process each step
-    for (const step of steps) {
-      // Handle reasoning/thinking content
-      this.processReasoning(step, progress, executionOptions);
+    try {
+      const result = await generateText(options);
+      const steps = (result.steps as any[]) || [];
 
-      // Handle tool calls
-      this.processToolCalls(step, progress);
-    }
+      for (const step of steps) {
+        this.processReasoning(step, progress, executionOptions);
+        this.processToolCalls(step, progress);
+      }
 
-    // Handle final text response
-    if (result.text) {
-      progress.report(new vscode.LanguageModelTextPart(result.text));
-    }
+      if (result.text) {
+        progress.report(new vscode.LanguageModelTextPart(result.text));
+        hasReportedContent = true;
+      }
 
-    // Handle safety filters for non-streaming requests
-    if (result.finishReason === 'content-filter') {
-      throw vscode.LanguageModelError.Blocked('Message blocked by model content safety filters.');
+      if (result.finishReason === 'content-filter') {
+        throw vscode.LanguageModelError.Blocked('Message blocked by model content safety filters.');
+      }
+
+      if (!hasReportedContent && result.finishReason === 'stop') {
+        logger.warn('Non-streaming response completed but no content was generated');
+        progress.report(new vscode.LanguageModelTextPart('[No response generated]'));
+      }
+    } catch (error) {
+      if (!hasReportedContent) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Non-streaming error before any content reported', { error: errorMessage });
+        progress.report(new vscode.LanguageModelTextPart(`[Error: ${errorMessage}]`));
+      }
+      throw error;
     }
   }
 

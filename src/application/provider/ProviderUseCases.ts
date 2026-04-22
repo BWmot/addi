@@ -1,6 +1,7 @@
-import { Model } from '../../common/types';
+import { Model, RemoteModelInfo } from '../../common/types';
 import { ProviderModelManager } from '../../core/providers/ProviderModelManager';
 import { logger } from '../../common/logger';
+import { IdGenerator, ConfigManager } from '../../common/utils';
 
 export interface SyncResult {
   added: number;
@@ -29,25 +30,56 @@ export class ProviderUseCases {
 
     const provider = providers[providerIndex]!;
 
-    // TODO: Fetch from actual provider API
-    // This is a placeholder that should be replaced with actual provider API calls
-    const remoteModels: Model[] = [];
+    let remoteModels: RemoteModelInfo[];
+    try {
+      remoteModels = await this.manager.fetchProviderModelsFromApi(provider);
+    } catch (error) {
+      logger.error('Failed to fetch remote models', {
+        providerId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
 
     const existingModels = provider.models || [];
+    const existingModelMap = new Map(existingModels.map((m) => [m.rid, m]));
     let added = 0;
     let updated = 0;
 
-    // Merge remote models with existing ones
     for (const remoteModel of remoteModels) {
-      const existingIndex = existingModels.findIndex((m) => m.id === remoteModel.id);
+      const existing = existingModelMap.get(remoteModel.id);
 
-      if (existingIndex === -1) {
-        existingModels.push(remoteModel);
+      if (!existing) {
+        const newModel: Model = {
+          id: IdGenerator.generate(),
+          rid: remoteModel.id,
+          name: remoteModel.name || remoteModel.id,
+          family: remoteModel.family || ConfigManager.getDefaultModelFamily(),
+          version: ConfigManager.getDefaultModelVersion(),
+          maxInputTokens: remoteModel.maxInputTokens || ConfigManager.getDefaultMaxInputTokens(),
+          maxOutputTokens: remoteModel.maxOutputTokens || ConfigManager.getDefaultMaxOutputTokens(),
+          capabilities: remoteModel.capabilities || {},
+          isUserSelectable: true,
+        };
+        existingModels.push(newModel);
         added++;
       } else {
-        // Update existing model if remote has newer version
-        existingModels[existingIndex] = remoteModel;
-        updated++;
+        const hasChanges =
+          existing.name !== (remoteModel.name || remoteModel.id) ||
+          existing.maxInputTokens !== remoteModel.maxInputTokens ||
+          existing.maxOutputTokens !== remoteModel.maxOutputTokens;
+
+        if (hasChanges) {
+          existing.name = remoteModel.name || remoteModel.id;
+          existing.family = remoteModel.family || existing.family;
+          existing.maxInputTokens = remoteModel.maxInputTokens || existing.maxInputTokens;
+          existing.maxOutputTokens = remoteModel.maxOutputTokens || existing.maxOutputTokens;
+          if (remoteModel.capabilities) {
+            existing.capabilities = { ...existing.capabilities, ...remoteModel.capabilities };
+          }
+          updated++;
+        }
+        existingModelMap.delete(remoteModel.id);
       }
     }
 
