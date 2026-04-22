@@ -56,15 +56,19 @@ async function githubFetch<T = unknown>(
       },
     });
 
-    // 记录响应状态用于调试
-    if (!response.ok) {
-      const errorText = await response.text();
-      logError(`GitHub API 错误: ${response.status} ${response.statusText}`);
-      logError(`响应内容: ${errorText.substring(0, 200)}`);
-    }
-
+    // 404 是正常的"未找到"响应，不算错误
     if (response.status === 404) {
       return null;
+    }
+
+    // 记录其他错误状态用于调试
+    if (!response.ok) {
+      const errorText = await response.text();
+      // 仅记录非 404 的错误，404 是正常的"不存在"情况
+      if (response.status !== 404) {
+        logWarn(`GitHub API: ${response.status} ${response.statusText}`);
+        logWarn(`响应内容: ${errorText.substring(0, 200)}`);
+      }
     }
 
     const data = (await response.json()) as T;
@@ -72,8 +76,8 @@ async function githubFetch<T = unknown>(
   } catch (error) {
     // 详细的错误信息
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logError(`GitHub API 请求失败: ${errorMessage}`);
-    logError(`请求 URL: ${url}`);
+    logWarn(`GitHub API 请求失败: ${errorMessage}`);
+    logWarn(`请求 URL: ${url}`);
 
     // 检查是否是代理问题
     if (
@@ -334,9 +338,9 @@ async function releaseToGitHub(): Promise<boolean> {
 
   const apiUrl = `/repos/${REPO_OWNER}/${REPO_NAME}/releases`;
 
-  // 检查 release 是否已存在
-  log("   检查 release 是否存在...", "gray");
+  // 检查 release 是否存在
   const existingRelease = await getExistingRelease(apiUrl, tag);
+  log(`   检查 release 是否存在: ${existingRelease ? "已存在" : "不存在"}`, "gray");
 
   let releaseId: number;
   let uploadUrl: string;
