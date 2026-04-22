@@ -976,7 +976,7 @@ Overrides provider-level Extra Headers.
           .replace(/: (-?\d+\.?\d*)(,?)$/gm, ': <span class="json-number">$1</span>$2')
           .replace(/: (true|false)(,?)$/gm, ': <span class="json-boolean">$1</span>$2')
           .replace(/: (null)(,?)$/gm, ': <span class="json-null">$1</span>$2')
-          .replace(/([{}\[\]])/g, '<span class="json-bracket">$1</span>');
+          .replace(/([{}[\]])/g, '<span class="json-bracket">$1</span>');
       }
 
       /**
@@ -1109,7 +1109,7 @@ Overrides provider-level Extra Headers.
           case 'update':
             updateContent(message.item, message.mode);
             break;
-          case 'updateFields':
+          case 'updateFields': {
             const updates = message.payload;
             if (updates.maxInputTokens) mInput.value = updates.maxInputTokens;
             if (updates.maxOutputTokens) mOutput.value = updates.maxOutputTokens;
@@ -1119,6 +1119,7 @@ Overrides provider-level Extra Headers.
             if (updates.audioInput !== undefined) mAudio.checked = updates.audioInput;
             if (updates.videoInput !== undefined) mVideo.checked = updates.videoInput;
             break;
+          }
         }
       });
 

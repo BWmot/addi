@@ -1,6 +1,6 @@
-import { Provider } from '../../common/types';
-import { ProviderModelManager } from '../../core/providers/ProviderModelManager';
-import { logger } from '../../common/logger';
+import type { Provider } from "../../common/types";
+import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
+import { logger } from "../../common/logger";
 
 export interface ImportResult {
   providerCount: number;
@@ -17,8 +17,11 @@ export class ConfigUseCases {
   /**
    * Export providers to JSON string
    */
-  async exportProviders(providers: Provider[], includeApiKeys: boolean): Promise<string> {
-    let providersToExport = [...providers];
+  async exportProviders(
+    providers: Provider[],
+    includeApiKeys: boolean,
+  ): Promise<string> {
+    const providersToExport = [...providers];
 
     // Fetch API keys if requested
     if (includeApiKeys) {
@@ -31,7 +34,7 @@ export class ConfigUseCases {
     }
 
     const encoded = JSON.stringify(providersToExport, null, 2);
-    logger.info('Configuration exported', {
+    logger.info("Configuration exported", {
       providerCount: providers.length,
       includeApiKeys,
     });
@@ -44,7 +47,7 @@ export class ConfigUseCases {
    */
   async importProviders(
     providersToImport: Provider[],
-    shouldImportApiKeys: boolean
+    shouldImportApiKeys: boolean,
   ): Promise<ImportResult> {
     // Strip API Keys if not importing them
     if (!shouldImportApiKeys) {
@@ -59,7 +62,9 @@ export class ConfigUseCases {
     const mergedProviders = [...currentProviders];
 
     for (const provider of providersToImport) {
-      const existingIndex = mergedProviders.findIndex((p) => p.id === provider.id);
+      const existingIndex = mergedProviders.findIndex(
+        (p) => p.id === provider.id,
+      );
       if (existingIndex !== -1) {
         // Provider exists - will be handled by caller for conflict resolution
         mergedProviders[existingIndex] = provider;

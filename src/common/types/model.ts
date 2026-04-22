@@ -1,5 +1,5 @@
-import { JSONSchema7 } from 'ai';
-import { ModelCapabilities } from './capabilities';
+import type { JSONSchema7 } from "ai";
+import type { ModelCapabilities } from "./capabilities";
 
 /**
  * Model behavior options based on AI SDK LanguageModelV3CallOptions.
@@ -24,9 +24,13 @@ export interface ModelOptions {
   /** Seed for deterministic results (if supported by provider) */
   seed?: number;
   /** Output format: text or JSON */
-  responseFormat?: { type: 'text' } | { type: 'json'; schema?: JSONSchema7 };
+  responseFormat?: { type: "text" } | { type: "json"; schema?: JSONSchema7 };
   /** Tool choice setting */
-  toolChoice?: 'auto' | 'required' | 'none' | { type: 'tool'; toolName: string };
+  toolChoice?:
+    | "auto"
+    | "required"
+    | "none"
+    | { type: "tool"; toolName: string };
   /** Maximum steps for tool calls (when tools are enabled) */
   maxSteps?: number;
 }

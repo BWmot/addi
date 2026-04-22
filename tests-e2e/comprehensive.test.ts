@@ -12,28 +12,28 @@
  * - Backup/restore
  * - Settings management
  */
-import * as vscode from 'vscode';
-import * as assert from 'assert';
-import { Provider, Model } from '../src/common/types';
-import { ProviderModelManager } from '../src/core/providers/ProviderModelManager';
+import * as vscode from "vscode";
+import * as assert from "assert";
+import type { Provider, Model } from "../src/common/types";
+import { ProviderModelManager } from "../src/core/providers/ProviderModelManager";
 
 // Test configuration
-const TEST_PROVIDER_ID = 'test-provider-' + Date.now();
+const TEST_PROVIDER_ID = "test-provider-" + Date.now();
 const TEST_PROVIDER: Provider = {
   id: TEST_PROVIDER_ID,
-  name: 'Test Provider',
-  providerType: 'openai-responses',
-  apiKey: 'test-key',
+  name: "Test Provider",
+  providerType: "openai-responses",
+  apiKey: "test-key",
   models: [],
 };
 
 // Test model data (reserved for future model-specific tests)
 const _TEST_MODEL: Model = {
-  id: 'test-model-' + Date.now(),
-  rid: 'gpt-4',
-  name: 'GPT-4',
-  family: 'gpt',
-  version: '1.0',
+  id: "test-model-" + Date.now(),
+  rid: "gpt-4",
+  name: "GPT-4",
+  family: "gpt",
+  version: "1.0",
   maxInputTokens: 128000,
   maxOutputTokens: 32768,
   capabilities: {
@@ -47,50 +47,54 @@ const _TEST_MODEL: Model = {
 
 // ==================== Suite: Extension Activation ====================
 
-suite('Extension Activation', () => {
+suite("Extension Activation", () => {
   let extension: vscode.Extension<any> | undefined;
 
   suiteSetup(async () => {
-    extension = vscode.extensions.getExtension('deepwn.addi');
-    assert.ok(extension, 'Extension should be found');
+    extension = vscode.extensions.getExtension("deepwn.addi");
+    assert.ok(extension, "Extension should be found");
   });
 
-  test('should activate extension', async () => {
+  test("should activate extension", async () => {
     if (!extension || !extension.isActive) {
       await extension?.activate();
     }
-    assert.ok(extension?.isActive, 'Extension should be active');
+    assert.ok(extension?.isActive, "Extension should be active");
   });
 
-  test('should have valid package.json', () => {
+  test("should have valid package.json", () => {
     const packageJSON = extension?.packageJSON;
-    assert.ok(packageJSON, 'packageJSON should exist');
-    assert.strictEqual(packageJSON?.name, 'addi', 'Extension name should be addi');
-    assert.ok(packageJSON?.version, 'Extension should have version');
+    assert.ok(packageJSON, "packageJSON should exist");
+    assert.strictEqual(
+      packageJSON?.name,
+      "addi",
+      "Extension name should be addi",
+    );
+    assert.ok(packageJSON?.version, "Extension should have version");
   });
 
-  test('should contribute addi configuration', () => {
-    const config = vscode.workspace.getConfiguration('addi');
-    assert.ok(config, 'addi configuration should exist');
+  test("should contribute addi configuration", () => {
+    const config = vscode.workspace.getConfiguration("addi");
+    assert.ok(config, "addi configuration should exist");
   });
 });
 
 // ==================== Suite: Tree Views ====================
 
-suite('Tree Views', () => {
-  test('should register addiProviders tree view', async () => {
+suite("Tree Views", () => {
+  test("should register addiProviders tree view", async () => {
     // The view should be registered by the extension
     const commands = await vscode.commands.getCommands(true);
     const hasTreeViewCommand = commands.some(
-      (cmd) => cmd === 'addiProviders.focus' || cmd.startsWith('addi.')
+      (cmd) => cmd === "addiProviders.focus" || cmd.startsWith("addi."),
     );
-    assert.ok(hasTreeViewCommand, 'Tree view commands should be registered');
+    assert.ok(hasTreeViewCommand, "Tree view commands should be registered");
   });
 });
 
 // ==================== Suite: Command Registration ====================
 
-suite('Command Registration', () => {
+suite("Command Registration", () => {
   let commands: string[];
 
   suiteSetup(async () => {
@@ -98,136 +102,184 @@ suite('Command Registration', () => {
   });
 
   // Provider Commands
-  test('should register addi.addProvider command', () => {
-    assert.ok(commands.includes('addi.addProvider'), 'addi.addProvider should be registered');
-  });
-
-  test('should register addi.editProvider command', () => {
-    assert.ok(commands.includes('addi.editProvider'), 'addi.editProvider should be registered');
-  });
-
-  test('should register addi.copyProvider command', () => {
-    assert.ok(commands.includes('addi.copyProvider'), 'addi.copyProvider should be registered');
-  });
-
-  test('should register addi.deleteProvider command', () => {
-    assert.ok(commands.includes('addi.deleteProvider'), 'addi.deleteProvider should be registered');
-  });
-
-  test('should register addi.pullProviderModels command', () => {
+  test("should register addi.addProvider command", () => {
     assert.ok(
-      commands.includes('addi.pullProviderModels'),
-      'addi.pullProviderModels should be registered'
+      commands.includes("addi.addProvider"),
+      "addi.addProvider should be registered",
     );
   });
 
-  test('should register addi.setApiKey command', () => {
-    assert.ok(commands.includes('addi.setApiKey'), 'addi.setApiKey should be registered');
+  test("should register addi.editProvider command", () => {
+    assert.ok(
+      commands.includes("addi.editProvider"),
+      "addi.editProvider should be registered",
+    );
+  });
+
+  test("should register addi.copyProvider command", () => {
+    assert.ok(
+      commands.includes("addi.copyProvider"),
+      "addi.copyProvider should be registered",
+    );
+  });
+
+  test("should register addi.deleteProvider command", () => {
+    assert.ok(
+      commands.includes("addi.deleteProvider"),
+      "addi.deleteProvider should be registered",
+    );
+  });
+
+  test("should register addi.pullProviderModels command", () => {
+    assert.ok(
+      commands.includes("addi.pullProviderModels"),
+      "addi.pullProviderModels should be registered",
+    );
+  });
+
+  test("should register addi.setApiKey command", () => {
+    assert.ok(
+      commands.includes("addi.setApiKey"),
+      "addi.setApiKey should be registered",
+    );
   });
 
   // Model Commands
-  test('should register addi.addModel command', () => {
-    assert.ok(commands.includes('addi.addModel'), 'addi.addModel should be registered');
-  });
-
-  test('should register addi.editModels command', () => {
-    assert.ok(commands.includes('addi.editModels'), 'addi.editModels should be registered');
-  });
-
-  test('should register addi.copyModel command', () => {
-    assert.ok(commands.includes('addi.copyModel'), 'addi.copyModel should be registered');
-  });
-
-  test('should register addi.deleteModels command', () => {
-    assert.ok(commands.includes('addi.deleteModels'), 'addi.deleteModels should be registered');
-  });
-
-  test('should register addi.setModelToCopilot command', () => {
+  test("should register addi.addModel command", () => {
     assert.ok(
-      commands.includes('addi.setModelToCopilot'),
-      'addi.setModelToCopilot should be registered'
+      commands.includes("addi.addModel"),
+      "addi.addModel should be registered",
     );
   });
 
-  test('should register addi.ineligibleModelInfo command', () => {
+  test("should register addi.editModels command", () => {
     assert.ok(
-      commands.includes('addi.ineligibleModelInfo'),
-      'addi.ineligibleModelInfo should be registered'
+      commands.includes("addi.editModels"),
+      "addi.editModels should be registered",
+    );
+  });
+
+  test("should register addi.copyModel command", () => {
+    assert.ok(
+      commands.includes("addi.copyModel"),
+      "addi.copyModel should be registered",
+    );
+  });
+
+  test("should register addi.deleteModels command", () => {
+    assert.ok(
+      commands.includes("addi.deleteModels"),
+      "addi.deleteModels should be registered",
+    );
+  });
+
+  test("should register addi.setModelToCopilot command", () => {
+    assert.ok(
+      commands.includes("addi.setModelToCopilot"),
+      "addi.setModelToCopilot should be registered",
+    );
+  });
+
+  test("should register addi.ineligibleModelInfo command", () => {
+    assert.ok(
+      commands.includes("addi.ineligibleModelInfo"),
+      "addi.ineligibleModelInfo should be registered",
     );
   });
 
   // Visibility Commands
-  test('should register addi.showModelsInPicker command', () => {
+  test("should register addi.showModelsInPicker command", () => {
     assert.ok(
-      commands.includes('addi.showModelsInPicker'),
-      'addi.showModelsInPicker should be registered'
+      commands.includes("addi.showModelsInPicker"),
+      "addi.showModelsInPicker should be registered",
     );
   });
 
-  test('should register addi.hideModelsFromPicker command', () => {
+  test("should register addi.hideModelsFromPicker command", () => {
     assert.ok(
-      commands.includes('addi.hideModelsFromPicker'),
-      'addi.hideModelsFromPicker should be registered'
+      commands.includes("addi.hideModelsFromPicker"),
+      "addi.hideModelsFromPicker should be registered",
     );
   });
 
-  test('should register addi.showProviderModelsInPicker command', () => {
+  test("should register addi.showProviderModelsInPicker command", () => {
     assert.ok(
-      commands.includes('addi.showProviderModelsInPicker'),
-      'addi.showProviderModelsInPicker should be registered'
+      commands.includes("addi.showProviderModelsInPicker"),
+      "addi.showProviderModelsInPicker should be registered",
     );
   });
 
-  test('should register addi.hideProviderModelsFromPicker command', () => {
+  test("should register addi.hideProviderModelsFromPicker command", () => {
     assert.ok(
-      commands.includes('addi.hideProviderModelsFromPicker'),
-      'addi.hideProviderModelsFromPicker should be registered'
+      commands.includes("addi.hideProviderModelsFromPicker"),
+      "addi.hideProviderModelsFromPicker should be registered",
     );
   });
 
   // Config Commands
-  test('should register addi.exportConfig command', () => {
-    assert.ok(commands.includes('addi.exportConfig'), 'addi.exportConfig should be registered');
-  });
-
-  test('should register addi.importConfig command', () => {
-    assert.ok(commands.includes('addi.importConfig'), 'addi.importConfig should be registered');
-  });
-
-  test('should register addi.openSettings command', () => {
-    assert.ok(commands.includes('addi.openSettings'), 'addi.openSettings should be registered');
-  });
-
-  // Backup/Restore Commands
-  test('should register addi.restoreFromBackup command', () => {
+  test("should register addi.exportConfig command", () => {
     assert.ok(
-      commands.includes('addi.restoreFromBackup'),
-      'addi.restoreFromBackup should be registered'
+      commands.includes("addi.exportConfig"),
+      "addi.exportConfig should be registered",
     );
   });
 
-  test('should register addi.manageBackups command', () => {
-    assert.ok(commands.includes('addi.manageBackups'), 'addi.manageBackups should be registered');
+  test("should register addi.importConfig command", () => {
+    assert.ok(
+      commands.includes("addi.importConfig"),
+      "addi.importConfig should be registered",
+    );
+  });
+
+  test("should register addi.openSettings command", () => {
+    assert.ok(
+      commands.includes("addi.openSettings"),
+      "addi.openSettings should be registered",
+    );
+  });
+
+  // Backup/Restore Commands
+  test("should register addi.restoreFromBackup command", () => {
+    assert.ok(
+      commands.includes("addi.restoreFromBackup"),
+      "addi.restoreFromBackup should be registered",
+    );
+  });
+
+  test("should register addi.manageBackups command", () => {
+    assert.ok(
+      commands.includes("addi.manageBackups"),
+      "addi.manageBackups should be registered",
+    );
   });
 
   // Storage Commands
-  test('should register addi.initExtension command', () => {
-    assert.ok(commands.includes('addi.initExtension'), 'addi.initExtension should be registered');
+  test("should register addi.initExtension command", () => {
+    assert.ok(
+      commands.includes("addi.initExtension"),
+      "addi.initExtension should be registered",
+    );
   });
 
   // Utility Commands
-  test('should register addi.manage command', () => {
-    assert.ok(commands.includes('addi.manage'), 'addi.manage should be registered');
+  test("should register addi.manage command", () => {
+    assert.ok(
+      commands.includes("addi.manage"),
+      "addi.manage should be registered",
+    );
   });
 
-  test('should register addi.showLogs command', () => {
-    assert.ok(commands.includes('addi.showLogs'), 'addi.showLogs should be registered');
+  test("should register addi.showLogs command", () => {
+    assert.ok(
+      commands.includes("addi.showLogs"),
+      "addi.showLogs should be registered",
+    );
   });
 });
 
 // ==================== Suite: Configuration Settings ====================
 
-suite('Configuration Settings', () => {
+suite("Configuration Settings", () => {
   // Skipped: Configuration values may be polluted by previous test runs in E2E environment
   // Default values should be tested in unit tests instead
 });
@@ -242,82 +294,90 @@ suite('Configuration Settings', () => {
 
 // ==================== Suite: Config Import/Export ====================
 
-suite('Config Import/Export', () => {
+suite("Config Import/Export", () => {
   // Skipped: These tests require UI interaction (file picker / clipboard)
   // which blocks in E2E test environment. Tested manually instead.
 });
 
 // ==================== Suite: Settings Management ====================
 
-suite('Settings Management', () => {
-  test('should initialize extension', async () => {
-    const extension = vscode.extensions.getExtension('deepwn.addi');
+suite("Settings Management", () => {
+  test("should initialize extension", async () => {
+    const extension = vscode.extensions.getExtension("deepwn.addi");
     if (!extension || !extension.isActive) {
       await extension?.activate();
     }
 
     try {
-      await vscode.commands.executeCommand('addi.initExtension');
-      assert.ok(true, 'Init extension command executed');
+      await vscode.commands.executeCommand("addi.initExtension");
+      assert.ok(true, "Init extension command executed");
     } catch (e) {
       // May fail in test environment due to confirmation dialog
-      assert.ok(true, 'Init extension checked');
+      assert.ok(true, "Init extension checked");
     }
   });
 });
 
 // ==================== Suite: Language Model Integration ====================
 
-suite('Language Model Integration', () => {
-  test('should register addi-provider chat provider', async () => {
+suite("Language Model Integration", () => {
+  test("should register addi-provider chat provider", async () => {
     // Check that the extension registers a language model provider
     const models = await vscode.lm.selectChatModels({});
 
     // The extension should provide models through addi-provider
-    const addiModels = models.filter((m) => m.vendor === 'addi-provider');
+    const addiModels = models.filter((m) => m.vendor === "addi-provider");
 
-    assert.ok(Array.isArray(addiModels), 'Should return array of models');
+    assert.ok(Array.isArray(addiModels), "Should return array of models");
     console.log(`Found ${addiModels.length} Addi models`);
   });
 
-  test('should filter models by capability', async () => {
+  test("should filter models by capability", async () => {
     // Note: Some selector options may not be available in all VS Code versions
     const commands = await vscode.commands.getCommands(true);
-    assert.ok(Array.isArray(commands), 'Commands should be available');
+    assert.ok(Array.isArray(commands), "Commands should be available");
   });
 
-  test('should filter models by max tokens', async () => {
+  test("should filter models by max tokens", async () => {
     // Note: maxInputTokens selector may not be available in all VS Code versions
     const commands = await vscode.commands.getCommands(true);
-    assert.ok(Array.isArray(commands), 'Commands should be available');
+    assert.ok(Array.isArray(commands), "Commands should be available");
   });
 });
 
 // ==================== Suite: Sync Functionality ====================
 
-suite('Sync Functionality', () => {
-  test('should toggle settings sync', async () => {
-    const config = vscode.workspace.getConfiguration('addi');
-    const originalValue = config.get<boolean>('syncConfiguration');
+suite("Sync Functionality", () => {
+  test("should toggle settings sync", async () => {
+    const config = vscode.workspace.getConfiguration("addi");
+    const originalValue = config.get<boolean>("syncConfiguration");
 
-    await config.update('syncConfiguration', true, vscode.ConfigurationTarget.Global);
-    let newValue = config.get<boolean>('syncConfiguration');
-    assert.strictEqual(newValue, true, 'Sync should be enabled');
+    await config.update(
+      "syncConfiguration",
+      true,
+      vscode.ConfigurationTarget.Global,
+    );
+    const newValue = config.get<boolean>("syncConfiguration");
+    assert.strictEqual(newValue, true, "Sync should be enabled");
 
     // Restore original
-    await config.update('syncConfiguration', originalValue, vscode.ConfigurationTarget.Global);
+    await config.update(
+      "syncConfiguration",
+      originalValue,
+      vscode.ConfigurationTarget.Global,
+    );
   });
 });
 
 // ==================== Suite: Edge Cases ====================
 
-suite('Edge Cases', () => {
-  test('should handle empty provider list', () => {
-    const extension = vscode.extensions.getExtension('deepwn.addi');
-    assert.ok(extension, 'Extension should exist');
+suite("Edge Cases", () => {
+  test("should handle empty provider list", () => {
+    const extension = vscode.extensions.getExtension("deepwn.addi");
+    assert.ok(extension, "Extension should exist");
   });
 
-  test('should handle invalid provider data', async () => {
+  test("should handle invalid provider data", async () => {
     const manager = new ProviderModelManager({
       getProviders: () => [],
       saveProviders: async () => {},
@@ -331,14 +391,14 @@ suite('Edge Cases', () => {
     } as any);
 
     const providers = manager.getProviders();
-    assert.ok(Array.isArray(providers), 'Should return empty array');
+    assert.ok(Array.isArray(providers), "Should return empty array");
   });
 
-  test('should handle very long provider names', async () => {
+  test("should handle very long provider names", async () => {
     const longNameProvider: Provider = {
       ...TEST_PROVIDER,
-      id: 'long-name-test',
-      name: 'A'.repeat(1000),
+      id: "long-name-test",
+      name: "A".repeat(1000),
     };
 
     const manager = new ProviderModelManager({
@@ -354,6 +414,10 @@ suite('Edge Cases', () => {
     } as any);
 
     const providers = manager.getProviders();
-    assert.strictEqual(providers[0]?.name.length, 1000, 'Long name should be preserved');
+    assert.strictEqual(
+      providers[0]?.name.length,
+      1000,
+      "Long name should be preserved",
+    );
   });
 });

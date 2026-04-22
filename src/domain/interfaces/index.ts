@@ -1,1 +1,1 @@
-export { IStorageService, BackupEntry } from './IStorageService';
+export { IStorageService, BackupEntry } from "./IStorageService";

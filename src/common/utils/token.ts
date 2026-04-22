@@ -11,16 +11,16 @@ export class TokenFormatter {
     if (input === undefined || input === null) {
       return undefined;
     }
-    if (typeof input === 'number') {
+    if (typeof input === "number") {
       if (!Number.isFinite(input) || input <= 0) {
         return undefined;
       }
-      return Math.min(Math.floor(input), this.LIMIT);
+      return Math.min(Math.floor(input), TokenFormatter.LIMIT);
     }
     const trimmed = input
       .trim()
       .toLowerCase()
-      .replace(/[_\s]+/g, '');
+      .replace(/[_\s]+/g, "");
     if (!trimmed) {
       return undefined;
     }
@@ -33,28 +33,28 @@ export class TokenFormatter {
       return undefined;
     }
     const suffix = match[2];
-    if (suffix && !(suffix in this.MULTIPLIERS)) {
+    if (suffix && !(suffix in TokenFormatter.MULTIPLIERS)) {
       return undefined;
     }
-    const multiplier = suffix ? this.MULTIPLIERS[suffix]! : 1;
+    const multiplier = suffix ? TokenFormatter.MULTIPLIERS[suffix]! : 1;
     const value = Math.round(base * multiplier);
     if (!Number.isFinite(value) || value <= 0) {
       return undefined;
     }
-    return Math.min(value, this.LIMIT);
+    return Math.min(value, TokenFormatter.LIMIT);
   }
 
   static format(value: number | undefined): string {
     if (!Number.isFinite(value) || value === undefined || value <= 0) {
-      return '';
+      return "";
     }
     const formatNum = (n: number) => {
       return Number.isInteger(n)
         ? n.toString()
         : n
             .toFixed(n >= 10 ? 1 : 2)
-            .replace(/\.0+$/, '')
-            .replace(/\.([0-9]*[1-9])0+$/, '.$1');
+            .replace(/\.0+$/, "")
+            .replace(/\.([0-9]*[1-9])0+$/, ".$1");
     };
 
     if (value >= 1000) {
@@ -65,10 +65,10 @@ export class TokenFormatter {
 
   static formatDetailed(value: number | undefined): string {
     if (!Number.isFinite(value) || value === undefined || value <= 0) {
-      return '';
+      return "";
     }
     const raw = Math.floor(value).toString();
-    const friendly = this.format(value);
+    const friendly = TokenFormatter.format(value);
     if (!friendly || friendly === raw) {
       return raw;
     }

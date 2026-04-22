@@ -1,10 +1,10 @@
-import * as vscode from 'vscode';
-import { ModelDraft, Provider, Model } from '../../common/types';
-import { AIProviderRegistry } from './aiRegistry';
-import { generateText, ModelMessage, Tool, jsonSchema } from 'ai';
-import { logger } from '../../common/logger';
-import { LLMService } from './llmService';
-import { ConfigManager } from '../../common/utils';
+import * as vscode from "vscode";
+import type { ModelDraft, Provider, Model } from "../../common/types";
+import { AIProviderRegistry } from "./aiRegistry";
+import { generateText, type ModelMessage, type Tool, jsonSchema } from "ai";
+import { logger } from "../../common/logger";
+import { LLMService } from "./llmService";
+import { ConfigManager } from "../../common/utils";
 
 export interface TestResult {
   success: boolean;
@@ -28,21 +28,21 @@ export type ProgressCallback = (message: string) => void;
 
 export class ModelTester {
   private static readonly VISION_TEST_IMAGE =
-    '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAACAAIDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAr/xAAZEAEAAgMAAAAAAAAAAAAAAAAAAQIxcbH/xAAVAQEBAAAAAAAAAAAAAAAAAAAGB//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/ALH64jUcAF1Qf//Z';
+    "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAACAAIDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAr/xAAZEAEAAgMAAAAAAAAAAAAAAAAAAQIxcbH/xAAVAQEBAAAAAAAAAAAAAAAAAAAGB//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/ALH64jUcAF1Qf//Z";
 
   static async testModelApi(
     provider: Provider,
     modelDraft: ModelDraft,
     options: TestOptions,
     token: AbortSignal,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<TestResult> {
     const result: TestResult = { success: false };
 
     try {
       // 1. Basic Connectivity
-      onProgress?.('Checking connectivity...');
-      const connectToken = 'ADDI_CONNECT_OK';
+      onProgress?.("Checking connectivity...");
+      const connectToken = "ADDI_CONNECT_OK";
 
       // Use configured maxOutputTokens to verify if the model supports the setting
       const testMaxTokens =
@@ -51,31 +51,42 @@ export class ModelTester {
           : undefined;
 
       const payload: {
-        type: 'text' | 'vision' | 'tools';
+        type: "text" | "vision" | "tools";
         prompt?: string;
         maxOutputTokens?: number;
       } = {
-        type: 'text',
+        type: "text",
         prompt: `Reply exactly '${connectToken}'`,
       };
       if (testMaxTokens !== undefined) {
         payload.maxOutputTokens = testMaxTokens;
       }
 
-      const response = await this.performRequest(provider, modelDraft, payload, token);
+      const response = await ModelTester.performRequest(
+        provider,
+        modelDraft,
+        payload,
+        token,
+      );
 
       if (!response || !response.includes(connectToken)) {
         throw new Error(
-          `Connection test failed: Model response did not contain expected token. Response: ${response ? response.slice(0, 100) : 'empty'}`
+          `Connection test failed: Model response did not contain expected token. Response: ${response ? response.slice(0, 100) : "empty"}`,
         );
       }
       result.success = true;
 
       // 2. Detect Token Limits
       if (options.detectInput || options.detectOutput) {
-        onProgress?.('Detecting token limits...');
+        onProgress?.("Detecting token limits...");
         // Use 'output' mode to enable error probing which is most effective for finding max context
-        const limit = await this.detectLimit(provider, modelDraft, 'output', token, onProgress);
+        const limit = await ModelTester.detectLimit(
+          provider,
+          modelDraft,
+          "output",
+          token,
+          onProgress,
+        );
 
         if (limit !== undefined) {
           // Strategy: Use detected Output Limit (max_tokens) as the base.
@@ -95,9 +106,14 @@ export class ModelTester {
 
       // 3. Vision Check
       if (options.checkVision) {
-        onProgress?.('Verifying vision capabilities...');
+        onProgress?.("Verifying vision capabilities...");
         try {
-          await this.performRequest(provider, modelDraft, { type: 'vision' }, token);
+          await ModelTester.performRequest(
+            provider,
+            modelDraft,
+            { type: "vision" },
+            token,
+          );
           result.visionSupported = true;
         } catch (e) {
           result.visionSupported = false;
@@ -106,9 +122,14 @@ export class ModelTester {
 
       // 4. Tools Check
       if (options.checkTools) {
-        onProgress?.('Verifying tool calling capabilities...');
+        onProgress?.("Verifying tool calling capabilities...");
         try {
-          await this.performRequest(provider, modelDraft, { type: 'tools' }, token);
+          await ModelTester.performRequest(
+            provider,
+            modelDraft,
+            { type: "tools" },
+            token,
+          );
           result.toolCallingSupported = true;
         } catch (e) {
           result.toolCallingSupported = false;
@@ -117,17 +138,21 @@ export class ModelTester {
 
       // 5. Speed Test
       if (options.checkSpeed) {
-        onProgress?.('Measuring response speed...');
+        onProgress?.("Measuring response speed...");
         try {
-          result.speed = await this.measureSpeed(provider, modelDraft, token);
+          result.speed = await ModelTester.measureSpeed(
+            provider,
+            modelDraft,
+            token,
+          );
         } catch (speedError) {
-          logger.warn('Speed test failed', speedError);
+          logger.warn("Speed test failed", speedError);
           // Don't fail the whole test, just leave speed undefined
         }
       }
     } catch (error: any) {
       result.error = error.message || String(error);
-      logger.error('Model test failed', error);
+      logger.error("Model test failed", error);
     }
 
     return result;
@@ -136,38 +161,45 @@ export class ModelTester {
   private static async performRequest(
     provider: Provider,
     modelDraft: ModelDraft,
-    payload: { type: 'text' | 'vision' | 'tools'; prompt?: string; maxOutputTokens?: number },
-    signal: AbortSignal
+    payload: {
+      type: "text" | "vision" | "tools";
+      prompt?: string;
+      maxOutputTokens?: number;
+    },
+    signal: AbortSignal,
   ): Promise<string | undefined> {
     const aiModel = AIProviderRegistry.createModel(
       provider,
-      this.resolveModelIdentifierFromDraft(modelDraft)
+      ModelTester.resolveModelIdentifierFromDraft(modelDraft),
     );
 
     let messages: ModelMessage[] = [];
-    let tools: Record<string, Tool> | undefined = undefined;
+    let tools: Record<string, Tool> | undefined;
 
-    if (payload.type === 'vision') {
+    if (payload.type === "vision") {
       // Construct a vision message
       messages = [
         {
-          role: 'user',
+          role: "user",
           content: [
-            { type: 'text', text: 'Describe this image' },
-            { type: 'image', image: Buffer.from(this.VISION_TEST_IMAGE, 'base64') },
+            { type: "text", text: "Describe this image" },
+            {
+              type: "image",
+              image: Buffer.from(ModelTester.VISION_TEST_IMAGE, "base64"),
+            },
           ],
         },
       ];
     } else {
       // Use simple string content for text-only requests to ensure maximum compatibility
-      messages = [{ role: 'user', content: payload.prompt ?? "Reply 'OK'." }];
+      messages = [{ role: "user", content: payload.prompt ?? "Reply 'OK'." }];
     }
 
-    if (payload.type === 'tools') {
+    if (payload.type === "tools") {
       tools = {
         test_tool: {
-          description: 'A test tool',
-          inputSchema: jsonSchema({ type: 'object', properties: {} }),
+          description: "A test tool",
+          inputSchema: jsonSchema({ type: "object", properties: {} }),
         } as any,
       };
     }
@@ -181,12 +213,12 @@ export class ModelTester {
       abortSignal: signal,
     } as any);
 
-    if (payload.type === 'tools') {
+    if (payload.type === "tools") {
       // Check if tool was called
       if (result.toolCalls && result.toolCalls.length > 0) {
-        return 'Tool called';
+        return "Tool called";
       }
-      return 'Tool not called';
+      return "Tool not called";
     }
 
     return result.text;
@@ -195,12 +227,14 @@ export class ModelTester {
   private static async measureSpeed(
     provider: Provider,
     modelDraft: ModelDraft,
-    token: AbortSignal
+    token: AbortSignal,
   ): Promise<number> {
     // Use LLMService to measure speed
     const llmService = new LLMService();
-    const model: Model = { ...modelDraft, id: 'temp' };
-    const messages = [new vscode.LanguageModelTextPart('Count from 1 to 50. e.g. 1, 2, 3...')];
+    const model: Model = { ...modelDraft, id: "temp" };
+    const messages = [
+      new vscode.LanguageModelTextPart("Count from 1 to 50. e.g. 1, 2, 3..."),
+    ];
 
     // Mock VS Code message
     const vsMessages: vscode.LanguageModelChatRequestMessage[] = [
@@ -215,17 +249,18 @@ export class ModelTester {
     let endTime = 0;
     let tokenCount = 0;
 
-    const progressReporter: vscode.Progress<vscode.LanguageModelResponsePart> = {
-      report: () => {
-        // no-op
-      },
-    };
+    const progressReporter: vscode.Progress<vscode.LanguageModelResponsePart> =
+      {
+        report: () => {
+          // no-op
+        },
+      };
 
     const cancellationToken: vscode.CancellationToken = {
       isCancellationRequested: token.aborted,
       onCancellationRequested: (listener) => {
-        token.addEventListener('abort', listener);
-        return { dispose: () => token.removeEventListener('abort', listener) };
+        token.addEventListener("abort", listener);
+        return { dispose: () => token.removeEventListener("abort", listener) };
       },
     };
 
@@ -240,7 +275,7 @@ export class ModelTester {
         firstTokenTime = stats.firstTokenTime;
         endTime = stats.endTime;
         tokenCount = stats.tokenCount;
-      }
+      },
     );
 
     // Validate the timing data
@@ -260,12 +295,16 @@ export class ModelTester {
     return 0;
   }
 
-  private static resolveModelIdentifierFromDraft(modelDraft: ModelDraft): string {
+  private static resolveModelIdentifierFromDraft(
+    modelDraft: ModelDraft,
+  ): string {
     const trimmedId = modelDraft.id?.trim();
     if (trimmedId) {
       return trimmedId;
     }
-    const trimmedFamily = (modelDraft.family ?? ConfigManager.getDefaultModelFamily()).trim();
+    const trimmedFamily = (
+      modelDraft.family ?? ConfigManager.getDefaultModelFamily()
+    ).trim();
     if (trimmedFamily) {
       return trimmedFamily;
     }
@@ -279,13 +318,18 @@ export class ModelTester {
   private static async detectLimit(
     provider: Provider,
     modelDraft: ModelDraft,
-    _mode: 'input' | 'output',
+    _mode: "input" | "output",
     token: AbortSignal,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<number | undefined> {
     // 1. Try to probe via error message first (Zero-cost)
     // This is the most accurate way if the API supports it
-    const probed = await this.probeLimitFromError(provider, modelDraft, token, onProgress);
+    const probed = await ModelTester.probeLimitFromError(
+      provider,
+      modelDraft,
+      token,
+      onProgress,
+    );
     if (probed > 0) {
       onProgress?.(`Probed limit from API error: ${probed}`);
       return probed;
@@ -297,12 +341,14 @@ export class ModelTester {
     // If it never rejects (even at 512k), we assume it ignores the parameter, but we return the highest tested value
     // as a "safe" limit, or we could fallback to a default.
 
-    const testMode = 'output';
-    onProgress?.('Probing max_tokens limit via binary search...');
+    const testMode = "output";
+    onProgress?.("Probing max_tokens limit via binary search...");
 
     // Coarse search (Reverse)
     // 512k, 256k, 128k, 64k, 32k, 16k, 8k, 4k
-    const coarsePoints = [512000, 256000, 128000, 64000, 32000, 16000, 8000, 4000];
+    const coarsePoints = [
+      512000, 256000, 128000, 64000, 32000, 16000, 8000, 4000,
+    ];
     let high = 0;
     let low = 0;
 
@@ -311,7 +357,13 @@ export class ModelTester {
         return 0;
       }
       onProgress?.(`Probing ${testMode} limit: ${point} tokens...`);
-      const success = await this.verifyLimit(provider, modelDraft, point, testMode, token);
+      const success = await ModelTester.verifyLimit(
+        provider,
+        modelDraft,
+        point,
+        testMode,
+        token,
+      );
       if (success) {
         high = point;
         if (point === coarsePoints[0]) {
@@ -332,7 +384,15 @@ export class ModelTester {
       // Even the lowest point failed? Try a very small fallback
       const fallback = 1024;
       onProgress?.(`Probing fallback limit: ${fallback}...`);
-      if (await this.verifyLimit(provider, modelDraft, fallback, testMode, token)) {
+      if (
+        await ModelTester.verifyLimit(
+          provider,
+          modelDraft,
+          fallback,
+          testMode,
+          token,
+        )
+      ) {
         return fallback;
       }
       return 0;
@@ -350,7 +410,13 @@ export class ModelTester {
       }
       const mid = Math.floor((l + r) / 2);
       onProgress?.(`Probing ${testMode} limit: ${mid} tokens...`);
-      const success = await this.verifyLimit(provider, modelDraft, mid, testMode, token);
+      const success = await ModelTester.verifyLimit(
+        provider,
+        modelDraft,
+        mid,
+        testMode,
+        token,
+      );
       if (success) {
         best = mid;
         l = mid;
@@ -366,25 +432,34 @@ export class ModelTester {
     provider: Provider,
     modelDraft: ModelDraft,
     token: AbortSignal,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
   ): Promise<number> {
     try {
       // Send a huge max_tokens to provoke an error
       const hugeValue = 100000000;
-      const payload = { type: 'text', maxOutputTokens: hugeValue, prompt: "Reply 'OK'." };
+      const payload = {
+        type: "text",
+        maxOutputTokens: hugeValue,
+        prompt: "Reply 'OK'.",
+      };
 
       // We expect this to fail and throw an error string
-      await this.performRequest(provider, modelDraft, payload as any, token);
+      await ModelTester.performRequest(
+        provider,
+        modelDraft,
+        payload as any,
+        token,
+      );
       return 0; // Surprisingly succeeded?
     } catch (e: any) {
       let errorMsg = (e.message || String(e)).toLowerCase();
 
       // Check for AI SDK specific error fields to capture the full error details
       if (e.responseBody) {
-        errorMsg += ' ' + String(e.responseBody).toLowerCase();
+        errorMsg += " " + String(e.responseBody).toLowerCase();
       }
       if (e.data) {
-        errorMsg += ' ' + JSON.stringify(e.data).toLowerCase();
+        errorMsg += " " + JSON.stringify(e.data).toLowerCase();
       }
 
       onProgress?.(`Probing error message: ${errorMsg}`);
@@ -404,7 +479,7 @@ export class ModelTester {
       for (const pattern of patterns) {
         const match = errorMsg.match(pattern);
         if (match && match[1]) {
-          const val = parseInt(match[1], 10);
+          const val = Number.parseInt(match[1], 10);
           if (!isNaN(val) && val > 0) {
             return val;
           }
@@ -418,19 +493,19 @@ export class ModelTester {
     provider: Provider,
     modelDraft: ModelDraft,
     value: number,
-    mode: 'input' | 'output',
-    token: AbortSignal
+    mode: "input" | "output",
+    token: AbortSignal,
   ): Promise<boolean> {
     try {
       const intValue = Math.floor(value);
-      let payload: any = { type: 'text' };
+      const payload: any = { type: "text" };
 
-      if (mode === 'input') {
+      if (mode === "input") {
         // Construct a prompt with approximately 'value' tokens.
         // We use "word " which is typically 1 token in many tokenizers.
         // To be safe and efficient, we can use a repeated string.
         // "a " is often 1 token.
-        const chunk = 'a ';
+        const chunk = "a ";
         const repeatCount = intValue;
         // Limit payload size to avoid OOM or network issues if value is huge
         if (repeatCount > 200000) {
@@ -444,7 +519,12 @@ export class ModelTester {
         payload.prompt = "Reply 'OK'.";
       }
 
-      const responseText = await this.performRequest(provider, modelDraft, payload, token);
+      const responseText = await ModelTester.performRequest(
+        provider,
+        modelDraft,
+        payload,
+        token,
+      );
       return responseText !== undefined;
     } catch (e) {
       return false;

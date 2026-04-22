@@ -1,5 +1,5 @@
-import { CustomTool } from '../types';
-import { logger } from '../logger';
+import type { CustomTool } from "../types";
+import { logger } from "../logger";
 
 export class ToolParser {
   static parse(data: any, fileName: string, source: string): CustomTool | null {
@@ -19,7 +19,7 @@ export class ToolParser {
       } else if (data.command) {
         // Legacy/Simple format support
         steps.push({
-          name: 'default',
+          name: "default",
           command: data.command,
         });
       }
@@ -31,7 +31,7 @@ export class ToolParser {
       // Normalize steps: convert legacy `run` string or `command` into structured { command, args }
       const splitArgsRespectingQuotes = (s: string) => {
         const parts: string[] = [];
-        let current = '';
+        let current = "";
         let inSingle = false;
         let inDouble = false;
         for (let i = 0; i < s.length; i++) {
@@ -44,10 +44,10 @@ export class ToolParser {
             inDouble = !inDouble;
             continue;
           }
-          if (ch === ' ' && !inSingle && !inDouble) {
+          if (ch === " " && !inSingle && !inDouble) {
             if (current.length > 0) {
               parts.push(current);
-              current = '';
+              current = "";
             }
             continue;
           }
@@ -65,10 +65,12 @@ export class ToolParser {
 
         if (s.shell) {
           logger.debug(
-            `ToolParser: Found shell property for step ${s.name || 'unnamed'}: ${s.shell}`
+            `ToolParser: Found shell property for step ${s.name || "unnamed"}: ${s.shell}`,
           );
         } else {
-          logger.debug(`ToolParser: No shell property for step ${s.name || 'unnamed'}`);
+          logger.debug(
+            `ToolParser: No shell property for step ${s.name || "unnamed"}`,
+          );
         }
 
         // If step has `run` as string, we now preserve it as a script string
@@ -85,7 +87,10 @@ export class ToolParser {
         if (Array.isArray(s.run)) {
           // run: ["cmd","arg1"] -> { command: "cmd", args: ["arg1"] }
           if (s.run.length > 0) {
-            ns.run = { command: String(s.run[0]), args: s.run.slice(1).map(String) };
+            ns.run = {
+              command: String(s.run[0]),
+              args: s.run.slice(1).map(String),
+            };
           }
         } else if (s.command) {
           // legacy `command` field -> { command: "cmd", args: [...] }
@@ -94,7 +99,10 @@ export class ToolParser {
             ns.run = { command: cmd, args: s.args.map(String) };
           } else {
             const tokens = splitArgsRespectingQuotes(cmd);
-            ns.run = tokens.length > 0 ? { command: tokens[0], args: tokens.slice(1) } : undefined;
+            ns.run =
+              tokens.length > 0
+                ? { command: tokens[0], args: tokens.slice(1) }
+                : undefined;
           }
         }
         // If s.run is a string, we leave it alone now.
@@ -113,13 +121,16 @@ export class ToolParser {
         const properties: Record<string, any> = {};
         const required: string[] = [];
 
-        for (const [key, value] of Object.entries(data.inputs) as [string, any][]) {
+        for (const [key, value] of Object.entries(data.inputs) as [
+          string,
+          any,
+        ][]) {
           const prop: any = {};
           // Allow explicit type in YAML, otherwise default to string
           if (value && value.type) {
             prop.type = value.type;
           } else {
-            prop.type = 'string';
+            prop.type = "string";
           }
 
           if (value && value.description) {
@@ -130,7 +141,10 @@ export class ToolParser {
           }
 
           // Required by default unless explicitly false or has a default value
-          if (!(value && value.required === false) && !(value && value.default !== undefined)) {
+          if (
+            !(value && value.required === false) &&
+            !(value && value.default !== undefined)
+          ) {
             required.push(key);
           }
 
@@ -138,7 +152,7 @@ export class ToolParser {
         }
 
         parameters = {
-          type: 'object',
+          type: "object",
           properties,
         } as any;
 
@@ -151,20 +165,20 @@ export class ToolParser {
       }
 
       const visibility =
-        source === 'global'
-          ? 'global'
-          : source.indexOf('public') >= 0
-            ? 'public'
-            : source.indexOf('private') >= 0
-              ? 'private'
-              : 'public';
+        source === "global"
+          ? "global"
+          : source.indexOf("public") >= 0
+            ? "public"
+            : source.indexOf("private") >= 0
+              ? "private"
+              : "public";
       return {
         id: `${source}:${fileName}:${data.name}`,
         name: data.name,
         description: data.description,
-        parameters: parameters || { type: 'object', properties: {} },
+        parameters: parameters || { type: "object", properties: {} },
         steps: finalSteps,
-        source: source === 'global' ? 'global' : 'workspace',
+        source: source === "global" ? "global" : "workspace",
         visibility,
         fileName,
       };

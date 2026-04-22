@@ -1,7 +1,7 @@
-import { Model, RemoteModelInfo } from '../../common/types';
-import { ProviderModelManager } from '../../core/providers/ProviderModelManager';
-import { logger } from '../../common/logger';
-import { IdGenerator, ConfigManager } from '../../common/utils';
+import type { Model, RemoteModelInfo } from "../../common/types";
+import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
+import { logger } from "../../common/logger";
+import { IdGenerator, ConfigManager } from "../../common/utils";
 
 export interface SyncResult {
   added: number;
@@ -34,7 +34,7 @@ export class ProviderUseCases {
     try {
       remoteModels = await this.manager.fetchProviderModelsFromApi(provider);
     } catch (error) {
-      logger.error('Failed to fetch remote models', {
+      logger.error("Failed to fetch remote models", {
         providerId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -56,8 +56,12 @@ export class ProviderUseCases {
           name: remoteModel.name || remoteModel.id,
           family: remoteModel.family || ConfigManager.getDefaultModelFamily(),
           version: ConfigManager.getDefaultModelVersion(),
-          maxInputTokens: remoteModel.maxInputTokens || ConfigManager.getDefaultMaxInputTokens(),
-          maxOutputTokens: remoteModel.maxOutputTokens || ConfigManager.getDefaultMaxOutputTokens(),
+          maxInputTokens:
+            remoteModel.maxInputTokens ||
+            ConfigManager.getDefaultMaxInputTokens(),
+          maxOutputTokens:
+            remoteModel.maxOutputTokens ||
+            ConfigManager.getDefaultMaxOutputTokens(),
           capabilities: remoteModel.capabilities || {},
           isUserSelectable: true,
         };
@@ -72,10 +76,15 @@ export class ProviderUseCases {
         if (hasChanges) {
           existing.name = remoteModel.name || remoteModel.id;
           existing.family = remoteModel.family || existing.family;
-          existing.maxInputTokens = remoteModel.maxInputTokens || existing.maxInputTokens;
-          existing.maxOutputTokens = remoteModel.maxOutputTokens || existing.maxOutputTokens;
+          existing.maxInputTokens =
+            remoteModel.maxInputTokens || existing.maxInputTokens;
+          existing.maxOutputTokens =
+            remoteModel.maxOutputTokens || existing.maxOutputTokens;
           if (remoteModel.capabilities) {
-            existing.capabilities = { ...existing.capabilities, ...remoteModel.capabilities };
+            existing.capabilities = {
+              ...existing.capabilities,
+              ...remoteModel.capabilities,
+            };
           }
           updated++;
         }
@@ -95,7 +104,7 @@ export class ProviderUseCases {
       mutated: added > 0 || updated > 0,
     };
 
-    logger.info('Provider models synced', {
+    logger.info("Provider models synced", {
       providerId,
       ...result,
     });
@@ -108,7 +117,7 @@ export class ProviderUseCases {
    */
   async deleteProvider(providerId: string): Promise<void> {
     await this.manager.deleteProvider(providerId);
-    logger.info('Provider deleted', { providerId });
+    logger.info("Provider deleted", { providerId });
   }
 
   /**
@@ -116,6 +125,6 @@ export class ProviderUseCases {
    */
   async setApiKey(providerId: string, apiKey: string): Promise<void> {
     await this.manager.setApiKey(providerId, apiKey);
-    logger.info('Provider API key updated', { providerId });
+    logger.info("Provider API key updated", { providerId });
   }
 }

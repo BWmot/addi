@@ -1,9 +1,9 @@
-import * as vscode from 'vscode';
-import { BaseCommandHandler } from './base';
-import { ProviderTreeItem } from '../views/providerView';
-import { ModelTreeItem } from '../../core/providers/AddiChatProvider';
-import { UserFeedback, ConfigManager } from '../../common/utils';
-import { logger } from '../../common/logger';
+import * as vscode from "vscode";
+import { BaseCommandHandler } from "./base";
+import type { ProviderTreeItem } from "../views/providerView";
+import type { ModelTreeItem } from "../../core/providers/AddiChatProvider";
+import { UserFeedback, ConfigManager } from "../../common/utils";
+import { logger } from "../../common/logger";
 
 /**
  * Model-related command handler
@@ -13,11 +13,14 @@ export class ModelCommandHandler extends BaseCommandHandler {
    * Add a new model to a provider
    */
   async addModel(item: ProviderTreeItem): Promise<void> {
-    logger.info('Command addModel invoked', logger.sanitizeProvider(item.provider));
+    logger.info(
+      "Command addModel invoked",
+      logger.sanitizeProvider(item.provider),
+    );
     if (this.editorViewManager) {
-      this.editorViewManager.openEditor(undefined, 'create', item.provider.id);
+      this.editorViewManager.openEditor(undefined, "create", item.provider.id);
     } else {
-      UserFeedback.showError('Editor view manager not initialized');
+      UserFeedback.showError("Editor view manager not initialized");
     }
   }
 
@@ -30,12 +33,12 @@ export class ModelCommandHandler extends BaseCommandHandler {
     }
 
     const count = items.length;
-    logger.info('Command editModels invoked', { count });
+    logger.info("Command editModels invoked", { count });
 
     if (this.editorViewManager) {
-      this.editorViewManager.openEditor(items, 'edit');
+      this.editorViewManager.openEditor(items, "edit");
     } else {
-      UserFeedback.showError('Editor view manager not initialized');
+      UserFeedback.showError("Editor view manager not initialized");
     }
   }
 
@@ -48,13 +51,18 @@ export class ModelCommandHandler extends BaseCommandHandler {
     }
 
     const count = items.length;
-    const names = items.map((i) => i.model.name).join(', ');
-    logger.info('Command deleteModels invoked', { count, models: names });
+    const names = items.map((i) => i.model.name).join(", ");
+    logger.info("Command deleteModels invoked", { count, models: names });
 
     if (ConfigManager.getConfirmDelete()) {
-      const deleteOption: vscode.MessageItem = { title: 'Delete' };
-      const deleteDontAskOption: vscode.MessageItem = { title: "Delete and don't ask again" };
-      const cancelOption: vscode.MessageItem = { title: 'Cancel', isCloseAffordance: true };
+      const deleteOption: vscode.MessageItem = { title: "Delete" };
+      const deleteDontAskOption: vscode.MessageItem = {
+        title: "Delete and don't ask again",
+      };
+      const cancelOption: vscode.MessageItem = {
+        title: "Cancel",
+        isCloseAffordance: true,
+      };
 
       const message =
         count === 1 && items[0]
@@ -66,20 +74,20 @@ export class ModelCommandHandler extends BaseCommandHandler {
         { modal: false },
         deleteOption,
         deleteDontAskOption,
-        cancelOption
+        cancelOption,
       );
 
       if (selection === deleteDontAskOption) {
         await vscode.workspace
-          .getConfiguration('addi')
-          .update('confirmDelete', false, vscode.ConfigurationTarget.Global);
+          .getConfiguration("addi")
+          .update("confirmDelete", false, vscode.ConfigurationTarget.Global);
         void vscode.window.showInformationMessage(
-          'Delete confirmation disabled. You can re-enable it in settings.'
+          "Delete confirmation disabled. You can re-enable it in settings.",
         );
       }
 
       if (!selection || selection === cancelOption) {
-        logger.debug('deleteModels canceled');
+        logger.debug("deleteModels canceled");
         return;
       }
     }
@@ -90,12 +98,12 @@ export class ModelCommandHandler extends BaseCommandHandler {
 
       this.refreshTreeView();
       UserFeedback.showInfo(`${count} model(s) deleted`);
-      logger.info('Models deleted', { count, modelNames: names });
+      logger.info("Models deleted", { count, modelNames: names });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to delete models: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to delete models: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
-      this.logError('deleteModels failed', error);
+      this.logError("deleteModels failed", error);
     }
   }
 
@@ -103,12 +111,12 @@ export class ModelCommandHandler extends BaseCommandHandler {
    * Copy a model - opens editor for creating a copy
    */
   async copyModel(item: ModelTreeItem): Promise<void> {
-    logger.info('Command copyModel invoked', logger.sanitizeModel(item.model));
+    logger.info("Command copyModel invoked", logger.sanitizeModel(item.model));
 
     if (this.editorViewManager) {
       const result = this.manager.findModel(item.model.id);
       if (!result) {
-        UserFeedback.showError('Parent provider not found');
+        UserFeedback.showError("Parent provider not found");
         return;
       }
 
@@ -116,9 +124,14 @@ export class ModelCommandHandler extends BaseCommandHandler {
       // Remove id to ensure it's treated as new
       delete (prefillData as any).id;
 
-      this.editorViewManager.openEditor(undefined, 'create', result.provider.id, prefillData);
+      this.editorViewManager.openEditor(
+        undefined,
+        "create",
+        result.provider.id,
+        prefillData,
+      );
     } else {
-      UserFeedback.showError('Editor view manager not initialized');
+      UserFeedback.showError("Editor view manager not initialized");
     }
   }
 
@@ -126,14 +139,14 @@ export class ModelCommandHandler extends BaseCommandHandler {
    * Show models in the picker
    */
   async showModelsInPicker(items: ModelTreeItem[]): Promise<void> {
-    await this.updateModelsVisibility(items, 'show');
+    await this.updateModelsVisibility(items, "show");
   }
 
   /**
    * Hide models from the picker
    */
   async hideModelsFromPicker(items: ModelTreeItem[]): Promise<void> {
-    await this.updateModelsVisibility(items, 'hide');
+    await this.updateModelsVisibility(items, "hide");
   }
 
   /**
@@ -141,10 +154,10 @@ export class ModelCommandHandler extends BaseCommandHandler {
    */
   async showProviderModelsInPicker(item: ProviderTreeItem): Promise<void> {
     logger.info(
-      'Command showProviderModelsInPicker invoked',
-      logger.sanitizeProvider(item.provider)
+      "Command showProviderModelsInPicker invoked",
+      logger.sanitizeProvider(item.provider),
     );
-    await this.updateProviderModelsVisibility(item.provider.id, 'show');
+    await this.updateProviderModelsVisibility(item.provider.id, "show");
   }
 
   /**
@@ -152,10 +165,10 @@ export class ModelCommandHandler extends BaseCommandHandler {
    */
   async hideProviderModelsFromPicker(item: ProviderTreeItem): Promise<void> {
     logger.info(
-      'Command hideProviderModelsFromPicker invoked',
-      logger.sanitizeProvider(item.provider)
+      "Command hideProviderModelsFromPicker invoked",
+      logger.sanitizeProvider(item.provider),
     );
-    await this.updateProviderModelsVisibility(item.provider.id, 'hide');
+    await this.updateProviderModelsVisibility(item.provider.id, "hide");
   }
 
   /**
@@ -163,21 +176,32 @@ export class ModelCommandHandler extends BaseCommandHandler {
    */
   async setModelToCopilot(item: ModelTreeItem): Promise<void> {
     const vendor = item.vendor;
-    const modelId = vendor === 'addi-provider' ? `addi-model:${item.model.id}` : item.model.rid;
+    const modelId =
+      vendor === "addi-provider"
+        ? `addi-model:${item.model.id}`
+        : item.model.rid;
     const family = item.model.family;
 
-    logger.debug('Executing setModelToCopilot', { vendor, modelId, family }, 'Commands');
+    logger.debug(
+      "Executing setModelToCopilot",
+      { vendor, modelId, family },
+      "Commands",
+    );
 
     try {
       // Ensure the model is visible in the picker before selecting it
-      if (vendor === 'addi-provider') {
+      if (vendor === "addi-provider") {
         const result = this.manager.findModel(item.model.id);
         if (result) {
           try {
-            await this.manager.updateModelVisibility(result.provider.id, item.model.id, true);
+            await this.manager.updateModelVisibility(
+              result.provider.id,
+              item.model.id,
+              true,
+            );
             this.refreshTreeView();
           } catch (error) {
-            logger.warn('Failed to force-show model before selection', {
+            logger.warn("Failed to force-show model before selection", {
               error: error instanceof Error ? error.message : String(error),
               modelId: item.model.id,
             });
@@ -186,30 +210,39 @@ export class ModelCommandHandler extends BaseCommandHandler {
       }
 
       // Execute internal VS Code command to change the chat model
-      await vscode.commands.executeCommand('workbench.action.chat.changeModel', {
-        vendor,
-        family,
-        id: modelId,
-      });
+      await vscode.commands.executeCommand(
+        "workbench.action.chat.changeModel",
+        {
+          vendor,
+          family,
+          id: modelId,
+        },
+      );
 
       // Open chat side bar if not already open
       try {
-        await vscode.commands.executeCommand('workbench.action.chat.open');
+        await vscode.commands.executeCommand("workbench.action.chat.open");
       } catch {
         // Ignore if already open
       }
 
       // Focus the chat input after model selection
-      await vscode.commands.executeCommand('workbench.action.chat.focusInput');
+      await vscode.commands.executeCommand("workbench.action.chat.focusInput");
 
-      logger.info('Chat model set to Copilot via command', { vendor, modelId, family });
+      logger.info("Chat model set to Copilot via command", {
+        vendor,
+        modelId,
+        family,
+      });
     } catch (error) {
-      logger.warn('Failed to select chat model via internal command', {
+      logger.warn("Failed to select chat model via internal command", {
         error: error instanceof Error ? error.message : String(error),
         vendor,
         modelId,
       });
-      UserFeedback.showError('Failed to switch model in Chat UI. Please select it manually.');
+      UserFeedback.showError(
+        "Failed to switch model in Chat UI. Please select it manually.",
+      );
     }
   }
 
@@ -218,18 +251,18 @@ export class ModelCommandHandler extends BaseCommandHandler {
    */
   private async updateModelsVisibility(
     items: ModelTreeItem[],
-    action: 'show' | 'hide'
+    action: "show" | "hide",
   ): Promise<void> {
     if (!items || items.length === 0) {
       return;
     }
 
     const count = items.length;
-    const actionLabel = action === 'show' ? 'show' : 'hide';
+    const actionLabel = action === "show" ? "show" : "hide";
     logger.info(`Command ${actionLabel}ModelsInPicker invoked`, { count });
 
     try {
-      const isUserSelectable = action === 'show';
+      const isUserSelectable = action === "show";
 
       // Group models by provider
       const modelsByProvider = new Map<string, ModelTreeItem[]>();
@@ -250,19 +283,19 @@ export class ModelCommandHandler extends BaseCommandHandler {
         const updated = await this.manager.updateModelVisibilityBatch(
           providerId,
           modelIds,
-          isUserSelectable
+          isUserSelectable,
         );
         totalUpdated += updated;
       }
 
       this.refreshTreeView();
       UserFeedback.showInfo(
-        `${totalUpdated} model(s) ${action === 'show' ? 'shown in' : 'hidden from'} picker`
+        `${totalUpdated} model(s) ${action === "show" ? "shown in" : "hidden from"} picker`,
       );
       logger.info(`Models ${actionLabel}`, { count: totalUpdated });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to ${action} models: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to ${action} models: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
       this.logError(`${actionLabel}Models failed`, error);
     }
@@ -273,20 +306,23 @@ export class ModelCommandHandler extends BaseCommandHandler {
    */
   private async updateProviderModelsVisibility(
     providerId: string,
-    action: 'show' | 'hide'
+    action: "show" | "hide",
   ): Promise<void> {
     try {
-      const visible = action === 'show';
-      const updated = await this.manager.updateProviderAllModelsVisibility(providerId, visible);
+      const visible = action === "show";
+      const updated = await this.manager.updateProviderAllModelsVisibility(
+        providerId,
+        visible,
+      );
 
       this.refreshTreeView();
       UserFeedback.showInfo(
-        `${updated} model(s) ${action === 'show' ? 'shown in' : 'hidden from'} picker`
+        `${updated} model(s) ${action === "show" ? "shown in" : "hidden from"} picker`,
       );
       logger.info(`Provider models ${action}`, { providerId, count: updated });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to ${action} provider models: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to ${action} provider models: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
       this.logError(`updateProviderModelsVisibility failed`, error);
     }

@@ -5,7 +5,7 @@
 
 // version: 1
 
-declare module 'vscode' {
+declare module "vscode" {
   /**
    * A language model response part containing thinking/reasoning content.
    * Thinking tokens represent the model's internal reasoning process that
@@ -35,7 +35,11 @@ declare module 'vscode' {
      * @param id Optional unique identifier for this thinking sequence.
      * @param metadata Optional metadata associated with this thinking sequence.
      */
-    constructor(value: string | string[], id?: string, metadata?: { readonly [key: string]: any });
+    constructor(
+      value: string | string[],
+      id?: string,
+      metadata?: { readonly [key: string]: any },
+    );
   }
 
   export interface LanguageModelChatResponse {
@@ -44,7 +48,10 @@ declare module 'vscode' {
      * This includes {@link LanguageModelThinkingPart} which represents the model's internal reasoning process.
      */
     stream: AsyncIterable<
-      LanguageModelTextPart | LanguageModelThinkingPart | LanguageModelToolCallPart | unknown
+      | LanguageModelTextPart
+      | LanguageModelThinkingPart
+      | LanguageModelToolCallPart
+      | unknown
     >;
   }
 
@@ -52,11 +59,11 @@ declare module 'vscode' {
     sendRequest(
       messages: Array<LanguageModelChatMessage | LanguageModelChatMessage2>,
       options?: LanguageModelChatRequestOptions,
-      token?: CancellationToken
+      token?: CancellationToken,
     ): Thenable<LanguageModelChatResponse>;
     countTokens(
       text: string | LanguageModelChatMessage | LanguageModelChatMessage2,
-      token?: CancellationToken
+      token?: CancellationToken,
     ): Thenable<number>;
   }
 
@@ -73,8 +80,12 @@ declare module 'vscode' {
     static User(
       content:
         | string
-        | Array<LanguageModelTextPart | LanguageModelToolResultPart | LanguageModelDataPart>,
-      name?: string
+        | Array<
+            | LanguageModelTextPart
+            | LanguageModelToolResultPart
+            | LanguageModelDataPart
+          >,
+      name?: string,
     ): LanguageModelChatMessage2;
 
     /**
@@ -86,8 +97,12 @@ declare module 'vscode' {
     static Assistant(
       content:
         | string
-        | Array<LanguageModelTextPart | LanguageModelToolCallPart | LanguageModelDataPart>,
-      name?: string
+        | Array<
+            | LanguageModelTextPart
+            | LanguageModelToolCallPart
+            | LanguageModelDataPart
+          >,
+      name?: string,
     ): LanguageModelChatMessage2;
 
     /**
@@ -130,7 +145,7 @@ declare module 'vscode' {
             | LanguageModelDataPart
             | LanguageModelThinkingPart
           >,
-      name?: string
+      name?: string,
     );
   }
 

@@ -1,9 +1,9 @@
-import * as vscode from 'vscode';
-import { ProviderModelManager } from '../../core/providers/ProviderModelManager';
-import { AddiTreeDataProvider } from '../views/providerView';
-import { IStorageService } from '../../domain/interfaces';
-import { EditorViewManager } from '../views/editorView';
-import { logger } from '../../common/logger';
+import type * as vscode from "vscode";
+import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
+import type { AddiTreeDataProvider } from "../views/providerView";
+import type { IStorageService } from "../../domain/interfaces";
+import type { EditorViewManager } from "../views/editorView";
+import { logger } from "../../common/logger";
 
 /**
  * Base command handler with common dependencies
@@ -18,7 +18,7 @@ export abstract class BaseCommandHandler {
   constructor(
     manager: ProviderModelManager,
     treeDataProvider: AddiTreeDataProvider,
-    context: vscode.ExtensionContext
+    context: vscode.ExtensionContext,
   ) {
     this.manager = manager;
     this.treeDataProvider = treeDataProvider;
@@ -37,7 +37,11 @@ export abstract class BaseCommandHandler {
     this.treeDataProvider.refresh();
   }
 
-  protected logError(source: string, error: unknown, context?: Record<string, unknown>): void {
+  protected logError(
+    source: string,
+    error: unknown,
+    context?: Record<string, unknown>,
+  ): void {
     logger.error(source, {
       error: error instanceof Error ? error.message : String(error),
       ...context,

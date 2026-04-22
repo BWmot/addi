@@ -1,6 +1,6 @@
-import { Provider, Model } from '../../common/types';
-import { ProviderModelManager } from '../../core/providers/ProviderModelManager';
-import { logger } from '../../common/logger';
+import type { Provider, Model } from "../../common/types";
+import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
+import { logger } from "../../common/logger";
 
 export interface ModelWithProvider {
   provider: Provider;
@@ -19,7 +19,7 @@ export class ModelUseCases {
    */
   async deleteModels(modelIds: string[]): Promise<number> {
     const count = await this.manager.deleteModels(modelIds);
-    logger.info('Models deleted', { count, modelIds });
+    logger.info("Models deleted", { count, modelIds });
     return count;
   }
 
@@ -28,7 +28,7 @@ export class ModelUseCases {
    */
   async updateModelsVisibility(
     modelIds: string[],
-    action: 'show' | 'hide' | 'showAll' | 'hideAll'
+    action: "show" | "hide" | "showAll" | "hideAll",
   ): Promise<void> {
     const providers = this.manager.getProviders();
     let mutated = false;
@@ -39,16 +39,16 @@ export class ModelUseCases {
       }
 
       for (const model of provider.models) {
-        if (action === 'show' && modelIds.includes(model.id)) {
+        if (action === "show" && modelIds.includes(model.id)) {
           model.isUserSelectable = true;
           mutated = true;
-        } else if (action === 'hide' && modelIds.includes(model.id)) {
+        } else if (action === "hide" && modelIds.includes(model.id)) {
           model.isUserSelectable = false;
           mutated = true;
-        } else if (action === 'showAll') {
+        } else if (action === "showAll") {
           model.isUserSelectable = true;
           mutated = true;
-        } else if (action === 'hideAll') {
+        } else if (action === "hideAll") {
           model.isUserSelectable = false;
           mutated = true;
         }
@@ -57,7 +57,10 @@ export class ModelUseCases {
 
     if (mutated) {
       await this.manager.saveProviders(providers);
-      logger.info('Models visibility updated', { action, modelCount: modelIds.length });
+      logger.info("Models visibility updated", {
+        action,
+        modelCount: modelIds.length,
+      });
     }
   }
 

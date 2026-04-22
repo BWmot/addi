@@ -1,5 +1,5 @@
-import { Provider } from '../../common/types';
-import { Disposable } from 'vscode';
+import type { Provider } from "../../common/types";
+import type { Disposable } from "vscode";
 
 /**
  * Backup entry containing a snapshot of the current providers.

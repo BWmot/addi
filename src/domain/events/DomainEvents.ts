@@ -5,21 +5,21 @@
  */
 export const DomainEvents = {
   // Provider events
-  PROVIDER_ADDED: 'provider.added',
-  PROVIDER_UPDATED: 'provider.updated',
-  PROVIDER_DELETED: 'provider.deleted',
-  PROVIDER_API_KEY_CHANGED: 'provider.apiKey.changed',
+  PROVIDER_ADDED: "provider.added",
+  PROVIDER_UPDATED: "provider.updated",
+  PROVIDER_DELETED: "provider.deleted",
+  PROVIDER_API_KEY_CHANGED: "provider.apiKey.changed",
 
   // Model events
-  MODEL_ADDED: 'model.added',
-  MODEL_UPDATED: 'model.updated',
-  MODEL_DELETED: 'model.deleted',
-  MODEL_VISIBILITY_CHANGED: 'model.visibility.changed',
+  MODEL_ADDED: "model.added",
+  MODEL_UPDATED: "model.updated",
+  MODEL_DELETED: "model.deleted",
+  MODEL_VISIBILITY_CHANGED: "model.visibility.changed",
 
   // Config events
-  CONFIG_EXPORTED: 'config.exported',
-  CONFIG_IMPORTED: 'config.imported',
-  CONFIG_RESET: 'config.reset',
+  CONFIG_EXPORTED: "config.exported",
+  CONFIG_IMPORTED: "config.imported",
+  CONFIG_RESET: "config.reset",
 } as const;
 
 /**

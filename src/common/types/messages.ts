@@ -1,45 +1,58 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
 /**
  * AI SDK Core Message Types
- * Based on @ai-sdk/core
+ * Based on AI SDK v6.x (@ai-sdk/provider-utils)
  */
 export type ModelMessage =
-  | { role: 'system'; content: string }
-  | { role: 'user'; content: string | Array<MessageContentPart> }
-  | { role: 'assistant'; content: string | Array<MessageContentPart> }
-  | { role: 'tool'; content: Array<ToolResultPart> };
+  | { role: "system"; content: string }
+  | { role: "user"; content: string | Array<MessageContentPart> }
+  | { role: "assistant"; content: string | Array<MessageContentPart> }
+  | { role: "tool"; content: Array<ToolResultPart> };
 
-export type MessageContentPart = TextPart | ReasoningPart | ImagePart | ToolCallPart;
+export type MessageContentPart =
+  | TextPart
+  | ReasoningPart
+  | ImagePart
+  | FilePart
+  | ToolCallPart;
 
 export interface TextPart {
-  type: 'text';
+  type: "text";
   text: string;
 }
 
 export interface ReasoningPart {
-  type: 'reasoning';
+  type: "reasoning";
   reasoning: string;
 }
 
 export interface ImagePart {
-  type: 'image';
+  type: "image";
   image: string | Uint8Array | Buffer | URL;
   mediaType?: string;
 }
 
+export interface FilePart {
+  type: "file";
+  data: string | Uint8Array;
+  mediaType: string;
+  filename?: string;
+}
+
 export interface ToolCallPart {
-  type: 'tool-call';
+  type: "tool-call";
   toolCallId: string;
   toolName: string;
-  args: any;
+  input: object;
 }
 
 export interface ToolResultPart {
-  type: 'tool-result';
+  type: "tool-result";
   toolCallId: string;
   toolName: string;
-  result: any;
+  input: object;
+  output: unknown;
 }
 
 // ============================================================================
@@ -50,15 +63,17 @@ export interface ToolResultPart {
  * VS Code Language Model Chat API 角色别名
  * 用于与 VS Code 的 LanguageModelChatMessageRole 对应
  */
-export type ChatMessageRole = 'system' | 'user' | 'assistant';
+export type ChatMessageRole = "system" | "user" | "assistant";
 
 /**
  * 将字符串角色转换为 VS Code 的 LanguageModelChatMessageRole
  */
-export function toVsCodeRole(role: ChatMessageRole): vscode.LanguageModelChatMessageRole {
-  return role === 'user'
+export function toVsCodeRole(
+  role: ChatMessageRole,
+): vscode.LanguageModelChatMessageRole {
+  return role === "user"
     ? vscode.LanguageModelChatMessageRole.User
-    : role === 'assistant'
+    : role === "assistant"
       ? vscode.LanguageModelChatMessageRole.Assistant
       : vscode.LanguageModelChatMessageRole.User; // system 使用 user 作为后备
 }
@@ -77,15 +92,17 @@ export interface ChatMessage {
  * 对应 VS Code 的 LanguageModelTextPart | LanguageModelToolCallPart | LanguageModelThinkingPart 等
  */
 export type VsCodeMessageContent =
-  | { type: 'text'; text: string }
-  | { type: 'reasoning'; reasoning: string }
-  | { type: 'tool-call'; toolCallId: string; toolName: string; args: any }
-  | { type: 'tool-result'; toolCallId: string; toolName: string; result: any };
+  | { type: "text"; text: string }
+  | { type: "reasoning"; reasoning: string }
+  | { type: "tool-call"; toolCallId: string; toolName: string; args: any }
+  | { type: "tool-result"; toolCallId: string; toolName: string; result: any };
 
 /**
  * 创建带有多个部分的 Assistant 消息的辅助函数
  */
-export function createAssistantMessage(content: string | VsCodeMessageContent[]) {
+export function createAssistantMessage(
+  content: string | VsCodeMessageContent[],
+) {
   return vscode.LanguageModelChatMessage.Assistant(content as string | any[]);
 }
 

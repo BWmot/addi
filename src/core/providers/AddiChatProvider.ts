@@ -1,16 +1,16 @@
-import * as vscode from 'vscode';
-import { Model, Provider, ProviderRepository } from '../../common/types';
-import { TokenFormatter } from '../../common/utils';
-import { logger } from '../../common/logger';
-import { ToolRegistry } from '../llm/toolRegistry';
-import { LLMService } from '../llm/llmService';
-import { MessageConverter } from '../llm/messageConverter';
+import * as vscode from "vscode";
+import type { Model, Provider, ProviderRepository } from "../../common/types";
+import { TokenFormatter } from "../../common/utils";
+import { logger } from "../../common/logger";
+import { ToolRegistry } from "../llm/toolRegistry";
+import type { LLMService } from "../llm/llmService";
+import { MessageConverter } from "../llm/messageConverter";
 
 export class ModelTreeItem extends vscode.TreeItem {
   constructor(
     public model: Model,
-    public vendor: string = 'addi-provider',
-    public hasApiKey: boolean = false // whether the parent provider has API key
+    public vendor = "addi-provider",
+    public hasApiKey = false, // whether the parent provider has API key
   ) {
     super(model.name, vscode.TreeItemCollapsibleState.None);
     this.id = model.id;
@@ -22,27 +22,31 @@ export class ModelTreeItem extends vscode.TreeItem {
     // or if the model is hidden from the picker
     if (isHidden) {
       // Model is hidden from picker - show as hidden
-      this.contextValue = 'model-hidden';
+      this.contextValue = "model-hidden";
     } else if (!hasApiKey) {
       // No API key - show warning
-      this.contextValue = 'model-no-key';
+      this.contextValue = "model-no-key";
     } else if (!supportsTools) {
       // Has API key but model doesn't support tools - show as ineligible
-      this.contextValue = 'model-ineligible';
+      this.contextValue = "model-ineligible";
     } else {
       // Has API key and supports tools - normal model
-      this.contextValue = 'model';
+      this.contextValue = "model";
     }
 
     const capabilityHints: string[] = [];
     if (model.capabilities?.imageInput) {
-      capabilityHints.push('vision');
+      capabilityHints.push("vision");
     }
     if (supportsTools) {
       capabilityHints.push(`tools`);
     }
-    const inputTokensDetail = TokenFormatter.formatDetailed(model.maxInputTokens);
-    const outputTokensDetail = TokenFormatter.formatDetailed(model.maxOutputTokens);
+    const inputTokensDetail = TokenFormatter.formatDetailed(
+      model.maxInputTokens,
+    );
+    const outputTokensDetail = TokenFormatter.formatDetailed(
+      model.maxOutputTokens,
+    );
     let tooltip = `name: ${model.name}\nvendor: ${vendor}\nid: ${model.id}\nrid: ${model.rid}\nfamily: ${model.family}\nversion: ${model.version}\ninput: ${inputTokensDetail}\noutput: ${outputTokensDetail}`;
     if (model.averageSpeed) {
       tooltip += `\nspeed: ${model.averageSpeed.toFixed(1)} t/s`;
@@ -50,13 +54,16 @@ export class ModelTreeItem extends vscode.TreeItem {
       tooltip += `\nspeed: ?/s`;
     }
     if (capabilityHints.length > 0) {
-      tooltip += `\ncapabilities: ${capabilityHints.join(', ')}`;
+      tooltip += `\ncapabilities: ${capabilityHints.join(", ")}`;
     }
 
     this.tooltip = tooltip;
     const inputSummary = TokenFormatter.format(model.maxInputTokens);
     const outputSummary = TokenFormatter.format(model.maxOutputTokens);
-    let desc = inputSummary && outputSummary ? ` · ${inputSummary}↑/${outputSummary}↓` : '';
+    let desc =
+      inputSummary && outputSummary
+        ? ` · ${inputSummary}↑/${outputSummary}↓`
+        : "";
     if (model.averageSpeed) {
       desc += ` · ${model.averageSpeed.toFixed(0)}/s`;
     }
@@ -70,13 +77,14 @@ export class ModelTreeItem extends vscode.TreeItem {
  * - Manages the lifecycle of chat models available to Copilot.
  */
 export class AddiChatProvider implements vscode.LanguageModelChatProvider {
-  private readonly _onDidChangeLanguageModelChatInformation = new vscode.EventEmitter<void>();
+  private readonly _onDidChangeLanguageModelChatInformation =
+    new vscode.EventEmitter<void>();
   public readonly onDidChangeLanguageModelChatInformation =
     this._onDidChangeLanguageModelChatInformation.event;
 
   constructor(
     private repository: ProviderRepository,
-    private llmService: LLMService
+    private llmService: LLMService,
   ) {
     // Listen for repository updates to refresh the model list in Copilot
     if (this.repository.onDidUpdate) {
@@ -88,10 +96,10 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
 
   async provideLanguageModelChatInformation(
     options: { silent: boolean },
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelChatInformation[]> {
     const providers = this.repository.getProviders();
-    logger.debug('provideLanguageModelChatInformation', {
+    logger.debug("provideLanguageModelChatInformation", {
       silent: options.silent,
       providerCount: providers.length,
     });
@@ -102,13 +110,14 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     // unconditionally ensures the host UI (e.g. Copilot) can list and select
     // models; requests will still fail later if the provider is unconfigured.
     const filterProviders = providers;
-    logger.debug('Filtered providers for chat information', {
+    logger.debug("Filtered providers for chat information", {
       original: providers.length,
       filtered: filterProviders.length,
     });
     return filterProviders.flatMap((p) =>
       p.models.map((m) => {
-        const friendlyInput = TokenFormatter.format(m.maxInputTokens) || String(m.maxInputTokens);
+        const friendlyInput =
+          TokenFormatter.format(m.maxInputTokens) || String(m.maxInputTokens);
         const friendlyOutput =
           TokenFormatter.format(m.maxOutputTokens) || String(m.maxOutputTokens);
         const summary = `${friendlyInput}↑/${friendlyOutput}↓`;
@@ -128,10 +137,12 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
           capabilities: {
             imageInput: !!m.capabilities?.imageInput,
             // LanguageModelChatInformation.capabilities.toolCalling expects number | boolean
-            toolCalling: (m.capabilities?.toolCalling ?? false) as number | boolean,
+            toolCalling: (m.capabilities?.toolCalling ?? false) as
+              | number
+              | boolean,
           },
         };
-      })
+      }),
     );
   }
 
@@ -140,13 +151,13 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     messages: readonly vscode.LanguageModelChatRequestMessage[],
     options: vscode.ProvideLanguageModelChatResponseOptions | undefined,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<void> {
     const modelId =
-      typeof model.id === 'string' && model.id.startsWith('addi-model:')
-        ? model.id.replace('addi-model:', '')
+      typeof model.id === "string" && model.id.startsWith("addi-model:")
+        ? model.id.replace("addi-model:", "")
         : model.id;
-    logger.info('Chat response requested', {
+    logger.info("Chat response requested", {
       requestedModelId: modelId,
       messageCount: messages.length,
       hasOptions: Boolean(options),
@@ -154,7 +165,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     const messageSummary = MessageConverter.summarizeMessages(messages);
     const toolDefinitions = this.resolveToolDefinitions(options);
     const toolNames = toolDefinitions?.map((t) => t.name) ?? [];
-    logger.debug('Chat request summary', {
+    logger.debug("Chat request summary", {
       requestedModelId: modelId,
       messages: messageSummary,
       toolCount: toolDefinitions?.length ?? 0,
@@ -162,18 +173,20 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
       toolSource:
         toolDefinitions && toolDefinitions.length > 0
           ? Array.isArray((options as any)?.tools)
-            ? 'host'
-            : 'fallback'
-          : 'none',
+            ? "host"
+            : "fallback"
+          : "none",
     });
     const result = this.repository.findModel(modelId);
     if (!result) {
-      logger.warn('Chat response requested for unknown model', { requestedModelId: modelId });
+      logger.warn("Chat response requested for unknown model", {
+        requestedModelId: modelId,
+      });
       throw new Error(`Model with ID '${modelId}' not found.`);
     }
 
     const { provider, model: storedModel } = result;
-    logger.debug('Resolved model for chat response', {
+    logger.debug("Resolved model for chat response", {
       provider: logger.sanitizeProvider(provider),
       model: logger.sanitizeModel(storedModel),
       messages: messageSummary,
@@ -182,21 +195,35 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     // Retrieve API key from SecretStorage
     const apiKey = await this.repository.getApiKey(provider.id);
 
-    if (!apiKey || apiKey.trim() === '') {
-      logger.warn('Provider missing API key', logger.sanitizeProvider(provider));
-      throw new Error(`API key for provider '${provider.name}' is not configured.`);
+    if (!apiKey || apiKey.trim() === "") {
+      logger.warn(
+        "Provider missing API key",
+        logger.sanitizeProvider(provider),
+      );
+      throw new Error(
+        `API key for provider '${provider.name}' is not configured.`,
+      );
     }
 
-    if (!provider.apiEndpoint || provider.apiEndpoint.trim() === '') {
-      logger.warn('Provider missing API endpoint', logger.sanitizeProvider(provider));
-      throw new Error(`API endpoint for provider '${provider.name}' is not configured.`);
+    if (!provider.apiEndpoint || provider.apiEndpoint.trim() === "") {
+      logger.warn(
+        "Provider missing API endpoint",
+        logger.sanitizeProvider(provider),
+      );
+      throw new Error(
+        `API endpoint for provider '${provider.name}' is not configured.`,
+      );
     }
 
     const providerWithKey: Provider = { ...provider, apiKey };
 
     const startTime = Date.now();
-    const onStats = (stats: { firstTokenTime: number; endTime: number; tokenCount: number }) => {
-      logger.debug('onStats called', stats);
+    const onStats = (stats: {
+      firstTokenTime: number;
+      endTime: number;
+      tokenCount: number;
+    }) => {
+      logger.debug("onStats called", stats);
       // Validate the timing data before calculating speed
       if (
         stats.tokenCount > 0 &&
@@ -211,24 +238,35 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
           const speed = stats.tokenCount / duration;
           // Sanity check: reject unrealistic speeds (>10000 t/s is physically impossible)
           if (speed <= 10000) {
-            logger.info('Calculated speed', { speed, duration, tokenCount: stats.tokenCount });
+            logger.info("Calculated speed", {
+              speed,
+              duration,
+              tokenCount: stats.tokenCount,
+            });
             // Update speed
-            if ('updateModelSpeed' in this.repository) {
-              (this.repository as any).updateModelSpeed(provider.id, storedModel.id, speed);
+            if ("updateModelSpeed" in this.repository) {
+              (this.repository as any).updateModelSpeed(
+                provider.id,
+                storedModel.id,
+                speed,
+              );
             } else {
-              logger.warn('Repository does not support updateModelSpeed');
+              logger.warn("Repository does not support updateModelSpeed");
             }
           } else {
-            logger.warn('Speed rejected: unrealistic value', { speed });
+            logger.warn("Speed rejected: unrealistic value", { speed });
           }
         } else {
-          logger.warn('Speed rejected: unrealistic duration', { duration });
+          logger.warn("Speed rejected: unrealistic duration", { duration });
         }
       }
     };
 
     try {
-      logger.debug('Dispatching request via LLMService', logger.sanitizeProvider(providerWithKey));
+      logger.debug(
+        "Dispatching request via LLMService",
+        logger.sanitizeProvider(providerWithKey),
+      );
       await this.llmService.chat(
         providerWithKey,
         storedModel,
@@ -236,10 +274,10 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
         options,
         progress,
         token,
-        onStats
+        onStats,
       );
     } catch (error) {
-      logger.error('Model query error', {
+      logger.error("Model query error", {
         error: error instanceof Error ? error.message : String(error),
         provider: logger.sanitizeProvider(providerWithKey),
         model: logger.sanitizeModel(storedModel),
@@ -249,7 +287,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
       throw error;
     } finally {
       const duration = Date.now() - startTime;
-      logger.info('Chat response completed', {
+      logger.info("Chat response completed", {
         requestedModelId: modelId,
         durationMs: duration,
       });
@@ -259,22 +297,23 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
   async provideTokenCount(
     _model: vscode.LanguageModelChatInformation,
     text: string | vscode.LanguageModelChatRequestMessage,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<number> {
-    if (typeof text === 'string') {
+    if (typeof text === "string") {
       const words = text.split(/\s+/).length;
       return Math.ceil(words * 1.3);
     }
     // If a message is provided, stringify only text parts
-    if (typeof text === 'object' && text) {
+    if (typeof text === "object" && text) {
       const maybe = text as { content?: unknown };
       if (Array.isArray(maybe.content)) {
         const parts = (maybe.content as readonly unknown[])
           .filter(
-            (p): p is vscode.LanguageModelTextPart => p instanceof vscode.LanguageModelTextPart
+            (p): p is vscode.LanguageModelTextPart =>
+              p instanceof vscode.LanguageModelTextPart,
           )
           .map((p: vscode.LanguageModelTextPart) => p.value)
-          .join('');
+          .join("");
         return Math.ceil(parts.length / 4);
       }
     }
@@ -283,7 +322,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
   }
 
   private resolveToolDefinitions(
-    options: vscode.ProvideLanguageModelChatResponseOptions | undefined
+    options: vscode.ProvideLanguageModelChatResponseOptions | undefined,
   ): ReadonlyArray<vscode.LanguageModelChatTool> | undefined {
     const provided = options?.tools;
     if (provided && provided.length > 0) {

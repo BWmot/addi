@@ -1,4 +1,4 @@
-import { ProviderConfig } from './provider';
+import type { ProviderConfig } from "./provider";
 
 /**
  * AddiConfig - 同步配置 (存储于 Memento，键: addi.config)

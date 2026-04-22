@@ -7,9 +7,9 @@
  *   bun run clean --all    - 清理所有缓存包括 node_modules、.vscode-test、.vsix
  */
 
-import { rm, readdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { existsSync } from 'node:fs';
+import { rm, readdir, stat } from "node:fs/promises";
+import { join } from "node:path";
+import { existsSync } from "node:fs";
 
 interface CleanTarget {
   name: string;
@@ -20,27 +20,27 @@ interface CleanTarget {
 
 // 解析命令行参数
 const args = process.argv.slice(2);
-const isAll = args.includes('--all');
+const isAll = args.includes("--all");
 
-console.log('\n🧹 清理项目缓存和构建文件...\n');
+console.log("\n🧹 清理项目缓存和构建文件...\n");
 
 // 需要清理的目录
 const dirsToClean: CleanTarget[] = [
-  { name: 'dist (Bun 构建输出)', path: 'dist' },
-  { name: 'out (TypeScript 编译输出)', path: 'out' },
+  { name: "dist (Bun 构建输出)", path: "dist" },
+  { name: "out (TypeScript 编译输出)", path: "out" },
 ];
 
 // --all 参数额外清理的内容
 if (isAll) {
   dirsToClean.push(
-    { name: '.vscode-test (VS Code 测试缓存)', path: '.vscode-test' },
-    { name: 'node_modules (依赖目录)', path: 'node_modules' }
+    { name: ".vscode-test (VS Code 测试缓存)", path: ".vscode-test" },
+    { name: "node_modules (依赖目录)", path: "node_modules" },
   );
 }
 
 // 需要清理的文件模式
 const filesToClean: CleanTarget[] = [
-  { name: '*.vsix (VS Code 扩展包)', path: '.', pattern: /\.vsix$/ },
+  { name: "*.vsix (VS Code 扩展包)", path: ".", pattern: /\.vsix$/ },
 ];
 
 // 递归获取目录大小
@@ -151,7 +151,9 @@ async function main() {
     totalSize += await cleanFiles(file);
   }
 
-  console.log(`\n🎉 清理完成! 释放空间: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+  console.log(
+    `\n🎉 清理完成! 释放空间: ${(totalSize / 1024 / 1024).toFixed(2)} MB`,
+  );
 }
 
 main();

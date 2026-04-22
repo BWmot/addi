@@ -1,25 +1,28 @@
 # VS Code API 参考
 
-> 更新时间：2026-04-07
+> 更新时间：2026-04-22
+> 基于 VS Code Copilot API
 
 ---
 
 ## Language Model API
 
-### 核心接口
+### LanguageModelChatProvider (Proposed: chatProvider)
 
 ```typescript
-interface LanguageModelChatProvider {
-  provideLanguageModelChatInformation(options: {
-    silent: boolean;
-  }): Promise<LanguageModelChatInformation[]>;
+interface LanguageModelChatProvider<T extends LanguageModelChatInformation = LanguageModelChatInformation> {
+  provideLanguageModelChatInformation(
+    options: PrepareLanguageModelChatModelOptions,
+    token: CancellationToken
+  ): ProviderResult<T[]>;
+
   provideLanguageModelChatResponse(
-    model: LanguageModelChatInformation,
+    model: T,
     messages: readonly LanguageModelChatRequestMessage[],
     options: ProvideLanguageModelChatResponseOptions,
     progress: Progress<LanguageModelResponsePart>,
-    token?: CancellationToken
-  ): Promise<void>;
+    token: CancellationToken
+  ): Thenable<void>;
 }
 ```
 
@@ -37,6 +40,7 @@ interface LanguageModelChatInformation {
   supportsThinking?: boolean;
   supportsToolCalls?: boolean;
   isUserSelectable?: boolean;
+  configuration?: { [key: string]: any }; // If provider requires configuration
 }
 ```
 
@@ -132,13 +136,80 @@ interface LanguageModelToolDefinition {
 
 ## Proposed API
 
-类型定义位于 `src/proposedApi/`:
+类型定义位于 `src/proposedApi/`。
+
+### languageModelThinkingPart
 
 ```typescript
 // Thinking Part
 new LanguageModelThinkingPart(value, id?, metadata?)
 
-// Error
+// value: string | string[]
+// id?: string - 思考序列的唯一标识符
+// metadata?: { readonly [key: string]: any }
+```
+
+### LanguageModelChatMessage2
+
+支持多部分内容的增强消息类型：
+
+```typescript
+class LanguageModelChatMessage2 {
+  static User(content: string | Array<TextPart | ToolResultPart | DataPart>): LanguageModelChatMessage2;
+  static Assistant(content: string | Array<TextPart | ToolCallPart | DataPart>): LanguageModelChatMessage2;
+
+  content: Array<TextPart | ToolResultPart | ToolCallPart | DataPart | LanguageModelThinkingPart>;
+}
+```
+
+### toolInvocationApproveCombination
+
+允许用户批准特定工具+参数组合：
+
+```typescript
+interface LanguageModelToolConfirmationMessages {
+  approveCombination?: {
+    message: string | MarkdownString;  // 批准按钮的标签
+    arguments?: string;                // 参数的可读表示
+  };
+}
+```
+
+### chatParticipantPrivate (重要更新)
+
+新增子代理和权限相关功能：
+
+```typescript
+interface ChatRequest {
+  subAgentInvocationId?: string;    // 子代理调用 ID
+  subAgentName?: string;             // 子代理显示名
+  parentRequestId?: string;          // 父请求 ID
+  permissionLevel?: string;          // 'autoApprove' | 'autopilot'
+  hasHooksEnabled: boolean;
+  isSystemInitiated?: boolean;       // 系统发起请求
+  chatSessionResource: Uri;           // 注意：已从 sessionId 改为 Uri
+}
+
+interface LanguageModelToolInvocationOptions<T> {
+  subAgentInvocationId?: string;
+  preToolUseResult?: {
+    permissionDecision?: 'allow' | 'deny' | 'ask';
+    permissionDecisionReason?: string;
+    updatedInput?: object;
+  };
+}
+
+class ExtendedLanguageModelToolResult extends LanguageModelToolResult {
+  toolResultMessage?: string | MarkdownString;
+  toolResultDetails?: Array<Uri | Location>;
+  toolMetadata?: unknown;
+  hasError?: boolean;
+}
+```
+
+### Error Types
+
+```typescript
 LanguageModelError.NotFound(message)
 LanguageModelError.NoPermissions(message)
 LanguageModelError.Blocked(message)

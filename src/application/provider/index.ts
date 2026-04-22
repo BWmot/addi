@@ -1,1 +1,1 @@
-export { ProviderUseCases, SyncResult } from './ProviderUseCases';
+export { ProviderUseCases, SyncResult } from "./ProviderUseCases";

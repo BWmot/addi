@@ -2,6 +2,27 @@
 
 All notable changes to the "addi" extension will be documented in this file.
 
+## [1.0.3] - 2026-04-22
+
+### Added
+
+- **Extension Initialization Command**: New `addi.initializeExtension` command to clear storage and reset all settings
+- **Provider Model Handling**: Improved provider model handling with better default token limits from ConfigManager
+
+### Changed
+
+- **Dependencies**: Updated npm dependencies including AI SDK v6.x, `@types/vscode`, and provider packages
+- **Token Limits**: Updated default input and output token limits in model configurations
+- **Code Documentation**: Re-documented and formatted codebase for better maintainability
+- **Proposed API Updates**: Updated VS Code proposed API declarations to match official v15 specifications:
+  - `languageModelThinkingPart`
+  - `toolInvocationApproveCombination`
+  - `chatParticipantPrivate`
+
+### Removed
+
+- **Deprecated Sync Commands**: Removed deprecated sync commands and related tests
+
 ## [1.0.2] - 2026-04-04
 
 ### Added

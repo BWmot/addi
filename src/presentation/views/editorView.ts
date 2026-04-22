@@ -1,15 +1,15 @@
-import * as vscode from 'vscode';
-import { ProviderModelManager } from '../../core/providers/ProviderModelManager';
-import { ProviderTreeItem } from './providerView';
-import { ModelTreeItem } from '../../core/providers/AddiChatProvider';
-import { logger, maskSecret } from '../../common/logger';
-import { Provider, Model } from '../../common/types';
-import { TokenFormatter, ConfigManager } from '../../common/utils';
-import { ModelTester } from '../../core/llm/modelTester';
-import { TextDecoder } from 'util';
+import * as vscode from "vscode";
+import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
+import { ProviderTreeItem } from "./providerView";
+import { ModelTreeItem } from "../../core/providers/AddiChatProvider";
+import { logger, maskSecret } from "../../common/logger";
+import type { Provider, Model } from "../../common/types";
+import { TokenFormatter, ConfigManager } from "../../common/utils";
+import { ModelTester } from "../../core/llm/modelTester";
+import { TextDecoder } from "util";
 
 export class EditorViewManager {
-  public static readonly viewType = 'addiEditor';
+  public static readonly viewType = "addiEditor";
   private _panel: vscode.WebviewPanel | undefined;
   private _currentItem: ProviderTreeItem | ModelTreeItem | undefined;
   private _currentItems: ModelTreeItem[] = []; // For batch editing
@@ -17,25 +17,25 @@ export class EditorViewManager {
   private _lastVerifiedData: string | undefined;
   private _detectedSpeed: number | undefined;
   private _viewState: {
-    mode: 'edit' | 'create';
-    type: 'provider' | 'model';
+    mode: "edit" | "create";
+    type: "provider" | "model";
     parentId?: string;
     prefillData?: any;
     isBatch?: boolean; // Flag for batch edit mode
     batchCount?: number; // Number of items in batch
-  } = { mode: 'edit', type: 'provider' };
+  } = { mode: "edit", type: "provider" };
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
     private readonly _manager: ProviderModelManager,
-    private readonly _refreshTree: () => void
+    private readonly _refreshTree: () => void,
   ) {}
 
   public async openEditor(
     item: ProviderTreeItem | ModelTreeItem | ModelTreeItem[] | undefined,
-    mode: 'edit' | 'create',
+    mode: "edit" | "create",
     parentId?: string,
-    prefillData?: any
+    prefillData?: any,
   ) {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
@@ -46,41 +46,45 @@ export class EditorViewManager {
     } else {
       this._panel = vscode.window.createWebviewPanel(
         EditorViewManager.viewType,
-        'Addi Editor',
+        "Addi Editor",
         column || vscode.ViewColumn.One,
         {
           enableScripts: true,
           retainContextWhenHidden: true,
           localResourceRoots: [this._extensionUri],
-        }
+        },
       );
 
       this._panel.onDidDispose(() => {
         this._panel = undefined;
       });
 
-      this._panel.webview.html = await this._getHtmlForWebview(this._panel.webview);
+      this._panel.webview.html = await this._getHtmlForWebview(
+        this._panel.webview,
+      );
 
       this._panel.webview.onDidReceiveMessage(async (data) => {
-        logger.debug('Webview message received', data, 'EditorView');
+        logger.debug("Webview message received", data, "EditorView");
         switch (data.type) {
-          case 'saveProvider':
+          case "saveProvider":
             await this._saveProvider(data.payload);
             break;
-          case 'saveModel':
+          case "saveModel":
             await this._saveModel(data.payload);
             break;
-          case 'verifyModel':
+          case "verifyModel":
             await this._verifyModel(data.payload);
             break;
-          case 'log':
-            logger.debug('Webview log', data.payload, 'EditorView');
+          case "log":
+            logger.debug("Webview log", data.payload, "EditorView");
             break;
-          case 'cancel':
+          case "cancel":
             this._panel?.dispose();
             break;
-          case 'showError':
-            await vscode.window.showErrorMessage(data.payload?.message || 'An error occurred');
+          case "showError":
+            await vscode.window.showErrorMessage(
+              data.payload?.message || "An error occurred",
+            );
             break;
         }
       });
@@ -91,9 +95,9 @@ export class EditorViewManager {
 
   private async _updatePanelContent(
     item: ProviderTreeItem | ModelTreeItem | ModelTreeItem[] | undefined,
-    mode: 'edit' | 'create',
+    mode: "edit" | "create",
     parentId?: string,
-    prefillData?: any
+    prefillData?: any,
   ) {
     // Handle array of items for batch editing
     this._currentItems = [];
@@ -125,8 +129,10 @@ export class EditorViewManager {
       this._currentProvider = pId
         ? this._manager.getProviders().find((p) => p.id === pId)
         : undefined;
-    } else if (mode === 'create' && parentId) {
-      this._currentProvider = this._manager.getProviders().find((p) => p.id === parentId);
+    } else if (mode === "create" && parentId) {
+      this._currentProvider = this._manager
+        .getProviders()
+        .find((p) => p.id === parentId);
     } else if (isBatchMode && this._currentItems.length > 0) {
       // For batch mode, get provider from first item
       const firstItem = this._currentItems[0];
@@ -141,15 +147,23 @@ export class EditorViewManager {
     }
 
     const type =
-      item instanceof ProviderTreeItem || (mode === 'create' && !parentId) ? 'provider' : 'model';
-    this._viewState = { mode, type, prefillData, isBatch: isBatchMode, batchCount };
+      item instanceof ProviderTreeItem || (mode === "create" && !parentId)
+        ? "provider"
+        : "model";
+    this._viewState = {
+      mode,
+      type,
+      prefillData,
+      isBatch: isBatchMode,
+      batchCount,
+    };
     if (parentId) {
       this._viewState.parentId = parentId;
     }
 
-    let title = 'Addi Editor';
-    if (mode === 'create') {
-      title = `Create ${type === 'provider' ? 'Provider' : 'Model'}`;
+    let title = "Addi Editor";
+    if (mode === "create") {
+      title = `Create ${type === "provider" ? "Provider" : "Model"}`;
     } else {
       if (isBatchMode) {
         title = `Edit ${batchCount} Models`;
@@ -161,10 +175,10 @@ export class EditorViewManager {
     }
 
     let dataToSend: any = {};
-    if (mode === 'create') {
+    if (mode === "create") {
       if (prefillData) {
         dataToSend = prefillData;
-      } else if (type === 'model') {
+      } else if (type === "model") {
         dataToSend = {
           family: ConfigManager.getDefaultModelFamily(),
           version: ConfigManager.getDefaultModelVersion(),
@@ -195,7 +209,9 @@ export class EditorViewManager {
         const modelData = item?.model;
         // If editing a model, also include parent provider options for placeholder suggestions
         const parentId =
-          item instanceof ModelTreeItem ? this._getParentProviderId(item) : undefined;
+          item instanceof ModelTreeItem
+            ? this._getParentProviderId(item)
+            : undefined;
         const parentProvider = parentId
           ? this._manager.getProviders().find((p) => p.id === parentId)
           : undefined;
@@ -211,7 +227,7 @@ export class EditorViewManager {
     if (this._panel) {
       this._panel.title = title;
       this._panel.webview.postMessage({
-        type: 'update',
+        type: "update",
         mode: mode,
         item: {
           type: type,
@@ -220,7 +236,9 @@ export class EditorViewManager {
           data: dataToSend,
           parentId:
             parentId ||
-            (item instanceof ModelTreeItem ? this._getParentProviderId(item) : undefined),
+            (item instanceof ModelTreeItem
+              ? this._getParentProviderId(item)
+              : undefined),
         },
       });
     }
@@ -232,16 +250,20 @@ export class EditorViewManager {
   }
 
   private async _saveProvider(data: any) {
-    if (this._viewState.mode === 'create') {
-      const providerData: Omit<Provider, 'id' | 'models'> = {
+    if (this._viewState.mode === "create") {
+      const providerData: Omit<Provider, "id" | "models"> = {
         name: data.name,
         providerType: data.providerType,
         apiEndpoint: data.apiEndpoint,
         apiKey: data.apiKey,
         description: data.description,
         website: data.website,
-        ...(data.extraBody !== undefined ? { extraBody: data.extraBody || undefined } : {}),
-        ...(data.extraHeader !== undefined ? { extraHeader: data.extraHeader || undefined } : {}),
+        ...(data.extraBody !== undefined
+          ? { extraBody: data.extraBody || undefined }
+          : {}),
+        ...(data.extraHeader !== undefined
+          ? { extraHeader: data.extraHeader || undefined }
+          : {}),
         ...(data.options ? { options: data.options } : {}),
       };
       if (!providerData.apiKey) {
@@ -264,13 +286,16 @@ export class EditorViewManager {
         this._panel?.dispose();
       } catch (e) {
         vscode.window.showErrorMessage(
-          `Failed to add provider: ${e instanceof Error ? e.message : String(e)}`
+          `Failed to add provider: ${e instanceof Error ? e.message : String(e)}`,
         );
       }
       return;
     }
 
-    if (!this._currentItem || !(this._currentItem instanceof ProviderTreeItem)) {
+    if (
+      !this._currentItem ||
+      !(this._currentItem instanceof ProviderTreeItem)
+    ) {
       return;
     }
     const provider = this._currentItem.provider;
@@ -287,16 +312,21 @@ export class EditorViewManager {
       website: data.website,
       apiEndpoint: data.apiEndpoint,
       providerType: data.providerType,
-      ...(data.extraBody !== undefined ? { extraBody: data.extraBody || undefined } : {}),
-      ...(data.extraHeader !== undefined ? { extraHeader: data.extraHeader || undefined } : {}),
+      ...(data.extraBody !== undefined
+        ? { extraBody: data.extraBody || undefined }
+        : {}),
+      ...(data.extraHeader !== undefined
+        ? { extraHeader: data.extraHeader || undefined }
+        : {}),
       ...(data.options ? { options: data.options } : {}),
     };
 
     if (apiKeyTouched) {
-      const trimmedApiKey = typeof data.apiKey === 'string' ? data.apiKey.trim() : undefined;
+      const trimmedApiKey =
+        typeof data.apiKey === "string" ? data.apiKey.trim() : undefined;
       // trimmedApiKey === '' → user cleared the field → delete the existing key
       // trimmedApiKey non-empty → user entered new key → set it
-      updates.apiKey = trimmedApiKey ?? '';
+      updates.apiKey = trimmedApiKey ?? "";
     }
     // !apiKeyTouched → do NOT add apiKey to updates at all → caller preserves existing
 
@@ -306,13 +336,13 @@ export class EditorViewManager {
       this._refreshTree();
       this._panel?.dispose();
     } else {
-      vscode.window.showErrorMessage('Failed to update provider.');
+      vscode.window.showErrorMessage("Failed to update provider.");
     }
   }
 
   private async _verifyModel(data: any) {
     if (!this._currentProvider) {
-      vscode.window.showErrorMessage('No provider context found.');
+      vscode.window.showErrorMessage("No provider context found.");
       return;
     }
 
@@ -348,10 +378,12 @@ export class EditorViewManager {
         });
         try {
           // Retrieve API key from SecretStorage before testing
-          const apiKey = await this._manager.getApiKey(this._currentProvider!.id);
+          const apiKey = await this._manager.getApiKey(
+            this._currentProvider!.id,
+          );
 
           if (!apiKey) {
-            throw new Error('API Key not found. Please configure it first.');
+            throw new Error("API Key not found. Please configure it first.");
           }
 
           const providerWithKey = { ...this._currentProvider!, apiKey };
@@ -369,7 +401,7 @@ export class EditorViewManager {
             controller.signal,
             (msg) => {
               progress.report({ message: msg });
-            }
+            },
           );
 
           if (result.success) {
@@ -400,7 +432,9 @@ export class EditorViewManager {
               result.visionSupported !== data.imageInput
             ) {
               updates.imageInput = result.visionSupported;
-              msg += result.visionSupported ? ' (Vision detected)' : ' (Vision removed)';
+              msg += result.visionSupported
+                ? " (Vision detected)"
+                : " (Vision removed)";
               hasUpdates = true;
             }
 
@@ -409,67 +443,78 @@ export class EditorViewManager {
               result.toolCallingSupported !== data.toolCalling
             ) {
               updates.toolCalling = result.toolCallingSupported;
-              msg += result.toolCallingSupported ? ' (Tools detected)' : ' (Tools removed)';
+              msg += result.toolCallingSupported
+                ? " (Tools detected)"
+                : " (Tools removed)";
               hasUpdates = true;
             }
 
             if (hasUpdates && this._panel) {
               this._panel.webview.postMessage({
-                type: 'updateFields',
+                type: "updateFields",
                 payload: updates,
               });
             }
 
             vscode.window.showInformationMessage(msg);
           } else {
-            throw new Error(result.error || 'Unknown error');
+            throw new Error(result.error || "Unknown error");
           }
         } catch (e) {
           this._lastVerifiedData = undefined;
           vscode.window.showErrorMessage(
-            `Verification failed: ${e instanceof Error ? e.message : String(e)}`
+            `Verification failed: ${e instanceof Error ? e.message : String(e)}`,
           );
         }
-      }
+      },
     );
   }
 
   private async _saveModel(data: any) {
     logger.debug(
-      '_saveModel called',
-      { data, viewState: this._viewState, currentItem: this._currentItem?.constructor.name },
-      'EditorView'
+      "_saveModel called",
+      {
+        data,
+        viewState: this._viewState,
+        currentItem: this._currentItem?.constructor.name,
+      },
+      "EditorView",
     );
 
     const maxInputTokens = TokenFormatter.parse(data.maxInputTokens);
     const maxOutputTokens = TokenFormatter.parse(data.maxOutputTokens);
 
     // In batch mode, allow empty values - don't update those fields
-    const isBatchMode = this._viewState.isBatch && this._currentItems.length > 0;
+    const isBatchMode =
+      this._viewState.isBatch && this._currentItems.length > 0;
 
     // For batch mode or single edit, validate that at least one token value is provided
     if (!isBatchMode && (!maxInputTokens || !maxOutputTokens)) {
-      vscode.window.showErrorMessage('Invalid token values.');
+      vscode.window.showErrorMessage("Invalid token values.");
       return;
     }
 
     // Use _lastVerifiedData to check if we can skip verification or warn user
     // For now, we just log it or ignore it as we trust the user's explicit save action
-    if (this._lastVerifiedData && this._lastVerifiedData !== JSON.stringify(data)) {
+    if (
+      this._lastVerifiedData &&
+      this._lastVerifiedData !== JSON.stringify(data)
+    ) {
       // Data changed since last verification
     }
 
     // Build model data - in batch mode with empty tokens, don't include those fields to preserve existing values
     const modelData: Partial<Model> = {
       id: data.id,
-      rid: data.rid || '', // Remote ID for the model
+      rid: data.rid || "", // Remote ID for the model
       name: data.name,
       family: data.family,
       version: data.version,
       ...(maxInputTokens !== undefined ? { maxInputTokens } : {}),
       ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
       extraBody: data.extraBody !== undefined ? data.extraBody : undefined,
-      extraHeader: data.extraHeader !== undefined ? data.extraHeader : undefined,
+      extraHeader:
+        data.extraHeader !== undefined ? data.extraHeader : undefined,
       capabilities: {
         imageInput: data.imageInput,
         audioInput: data.audioInput,
@@ -485,27 +530,35 @@ export class EditorViewManager {
     }
 
     // Default toolCalling to true for new models
-    if (modelData.capabilities && modelData.capabilities.toolCalling === undefined) {
+    if (
+      modelData.capabilities &&
+      modelData.capabilities.toolCalling === undefined
+    ) {
       modelData.capabilities.toolCalling = true;
     }
 
-    if (this._viewState.mode === 'create') {
+    if (this._viewState.mode === "create") {
       // For new models, don't set speedHistory (no history yet)
       if (this._detectedSpeed) {
         delete (modelData as any).speedHistory;
       }
       if (!this._viewState.parentId) {
-        vscode.window.showErrorMessage('No parent provider specified for new model.');
+        vscode.window.showErrorMessage(
+          "No parent provider specified for new model.",
+        );
         return;
       }
       try {
-        await this._manager.addModel(this._viewState.parentId, modelData as any);
+        await this._manager.addModel(
+          this._viewState.parentId,
+          modelData as any,
+        );
         vscode.window.showInformationMessage(`Model "${data.name}" added.`);
         this._refreshTree();
         this._panel?.dispose();
       } catch (e) {
         vscode.window.showErrorMessage(
-          `Failed to add model: ${e instanceof Error ? e.message : String(e)}`
+          `Failed to add model: ${e instanceof Error ? e.message : String(e)}`,
         );
       }
       return;
@@ -525,31 +578,43 @@ export class EditorViewManager {
     const parentId = this._getParentProviderId(this._currentItem);
 
     if (!parentId) {
-      vscode.window.showErrorMessage('Could not find parent provider for model.');
+      vscode.window.showErrorMessage(
+        "Could not find parent provider for model.",
+      );
       return;
     }
 
     // Update model speed separately to preserve speedHistory
     if (this._detectedSpeed) {
-      await this._manager.updateModelSpeed(parentId, model.id, this._detectedSpeed);
+      await this._manager.updateModelSpeed(
+        parentId,
+        model.id,
+        this._detectedSpeed,
+      );
       // Remove speedHistory and averageSpeed from modelData to avoid overriding
       delete (modelData as any).speedHistory;
       delete (modelData as any).averageSpeed;
     }
 
-    const success = await this._manager.updateModel(parentId, model.id, modelData);
+    const success = await this._manager.updateModel(
+      parentId,
+      model.id,
+      modelData,
+    );
     if (success) {
       vscode.window.showInformationMessage(`Model "${data.name}" updated.`);
       this._refreshTree();
       this._panel?.dispose();
     } else {
-      vscode.window.showErrorMessage('Failed to update model.');
+      vscode.window.showErrorMessage("Failed to update model.");
     }
   }
 
   private async _saveBatchModels(modelData: Partial<Model>) {
     if (!this._currentProvider) {
-      vscode.window.showErrorMessage('No provider context found for batch update.');
+      vscode.window.showErrorMessage(
+        "No provider context found for batch update.",
+      );
       return;
     }
 
@@ -560,13 +625,19 @@ export class EditorViewManager {
 
     try {
       const ids = this._currentItems.map((i) => i.model.id);
-      const updatedCount = await this._manager.updateModels(parentId, ids, batchUpdateData as any);
-      vscode.window.showInformationMessage(`${updatedCount} model(s) updated successfully.`);
+      const updatedCount = await this._manager.updateModels(
+        parentId,
+        ids,
+        batchUpdateData as any,
+      );
+      vscode.window.showInformationMessage(
+        `${updatedCount} model(s) updated successfully.`,
+      );
       this._refreshTree();
       this._panel?.dispose();
     } catch (e) {
       vscode.window.showErrorMessage(
-        `Failed to update models: ${e instanceof Error ? e.message : String(e)}`
+        `Failed to update models: ${e instanceof Error ? e.message : String(e)}`,
       );
     }
   }
@@ -574,7 +645,11 @@ export class EditorViewManager {
   private async _getHtmlForWebview(webview: vscode.Webview): Promise<string> {
     const nonce = getNonce();
     try {
-      const fileUri = vscode.Uri.joinPath(this._extensionUri, 'resources', 'editor.html');
+      const fileUri = vscode.Uri.joinPath(
+        this._extensionUri,
+        "resources",
+        "editor.html",
+      );
       const bytes = await vscode.workspace.fs.readFile(fileUri);
       let html = new TextDecoder().decode(bytes);
 
@@ -583,15 +658,16 @@ export class EditorViewManager {
 
       return html;
     } catch (e) {
-      logger.error('Failed to load editor HTML', e);
+      logger.error("Failed to load editor HTML", e);
       return `<!DOCTYPE html><html><body><p>Error loading editor. Check logs.</p></body></html>`;
     }
   }
 }
 
 function getNonce() {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let text = "";
+  const possible =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (let i = 0; i < 32; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }

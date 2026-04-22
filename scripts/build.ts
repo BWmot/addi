@@ -33,20 +33,20 @@ function getGitHubHeaders() {
   }
   // GitHub API 使用 Bearer 格式
   return {
-    Authorization: token ? `Bearer ${token}` : '',
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent': 'addi-build-script',
+    Authorization: token ? `Bearer ${token}` : "",
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "addi-build-script",
   };
 }
 
 // 使用 fetch 的通用请求函数
 async function githubFetch<T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T | null> {
   const url = `${GITHUB_API_BASE}${endpoint}`;
-  
+
   try {
     const response = await fetch(url, {
       ...options,
@@ -67,20 +67,23 @@ async function githubFetch<T = unknown>(
       return null;
     }
 
-    const data = await response.json() as T;
+    const data = (await response.json()) as T;
     return data;
   } catch (error) {
     // 详细的错误信息
     const errorMessage = error instanceof Error ? error.message : String(error);
     logError(`GitHub API 请求失败: ${errorMessage}`);
     logError(`请求 URL: ${url}`);
-    
+
     // 检查是否是代理问题
-    if (errorMessage.includes("Unable to connect") || errorMessage.includes("ECONNREFUSED")) {
+    if (
+      errorMessage.includes("Unable to connect") ||
+      errorMessage.includes("ECONNREFUSED")
+    ) {
       logWarn("无法连接到 GitHub，可能需要配置代理");
-      logWarn("设置代理: $env:HTTPS_PROXY=\"http://127.0.0.1:7890\"");
+      logWarn('设置代理: $env:HTTPS_PROXY="http://127.0.0.1:7890"');
     }
-    
+
     return null;
   }
 }
@@ -116,7 +119,11 @@ function logWarn(msg: string) {
 }
 
 // 执行命令
-function execCommand(command: string, args: string[], options: { cwd?: string; silent?: boolean } = {}): Promise<{ code: number; output: string }> {
+function execCommand(
+  command: string,
+  args: string[],
+  options: { cwd?: string; silent?: boolean } = {},
+): Promise<{ code: number; output: string }> {
   return new Promise((resolve) => {
     const proc = spawn(command, args, {
       cwd: options.cwd || PROJECT_ROOT,
@@ -189,7 +196,7 @@ async function installDependencies(): Promise<boolean> {
   logStep("安装依赖");
 
   const result = await execCommand("bun", ["install"]);
-  
+
   if (result.code !== 0) {
     logError("安装依赖失败");
     return false;
@@ -208,10 +215,10 @@ async function needsCompile(): Promise<boolean> {
 
   // 检查 package.json 和源文件是否比 dist 文件新
   const srcFiles = ["src/presentation/extension.ts", "package.json"];
-  
+
   try {
     const distStats = await stat(distPath);
-    
+
     for (const srcFile of srcFiles) {
       const srcPath = join(PROJECT_ROOT, srcFile);
       if (existsSync(srcPath)) {
@@ -233,7 +240,7 @@ async function compile(): Promise<boolean> {
   logStep("编译 TypeScript");
 
   const result = await execCommand("bun", ["run", "compile"]);
-  
+
   if (result.code !== 0) {
     logError("编译失败");
     return false;
@@ -263,7 +270,7 @@ async function packageVsix(): Promise<boolean> {
 
   // 运行编译（minify 版本）
   let result = await execCommand("bun", ["run", "package"]);
-  
+
   if (result.code !== 0) {
     logError("编译失败");
     return false;
@@ -357,14 +364,16 @@ async function releaseToGitHub(): Promise<boolean> {
     return false;
   }
 
-  logSuccess(`发布成功: https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/tag/${tag}`);
+  logSuccess(
+    `发布成功: https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/tag/${tag}`,
+  );
   return true;
 }
 
 // 获取已存在的 release
 async function getExistingRelease(
   apiUrl: string,
-  tag: string
+  tag: string,
 ): Promise<{ id: number; upload_url: string } | null> {
   interface ReleaseResponse {
     id: number;
@@ -382,12 +391,14 @@ async function getExistingRelease(
 async function deleteExistingRelease(
   apiUrl: string,
   releaseId: number,
-  tag: string
+  tag: string,
 ): Promise<void> {
   log(`   删除 tag: ${tag}`, "gray");
   // 先删除对应的 git tag
   await execCommand("git", ["tag", "-d", tag], { silent: true });
-  await execCommand("git", ["push", "origin", `:refs/tags/${tag}`], { silent: true });
+  await execCommand("git", ["push", "origin", `:refs/tags/${tag}`], {
+    silent: true,
+  });
 
   // 删除 GitHub release
   log(`   删除 GitHub release #${releaseId}`, "gray");
@@ -399,7 +410,7 @@ async function deleteExistingRelease(
 // 创建新 release
 async function createRelease(
   apiUrl: string,
-  tag: string
+  tag: string,
 ): Promise<{ id: number; upload_url: string } | null> {
   const version = await getVersion();
 
@@ -435,12 +446,12 @@ async function createRelease(
 async function uploadAsset(
   uploadUrl: string,
   fileName: string,
-  filePath: string
+  filePath: string,
 ): Promise<boolean> {
   // 替换模板中的 {name}
   const uploadEndpoint = uploadUrl.replace(
     "{?name,label}",
-    `?name=${encodeURIComponent(fileName)}`
+    `?name=${encodeURIComponent(fileName)}`,
   );
 
   log(`   上传地址: ${uploadEndpoint}`, "gray");
@@ -458,8 +469,8 @@ async function uploadAsset(
     const response = await fetch(uploadEndpoint, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.GITHUB_TOKEN}`,
-        "Accept": "application/vnd.github+json",
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
         "Content-Type": "application/octet-stream",
       },
@@ -473,7 +484,7 @@ async function uploadAsset(
       return false;
     }
 
-    const data = await response.json() as AssetResponse;
+    const data = (await response.json()) as AssetResponse;
     if (data?.id) {
       return true;
     }
@@ -483,8 +494,11 @@ async function uploadAsset(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logError(`上传请求失败: ${errorMessage}`);
-    
-    if (errorMessage.includes("Unable to connect") || errorMessage.includes("ECONNREFUSED")) {
+
+    if (
+      errorMessage.includes("Unable to connect") ||
+      errorMessage.includes("ECONNREFUSED")
+    ) {
       logWarn("无法连接到 GitHub，请检查网络或配置代理");
     }
   }

@@ -1,10 +1,10 @@
-import * as vscode from 'vscode';
-import { streamText, generateText, ModelMessage, Tool } from 'ai';
-import { Provider, Model, ModelOptions } from '../../common/types';
-import { AIProviderRegistry } from './aiRegistry';
-import { MessageConverter } from './messageConverter';
-import { ToolOrchestrator } from './toolOrchestrator';
-import { logger } from '../../common/logger';
+import * as vscode from "vscode";
+import { streamText, generateText, type ModelMessage, type Tool } from "ai";
+import type { Provider, Model, ModelOptions } from "../../common/types";
+import { AIProviderRegistry } from "./aiRegistry";
+import { MessageConverter } from "./messageConverter";
+import { ToolOrchestrator } from "./toolOrchestrator";
+import { logger } from "../../common/logger";
 
 // ============================================================================
 // Types & Interfaces
@@ -12,7 +12,11 @@ import { logger } from '../../common/logger';
 
 interface ExecutionOptions {
   onStats?:
-    | ((stats: { firstTokenTime: number; endTime: number; tokenCount: number }) => void)
+    | ((stats: {
+        firstTokenTime: number;
+        endTime: number;
+        tokenCount: number;
+      }) => void)
     | undefined;
   onReasoning?: ((delta: string) => void) | undefined;
   // Internal flag to prevent duplicate stats reporting in streaming mode
@@ -52,10 +56,17 @@ export class LLMService {
     options: vscode.ProvideLanguageModelChatResponseOptions | undefined,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
-    onStats?: (stats: { firstTokenTime: number; endTime: number; tokenCount: number }) => void
+    onStats?: (stats: {
+      firstTokenTime: number;
+      endTime: number;
+      tokenCount: number;
+    }) => void,
   ): Promise<void> {
     // Convert VS Code messages to AI SDK format
-    const coreMessages = await MessageConverter.toAiCoreMessages(messages, model.capabilities);
+    const coreMessages = await MessageConverter.toAiCoreMessages(
+      messages,
+      model.capabilities,
+    );
     const systemMessage = MessageConverter.extractSystemMessage(messages);
 
     // Prepare tools if the model supports tool calling
@@ -67,7 +78,7 @@ export class LLMService {
       logger.info(
         `Model ${model.id} does not support tool calling, tools will be filtered`,
         undefined,
-        'LLMService'
+        "LLMService",
       );
     }
 
@@ -80,7 +91,7 @@ export class LLMService {
       tools,
       progress,
       token,
-      { onStats }
+      { onStats },
     );
   }
 
@@ -99,7 +110,7 @@ export class LLMService {
     tools: Record<string, Tool>,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
-    options: ExecutionOptions
+    options: ExecutionOptions,
   ): Promise<void> {
     try {
       // Build AI SDK options
@@ -109,7 +120,7 @@ export class LLMService {
         messages,
         systemMessage,
         tools,
-        options
+        options,
       );
 
       // Execute based on streaming preference from extraBody
@@ -117,7 +128,7 @@ export class LLMService {
       if (model.extraBody) {
         try {
           const parsed = JSON.parse(model.extraBody);
-          useStreaming = parsed['stream'] !== false;
+          useStreaming = parsed["stream"] !== false;
         } catch {
           useStreaming = true;
         }
@@ -153,7 +164,10 @@ export class LLMService {
    * Parse extra body parameters from model configuration.
    * Model-level extraBody overrides provider-level extraBody.
    */
-  private parseExtraBody(model: Model, provider: Provider): Record<string, any> {
+  private parseExtraBody(
+    model: Model,
+    provider: Provider,
+  ): Record<string, any> {
     // Model-level extraBody takes precedence, then provider-level
     const extraBodyStr = model.extraBody || provider.extraBody;
     if (!extraBodyStr) {
@@ -163,7 +177,9 @@ export class LLMService {
     try {
       return JSON.parse(extraBodyStr);
     } catch {
-      logger.warn('Failed to parse extraBody JSON', { extraBody: extraBodyStr });
+      logger.warn("Failed to parse extraBody JSON", {
+        extraBody: extraBodyStr,
+      });
       return {};
     }
   }
@@ -172,7 +188,10 @@ export class LLMService {
    * Parse extra header parameters from model configuration.
    * Model-level extraHeader overrides provider-level extraHeader.
    */
-  private parseExtraHeaders(model: Model, provider: Provider): Record<string, string> {
+  private parseExtraHeaders(
+    model: Model,
+    provider: Provider,
+  ): Record<string, string> {
     // Model-level extraHeader takes precedence, then provider-level
     const extraHeaderStr = model.extraHeader || provider.extraHeader;
     if (!extraHeaderStr) {
@@ -182,7 +201,9 @@ export class LLMService {
     try {
       return JSON.parse(extraHeaderStr);
     } catch {
-      logger.warn('Failed to parse extraHeader JSON', { extraHeader: extraHeaderStr });
+      logger.warn("Failed to parse extraHeader JSON", {
+        extraHeader: extraHeaderStr,
+      });
       return {};
     }
   }
@@ -198,7 +219,7 @@ export class LLMService {
     messages: ModelMessage[],
     system: string | undefined,
     tools: Record<string, Tool>,
-    options: ExecutionOptions
+    options: ExecutionOptions,
   ): any {
     const aiModel = AIProviderRegistry.createModel(provider, model);
     const extraBody = this.parseExtraBody(model, provider);
@@ -238,16 +259,16 @@ export class LLMService {
     }
 
     const handledParams = [
-      'temperature',
-      'topP',
-      'topK',
-      'maxOutputTokens',
-      'stopSequences',
-      'presencePenalty',
-      'frequencyPenalty',
-      'seed',
-      'responseFormat',
-      'maxSteps',
+      "temperature",
+      "topP",
+      "topK",
+      "maxOutputTokens",
+      "stopSequences",
+      "presencePenalty",
+      "frequencyPenalty",
+      "seed",
+      "responseFormat",
+      "maxSteps",
     ];
     for (const [key, value] of Object.entries(extraBody)) {
       if (!handledParams.includes(key) && value !== undefined) {
@@ -269,11 +290,11 @@ export class LLMService {
     options: any,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
-    executionOptions: ExecutionOptions
+    executionOptions: ExecutionOptions,
   ): Promise<void> {
     const abortController = new AbortController();
     token.onCancellationRequested(() => {
-      logger.debug('Cancellation requested, aborting stream');
+      logger.debug("Cancellation requested, aborting stream");
       abortController.abort();
     });
 
@@ -284,37 +305,46 @@ export class LLMService {
     let tokenCount = 0;
 
     try {
-      const result = streamText({ ...options, abortSignal: abortController.signal });
+      const result = streamText({
+        ...options,
+        abortSignal: abortController.signal,
+      });
 
       for await (const part of result.fullStream) {
         if (token.isCancellationRequested) {
           break;
         }
 
-        if (!firstTokenTime && part.type !== 'finish' && part.type !== 'error') {
+        if (
+          !firstTokenTime &&
+          part.type !== "finish" &&
+          part.type !== "error"
+        ) {
           firstTokenTime = Date.now();
         }
 
-        if (part.type === 'finish') {
+        if (part.type === "finish") {
           hasFinished = true;
           finishReason = part.finishReason;
-          if (part.finishReason === 'content-filter') {
-            progress.report(new vscode.LanguageModelTextPart('[Content filtered]'));
+          if (part.finishReason === "content-filter") {
+            progress.report(
+              new vscode.LanguageModelTextPart("[Content filtered]"),
+            );
             hasReportedContent = true;
           }
           continue;
         }
 
-        if (part.type === 'error') {
+        if (part.type === "error") {
           const error = part.error as any;
           const errorMsg = error?.message || String(part.error);
-          logger.error('Stream error part received', { error: errorMsg });
+          logger.error("Stream error part received", { error: errorMsg });
           throw error;
         }
 
         this.processResponsePart(part, progress, executionOptions);
 
-        if (part.type === 'text-delta' && part.text) {
+        if (part.type === "text-delta" && part.text) {
           hasReportedContent = true;
           const textLength = part.text.length;
           tokenCount += Math.ceil(textLength / 4);
@@ -322,18 +352,25 @@ export class LLMService {
       }
 
       if (!hasReportedContent && !token.isCancellationRequested) {
-        if (finishReason === 'content-filter') {
-          throw vscode.LanguageModelError.Blocked('Message blocked by model content safety filters.');
+        if (finishReason === "content-filter") {
+          throw vscode.LanguageModelError.Blocked(
+            "Message blocked by model content safety filters.",
+          );
         }
         if (!hasFinished) {
-          logger.warn('Stream completed without any content reported');
+          logger.warn("Stream completed without any content reported");
         }
       }
     } catch (error) {
       if (!hasReportedContent) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Streaming error before any content reported', { error: errorMessage });
-        progress.report(new vscode.LanguageModelTextPart(`[Error: ${errorMessage}]`));
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error("Streaming error before any content reported", {
+          error: errorMessage,
+        });
+        progress.report(
+          new vscode.LanguageModelTextPart(`[Error: ${errorMessage}]`),
+        );
       }
       throw error;
     } finally {
@@ -359,7 +396,7 @@ export class LLMService {
   private async executeNonStreaming(
     options: any,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-    executionOptions: ExecutionOptions
+    executionOptions: ExecutionOptions,
   ): Promise<void> {
     let hasReportedContent = false;
 
@@ -377,19 +414,30 @@ export class LLMService {
         hasReportedContent = true;
       }
 
-      if (result.finishReason === 'content-filter') {
-        throw vscode.LanguageModelError.Blocked('Message blocked by model content safety filters.');
+      if (result.finishReason === "content-filter") {
+        throw vscode.LanguageModelError.Blocked(
+          "Message blocked by model content safety filters.",
+        );
       }
 
-      if (!hasReportedContent && result.finishReason === 'stop') {
-        logger.warn('Non-streaming response completed but no content was generated');
-        progress.report(new vscode.LanguageModelTextPart('[No response generated]'));
+      if (!hasReportedContent && result.finishReason === "stop") {
+        logger.warn(
+          "Non-streaming response completed but no content was generated",
+        );
+        progress.report(
+          new vscode.LanguageModelTextPart("[No response generated]"),
+        );
       }
     } catch (error) {
       if (!hasReportedContent) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Non-streaming error before any content reported', { error: errorMessage });
-        progress.report(new vscode.LanguageModelTextPart(`[Error: ${errorMessage}]`));
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error("Non-streaming error before any content reported", {
+          error: errorMessage,
+        });
+        progress.report(
+          new vscode.LanguageModelTextPart(`[Error: ${errorMessage}]`),
+        );
       }
       throw error;
     }
@@ -408,45 +456,50 @@ export class LLMService {
   private processResponsePart(
     part: any,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-    options: ExecutionOptions
+    options: ExecutionOptions,
   ): void {
     // Handler map for different stream part types
     const handlers: Record<string, (part: any) => void> = {
       // 文本内容 - AI SDK fullStream 使用 'text' 属性
-      'text-delta': (p) => {
+      "text-delta": (p) => {
         progress.report(new vscode.LanguageModelTextPart(p.text));
       },
 
       // Thinking/Reasoning内容 - AI SDK已提取
-      'reasoning-delta': (p) => {
+      "reasoning-delta": (p) => {
         this.handleThinkingDelta(p, progress, options);
       },
 
       // Thinking签名 - 加密内容，通常不需要直接显示
-      'reasoning-signature': (p) => {
+      "reasoning-signature": (p) => {
         this.handleThinkingSignature(p);
       },
 
       // Thinking流结束标记
-      'reasoning-complete': (p) => {
+      "reasoning-complete": (p) => {
         this.handleThinkingComplete(p);
       },
 
       // 工具调用
-      'tool-call': (p) => {
+      "tool-call": (p) => {
         progress.report(
-          new vscode.LanguageModelToolCallPart(p.toolCallId, p.toolName, p.args || p.input)
+          new vscode.LanguageModelToolCallPart(
+            p.toolCallId,
+            p.toolName,
+            p.args || p.input,
+          ),
         );
       },
 
       // 工具结果
-      'tool-result': (p) => {
+      "tool-result": (p) => {
         const toolRes = p.result || p.output;
-        const res = typeof toolRes === 'string' ? toolRes : JSON.stringify(toolRes);
+        const res =
+          typeof toolRes === "string" ? toolRes : JSON.stringify(toolRes);
         progress.report(
           new vscode.LanguageModelToolResultPart(p.toolCallId, [
             new vscode.LanguageModelTextPart(res),
-          ])
+          ]),
         );
       },
 
@@ -457,9 +510,9 @@ export class LLMService {
 
       // 结束处理 (如有内容过滤等错误需在此由 provider 反映给 VS Code)
       finish: (p) => {
-        if (p.finishReason === 'content-filter') {
+        if (p.finishReason === "content-filter") {
           throw vscode.LanguageModelError.Blocked(
-            'Message blocked by model content safety filters.'
+            "Message blocked by model content safety filters.",
           );
         }
       },
@@ -478,7 +531,7 @@ export class LLMService {
   private handleThinkingDelta(
     part: any,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-    options: ExecutionOptions
+    options: ExecutionOptions,
   ): void {
     const reasoningDelta = part.reasoningDelta;
 
@@ -490,7 +543,7 @@ export class LLMService {
     const thinkingPart = new vscode.LanguageModelThinkingPart(
       reasoningDelta,
       part.id,
-      part.metadata
+      part.metadata,
     );
 
     // 通知回调（如果有）
@@ -528,11 +581,11 @@ export class LLMService {
     const reasoning = step.reasoning || step.thinking || step.reasoning_details;
 
     if (!reasoning) {
-      return '';
+      return "";
     }
 
     // 处理字符串格式
-    if (typeof reasoning === 'string') {
+    if (typeof reasoning === "string") {
       return reasoning;
     }
 
@@ -540,19 +593,19 @@ export class LLMService {
     if (Array.isArray(reasoning)) {
       return reasoning
         .map((item) => {
-          if (typeof item === 'string') {
+          if (typeof item === "string") {
             return item;
           }
-          if (typeof item === 'object') {
-            return item.text || item.content || item.value || '';
+          if (typeof item === "object") {
+            return item.text || item.content || item.value || "";
           }
           return String(item);
         })
         .filter(Boolean)
-        .join('\n');
+        .join("\n");
     }
 
-    return '';
+    return "";
   }
 
   /**
@@ -562,7 +615,7 @@ export class LLMService {
   private processReasoning(
     step: any,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
-    options: ExecutionOptions
+    options: ExecutionOptions,
   ): void {
     const reasoning = this.extractReasoningContent(step);
 
@@ -585,20 +638,27 @@ export class LLMService {
    */
   private processToolCalls(
     step: any,
-    progress: vscode.Progress<vscode.LanguageModelResponsePart>
+    progress: vscode.Progress<vscode.LanguageModelResponsePart>,
   ): void {
     for (const tc of step.toolCalls || []) {
       progress.report(
-        new vscode.LanguageModelToolCallPart(tc.toolCallId, tc.toolName, tc.args || tc.input)
+        new vscode.LanguageModelToolCallPart(
+          tc.toolCallId,
+          tc.toolName,
+          tc.args || tc.input,
+        ),
       );
 
-      const tr = step.toolResults?.find((r: any) => r.toolCallId === tc.toolCallId);
+      const tr = step.toolResults?.find(
+        (r: any) => r.toolCallId === tc.toolCallId,
+      );
       if (tr) {
-        const res = typeof tr.result === 'string' ? tr.result : JSON.stringify(tr.result);
+        const res =
+          typeof tr.output === "string" ? tr.output : JSON.stringify(tr.output);
         progress.report(
           new vscode.LanguageModelToolResultPart(tc.toolCallId, [
             new vscode.LanguageModelTextPart(res),
-          ])
+          ]),
         );
       }
     }
@@ -608,12 +668,15 @@ export class LLMService {
    * Handle errors during execution.
    */
   private handleError(error: any): void {
-    if (error.name === 'AbortError' || error.message?.includes('The operation was aborted')) {
+    if (
+      error.name === "AbortError" ||
+      error.message?.includes("The operation was aborted")
+    ) {
       return;
     }
 
     // ALWAYS log the full error for developers to see in the logs
-    logger.error('LLMService execution error', error, 'LLMService');
+    logger.error("LLMService execution error", error, "LLMService");
 
     // Throw the original error directly as requested
     throw error;

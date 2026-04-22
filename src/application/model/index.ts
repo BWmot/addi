@@ -1,1 +1,1 @@
-export { ModelUseCases, ModelWithProvider } from './ModelUseCases';
+export { ModelUseCases, ModelWithProvider } from "./ModelUseCases";

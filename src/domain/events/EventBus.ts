@@ -1,4 +1,4 @@
-import { Disposable } from 'vscode';
+import type { Disposable } from "vscode";
 
 /**
  * Simple Event Bus for Domain Events

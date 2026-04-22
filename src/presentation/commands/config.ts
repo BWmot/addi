@@ -1,9 +1,12 @@
-import * as vscode from 'vscode';
-import { BaseCommandHandler } from './base';
-import { Provider } from '../../common/types';
-import { UserFeedback, IdGenerator, ConfigManager } from '../../common/utils';
-import { logger } from '../../common/logger';
-import { CryptoService, ProviderApiKeys } from '../../infrastructure/crypto';
+import * as vscode from "vscode";
+import { BaseCommandHandler } from "./base";
+import type { Provider } from "../../common/types";
+import { UserFeedback, IdGenerator, ConfigManager } from "../../common/utils";
+import { logger } from "../../common/logger";
+import {
+  CryptoService,
+  type ProviderApiKeys,
+} from "../../infrastructure/crypto";
 
 /**
  * Configuration-related command handler
@@ -13,55 +16,63 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * Export configuration to file or clipboard
    */
   async exportConfig(): Promise<void> {
-    logger.info('Command exportConfig invoked');
+    logger.info("Command exportConfig invoked");
     try {
       const allProviders = this.manager.getProviders();
       if (allProviders.length === 0) {
-        UserFeedback.showWarning('No configurations to export');
-        logger.warn('exportConfig aborted: no providers configured');
+        UserFeedback.showWarning("No configurations to export");
+        logger.warn("exportConfig aborted: no providers configured");
         return;
       }
 
       // 1. Select providers
-      const selectedProviders = await this.selectProvidersForExport(allProviders);
+      const selectedProviders =
+        await this.selectProvidersForExport(allProviders);
       if (!selectedProviders || selectedProviders.length === 0) {
-        logger.debug('exportConfig canceled at provider selection');
+        logger.debug("exportConfig canceled at provider selection");
         return;
       }
 
       // 2. Prompt for password (enter password to encrypt, empty to exclude ApiKey)
       const password = await this.promptForEncryptionPassword();
       if (password === undefined) {
-        logger.debug('exportConfig canceled at password prompt');
+        logger.debug("exportConfig canceled at password prompt");
         return;
       }
 
       // 3. Selection Destination
-      const destination = await vscode.window.showQuickPick(['Save to File', 'Copy to Clipboard'], {
-        title: 'Export Destination',
-        placeHolder: 'Where do you want to save the configuration?',
-      });
+      const destination = await vscode.window.showQuickPick(
+        ["Save to File", "Copy to Clipboard"],
+        {
+          title: "Export Destination",
+          placeHolder: "Where do you want to save the configuration?",
+        },
+      );
 
       if (!destination) {
-        logger.debug('exportConfig canceled at destination selection');
+        logger.debug("exportConfig canceled at destination selection");
         return;
       }
 
-      const encoded = await this.encodeProvidersForExport(selectedProviders, password);
+      const encoded = await this.encodeProvidersForExport(
+        selectedProviders,
+        password,
+      );
 
-      if (destination === 'Save to File') {
-        const defaultFileName = 'addi-config.json';
-        const firstWorkspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri;
+      if (destination === "Save to File") {
+        const defaultFileName = "addi-config.json";
+        const firstWorkspaceFolder =
+          vscode.workspace.workspaceFolders?.[0]?.uri;
         const defaultUri = firstWorkspaceFolder
           ? vscode.Uri.joinPath(firstWorkspaceFolder, defaultFileName)
           : undefined;
 
         const saveDialogOptions: vscode.SaveDialogOptions = {
           filters: {
-            'Config Files': ['json'],
-            'All Files': ['*'],
+            "Config Files": ["json"],
+            "All Files": ["*"],
           },
-          title: 'Export Configuration',
+          title: "Export Configuration",
         };
 
         if (defaultUri) {
@@ -70,21 +81,26 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
         const uri = await vscode.window.showSaveDialog(saveDialogOptions);
         if (!uri) {
-          logger.debug('exportConfig canceled at save dialog');
+          logger.debug("exportConfig canceled at save dialog");
           return;
         }
 
         const targetUri = this.ensureJsonExtension(uri);
-        await UserFeedback.showProgress('Saving to file...', async () => {
-          await vscode.workspace.fs.writeFile(targetUri, Buffer.from(encoded, 'utf8'));
-          UserFeedback.showInfo(`Configuration exported to ${targetUri.fsPath}`);
+        await UserFeedback.showProgress("Saving to file...", async () => {
+          await vscode.workspace.fs.writeFile(
+            targetUri,
+            Buffer.from(encoded, "utf8"),
+          );
+          UserFeedback.showInfo(
+            `Configuration exported to ${targetUri.fsPath}`,
+          );
         });
       } else {
         await vscode.env.clipboard.writeText(encoded);
-        UserFeedback.showInfo('Configuration copied to clipboard');
+        UserFeedback.showInfo("Configuration copied to clipboard");
       }
 
-      logger.info('Configuration exported', {
+      logger.info("Configuration exported", {
         providerCount: selectedProviders.length,
         hasPassword: !!password,
         destination,
@@ -93,9 +109,9 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       this.refreshTreeView();
     } catch (error) {
       UserFeedback.showError(
-        `Failed to export configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to export configuration: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
-      this.logError('exportConfig failed', error);
+      this.logError("exportConfig failed", error);
     }
   }
 
@@ -103,36 +119,36 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * Import configuration from file or clipboard
    */
   async importConfig(): Promise<void> {
-    logger.info('Command importConfig invoked');
+    logger.info("Command importConfig invoked");
     try {
       // 1. Selection Source
       const source = await vscode.window.showQuickPick(
-        ['Import from File', 'Import from Clipboard'],
+        ["Import from File", "Import from Clipboard"],
         {
-          title: 'Import Source',
-          placeHolder: 'Where is the configuration located?',
-        }
+          title: "Import Source",
+          placeHolder: "Where is the configuration located?",
+        },
       );
 
       if (!source) {
-        logger.debug('importConfig canceled at source selection');
+        logger.debug("importConfig canceled at source selection");
         return;
       }
 
       let content: string;
-      if (source === 'Import from File') {
+      if (source === "Import from File") {
         const openDialogOptions: vscode.OpenDialogOptions = {
           filters: {
-            'Config Files': ['json', 'txt'],
-            'All Files': ['*'],
+            "Config Files": ["json", "txt"],
+            "All Files": ["*"],
           },
-          title: 'Import Configuration',
+          title: "Import Configuration",
           canSelectMany: false,
         };
 
         const uri = await vscode.window.showOpenDialog(openDialogOptions);
         if (!uri || uri.length === 0) {
-          logger.debug('importConfig canceled at file selection');
+          logger.debug("importConfig canceled at file selection");
           return;
         }
         const data = await vscode.workspace.fs.readFile(uri[0]!);
@@ -140,7 +156,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       } else {
         content = await vscode.env.clipboard.readText();
         if (!content || content.trim().length === 0) {
-          UserFeedback.showError('Clipboard is empty');
+          UserFeedback.showError("Clipboard is empty");
           return;
         }
       }
@@ -161,28 +177,33 @@ export class ConfigCommandHandler extends BaseCommandHandler {
           if (parsed.encryptionApiKey) {
             const password = await this.promptForDecryptionPassword();
             if (password === undefined) {
-              logger.debug('importConfig canceled at decryption password prompt');
+              logger.debug(
+                "importConfig canceled at decryption password prompt",
+              );
               return;
             }
-            encryptedApiKeys = CryptoService.decryptApiKeys(parsed.encryptionApiKey, password);
+            encryptedApiKeys = CryptoService.decryptApiKeys(
+              parsed.encryptionApiKey,
+              password,
+            );
             if (!encryptedApiKeys) {
               UserFeedback.showWarning(
-                'Failed to decrypt API Keys from config (wrong password?), API Keys will be skipped'
+                "Failed to decrypt API Keys from config (wrong password?), API Keys will be skipped",
               );
-              logger.warn('importConfig: failed to decrypt API keys');
+              logger.warn("importConfig: failed to decrypt API keys");
             }
           }
         } else {
-          throw new Error('Invalid configuration format');
+          throw new Error("Invalid configuration format");
         }
 
         if (providersToImport.length === 0) {
-          throw new Error('No valid providers found in configuration');
+          throw new Error("No valid providers found in configuration");
         }
         this.validateProviders(providersToImport);
       } catch (err) {
         throw new Error(
-          `Failed to parse configuration: ${err instanceof Error ? err.message : 'Invalid format'}`
+          `Failed to parse configuration: ${err instanceof Error ? err.message : "Invalid format"}`,
         );
       }
 
@@ -198,9 +219,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       }
 
       // 4. Provider Selection
-      const selectedToImport = await this.selectProvidersForImport(providersToImport);
+      const selectedToImport =
+        await this.selectProvidersForImport(providersToImport);
       if (!selectedToImport || selectedToImport.length === 0) {
-        logger.debug('importConfig canceled at provider selection');
+        logger.debug("importConfig canceled at provider selection");
         return;
       }
 
@@ -208,65 +230,72 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       const currentProviders = this.manager.getProviders();
       if (currentProviders.length > 0) {
         try {
-          await this.manager.createBackup('Auto-backup before import');
-          logger.debug('Auto-backup created before import');
+          await this.manager.createBackup("Auto-backup before import");
+          logger.debug("Auto-backup created before import");
         } catch (err) {
-          logger.warn('Failed to create auto-backup before import', err);
+          logger.warn("Failed to create auto-backup before import", err);
           // Non-fatal: proceed without backup
         }
       }
 
       // 5. Merge/Conflict Resolution
-      await UserFeedback.showProgress('Importing configuration...', async () => {
-        const currentProviders = this.manager.getProviders();
-        const mergedProviders = [...currentProviders];
+      await UserFeedback.showProgress(
+        "Importing configuration...",
+        async () => {
+          const currentProviders = this.manager.getProviders();
+          const mergedProviders = [...currentProviders];
 
-        for (const provider of selectedToImport) {
-          const existingIndex = mergedProviders.findIndex((p) => p.id === provider.id);
-          if (existingIndex !== -1) {
-            const result = await vscode.window.showWarningMessage(
-              `Provider "${provider.name}" (ID: ${provider.id}) already exists.`,
-              { modal: false },
-              'Overwrite',
-              'Skip',
-              'Keep Both (Rename)'
+          for (const provider of selectedToImport) {
+            const existingIndex = mergedProviders.findIndex(
+              (p) => p.id === provider.id,
             );
+            if (existingIndex !== -1) {
+              const result = await vscode.window.showWarningMessage(
+                `Provider "${provider.name}" (ID: ${provider.id}) already exists.`,
+                { modal: false },
+                "Overwrite",
+                "Skip",
+                "Keep Both (Rename)",
+              );
 
-            if (result === 'Overwrite') {
-              mergedProviders[existingIndex] = provider;
-            } else if (result === 'Keep Both (Rename)') {
-              const newProvider = {
-                ...provider,
-                id: IdGenerator.generate(),
-                name: `${provider.name} (Imported)`,
-              };
-              mergedProviders.push(newProvider);
+              if (result === "Overwrite") {
+                mergedProviders[existingIndex] = provider;
+              } else if (result === "Keep Both (Rename)") {
+                const newProvider = {
+                  ...provider,
+                  id: IdGenerator.generate(),
+                  name: `${provider.name} (Imported)`,
+                };
+                mergedProviders.push(newProvider);
+              }
+            } else {
+              mergedProviders.push(provider);
             }
-          } else {
-            mergedProviders.push(provider);
           }
-        }
 
-        await this.manager.saveProviders(mergedProviders);
+          await this.manager.saveProviders(mergedProviders);
 
-        // Import API Keys to SecretStorage
-        for (const provider of selectedToImport) {
-          if (provider.apiKey) {
-            await this.manager.setApiKey(provider.id, provider.apiKey);
+          // Import API Keys to SecretStorage
+          for (const provider of selectedToImport) {
+            if (provider.apiKey) {
+              await this.manager.setApiKey(provider.id, provider.apiKey);
+            }
           }
-        }
 
-        this.refreshTreeView();
-        UserFeedback.showInfo(`${selectedToImport.length} provider(s) imported successfully`);
-        logger.info('Configuration imported successfully', {
-          providerCount: selectedToImport.length,
-        });
-      });
+          this.refreshTreeView();
+          UserFeedback.showInfo(
+            `${selectedToImport.length} provider(s) imported successfully`,
+          );
+          logger.info("Configuration imported successfully", {
+            providerCount: selectedToImport.length,
+          });
+        },
+      );
     } catch (error) {
       UserFeedback.showError(
-        `Failed to import configuration: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to import configuration: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
-      this.logError('importConfig failed', error);
+      this.logError("importConfig failed", error);
     }
   }
 
@@ -276,10 +305,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * Shows a confirmation dialog before proceeding.
    */
   async initExtension(): Promise<void> {
-    logger.info('Command initExtension invoked');
+    logger.info("Command initExtension invoked");
 
     if (!this.storageService) {
-      UserFeedback.showError('Storage service not initialized');
+      UserFeedback.showError("Storage service not initialized");
       return;
     }
 
@@ -287,34 +316,36 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     const currentProviders = this.manager.getProviders();
     if (currentProviders.length > 0) {
       try {
-        await this.manager.createBackup('Auto-backup before initialize extension');
-        logger.debug('Auto-backup created before initExtension');
+        await this.manager.createBackup(
+          "Auto-backup before initialize extension",
+        );
+        logger.debug("Auto-backup created before initExtension");
       } catch (err) {
-        logger.warn('Failed to create auto-backup before initExtension', err);
+        logger.warn("Failed to create auto-backup before initExtension", err);
         // Non-fatal: continue
       }
     }
 
     const warningResult = await vscode.window.showWarningMessage(
-      'Initialize Addi Extension',
+      "Initialize Addi Extension",
       {
         modal: true,
         detail:
-          'This will clear ALL addi-related storage and reset all settings to defaults.\n\n' +
-          'You will need to reconfigure the extension after this operation.\n\n' +
-          'Continue?',
+          "This will clear ALL addi-related storage and reset all settings to defaults.\n\n" +
+          "You will need to reconfigure the extension after this operation.\n\n" +
+          "Continue?",
       },
-      { title: 'Initialize', isDangerous: true },
-      { title: 'Cancel', isCloseAffordance: true }
+      { title: "Initialize", isDangerous: true },
+      { title: "Cancel", isCloseAffordance: true },
     );
 
-    if (!warningResult || warningResult.title === 'Cancel') {
-      logger.debug('initExtension canceled by user');
+    if (!warningResult || warningResult.title === "Cancel") {
+      logger.debug("initExtension canceled by user");
       return;
     }
 
     try {
-      await UserFeedback.showProgress('Initializing extension...', async () => {
+      await UserFeedback.showProgress("Initializing extension...", async () => {
         // Step 1: Clear all storage data using wildcard pattern
         await this.storageService!.clearAllData();
 
@@ -323,15 +354,15 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
         // Step 3: Show success message
         UserFeedback.showInfo(
-          'Addi extension has been initialized. Please reconfigure your providers.'
+          "Addi extension has been initialized. Please reconfigure your providers.",
         );
-        logger.info('initExtension: completed successfully');
+        logger.info("initExtension: completed successfully");
       });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to initialize extension: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to initialize extension: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
-      this.logError('initExtension failed', error);
+      this.logError("initExtension failed", error);
     }
   }
 
@@ -339,12 +370,12 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * Restore providers from a local backup
    */
   async restoreFromBackup(): Promise<void> {
-    logger.info('Command restoreFromBackup invoked');
+    logger.info("Command restoreFromBackup invoked");
 
     const backups = this.manager.listBackups();
     if (backups.length === 0) {
       UserFeedback.showInfo(
-        'No backups available. Backups are created automatically before import, reset, or clear operations.'
+        "No backups available. Backups are created automatically before import, reset, or clear operations.",
       );
       return;
     }
@@ -357,13 +388,13 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
-      title: 'Restore from Backup',
-      placeHolder: 'Select a backup to restore',
+      title: "Restore from Backup",
+      placeHolder: "Select a backup to restore",
       canPickMany: false,
     });
 
     if (!selected) {
-      logger.debug('restoreFromBackup canceled by user');
+      logger.debug("restoreFromBackup canceled by user");
       return;
     }
 
@@ -375,12 +406,12 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         `This will replace your current providers with ${backup.providerCount} provider(s) from the backup.\n` +
         `Your current data will be lost unless you have another backup.`,
       { modal: true },
-      { title: 'Restore', isDangerous: true },
-      { title: 'Cancel', isCloseAffordance: true }
+      { title: "Restore", isDangerous: true },
+      { title: "Cancel", isCloseAffordance: true },
     );
 
-    if (confirmResult?.title !== 'Restore') {
-      logger.debug('restoreFromBackup canceled by user');
+    if (confirmResult?.title !== "Restore") {
+      logger.debug("restoreFromBackup canceled by user");
       return;
     }
 
@@ -389,7 +420,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       const restoredProviders = this.manager.restoreBackup(backup.id);
 
       // Create a safety backup of current state before overwriting
-      await this.manager.createBackup('Auto-backup before restore');
+      await this.manager.createBackup("Auto-backup before restore");
 
       // Persist the restored providers
       await this.manager.saveProviders(restoredProviders);
@@ -397,18 +428,18 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       this.refreshTreeView();
       UserFeedback.showInfo(
         `Restored ${restoredProviders.length} provider(s) from backup. ` +
-          'Note: API keys from SecretStorage are NOT included in backups. ' +
-          'You will need to re-enter them manually if needed.'
+          "Note: API keys from SecretStorage are NOT included in backups. " +
+          "You will need to re-enter them manually if needed.",
       );
-      logger.info('restoreFromBackup: completed successfully', {
+      logger.info("restoreFromBackup: completed successfully", {
         restoredCount: restoredProviders.length,
         backupId: backup.id,
       });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to restore backup: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to restore backup: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
-      this.logError('restoreFromBackup failed', error);
+      this.logError("restoreFromBackup failed", error);
     }
   }
 
@@ -416,12 +447,12 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * List and manage local backups
    */
   async manageBackups(): Promise<void> {
-    logger.info('Command manageBackups invoked');
+    logger.info("Command manageBackups invoked");
 
     const backups = this.manager.listBackups();
     if (backups.length === 0) {
       UserFeedback.showInfo(
-        'No backups available. Backups are created automatically before dangerous operations.'
+        "No backups available. Backups are created automatically before dangerous operations.",
       );
       return;
     }
@@ -430,36 +461,38 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     const items = backups.map((b) => ({
       label: this.formatBackupLabel(b),
       description: b.description,
-      detail: `${b.providerCount} provider(s) — ${b.providers.map((p) => p.name).join(', ')}`,
+      detail: `${b.providerCount} provider(s) — ${b.providers.map((p) => p.name).join(", ")}`,
       backup: b,
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
-      title: 'Manage Backups',
-      placeHolder: 'Select a backup to delete (ESC to cancel)',
+      title: "Manage Backups",
+      placeHolder: "Select a backup to delete (ESC to cancel)",
       canPickMany: false,
     });
 
     if (!selected) {
-      logger.debug('manageBackups canceled by user');
+      logger.debug("manageBackups canceled by user");
       return;
     }
 
     const confirmDelete = await vscode.window.showWarningMessage(
       `Delete backup from ${new Date(selected.backup.timestamp).toLocaleString()}?`,
       { modal: true },
-      { title: 'Delete', isDangerous: true },
-      { title: 'Cancel', isCloseAffordance: true }
+      { title: "Delete", isDangerous: true },
+      { title: "Cancel", isCloseAffordance: true },
     );
 
-    if (confirmDelete?.title !== 'Delete') {
-      logger.debug('manageBackups: delete canceled by user');
+    if (confirmDelete?.title !== "Delete") {
+      logger.debug("manageBackups: delete canceled by user");
       return;
     }
 
     this.manager.deleteBackup(selected.backup.id);
-    UserFeedback.showInfo('Backup deleted.');
-    logger.info('manageBackups: deleted backup', { backupId: selected.backup.id });
+    UserFeedback.showInfo("Backup deleted.");
+    logger.info("manageBackups: deleted backup", {
+      backupId: selected.backup.id,
+    });
   }
 
   // ==================== Private Helper Methods ====================
@@ -471,13 +504,13 @@ export class ConfigCommandHandler extends BaseCommandHandler {
   }): string {
     const date = new Date(backup.timestamp);
     const dateStr = date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     });
     const timeStr = date.toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
+      hour: "2-digit",
+      minute: "2-digit",
     });
     return `${dateStr} ${timeStr} — ${backup.providerCount} provider(s) — ${backup.description}`;
   }
@@ -486,15 +519,15 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     const items = providers.map((p) => ({
       label: p.name,
       description: `${p.models.length} model(s)`,
-      detail: p.apiEndpoint || '',
+      detail: p.apiEndpoint || "",
       provider: p,
       picked: true,
     }));
 
     const selection = await vscode.window.showQuickPick(items, {
       canPickMany: true,
-      title: 'Export: Pick Providers',
-      placeHolder: 'Pick the providers you want to export',
+      title: "Export: Pick Providers",
+      placeHolder: "Pick the providers you want to export",
     });
 
     return selection?.map((s) => s.provider);
@@ -504,15 +537,15 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     const items = providers.map((p) => ({
       label: p.name,
       description: `${p.models.length} model(s)`,
-      detail: p.apiEndpoint || '',
+      detail: p.apiEndpoint || "",
       provider: p,
       picked: true,
     }));
 
     const selection = await vscode.window.showQuickPick(items, {
       canPickMany: true,
-      title: 'Import: Pick Providers',
-      placeHolder: 'Pick the providers you want to import',
+      title: "Import: Pick Providers",
+      placeHolder: "Pick the providers you want to import",
     });
 
     return selection?.map((s) => s.provider);
@@ -525,12 +558,14 @@ export class ConfigCommandHandler extends BaseCommandHandler {
   private validateProviders(providers: Provider[]): void {
     for (const provider of providers) {
       if (!provider.id || !provider.name || !Array.isArray(provider.models)) {
-        throw new Error(`Provider "${provider.name || 'unknown'}" is malformed`);
+        throw new Error(
+          `Provider "${provider.name || "unknown"}" is malformed`,
+        );
       }
       for (const m of provider.models) {
         if ((!m.id || !m.name) && (!m.rid || !m.name)) {
           throw new Error(
-            `Model in provider "${provider.name}" is missing required fields (need id/rid and name)`
+            `Model in provider "${provider.name}" is missing required fields (need id/rid and name)`,
           );
         }
         // Auto-fill missing fields with defaults from ConfigManager
@@ -568,13 +603,14 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    */
   private async promptForEncryptionPassword(): Promise<string | undefined> {
     const result = await vscode.window.showInputBox({
-      title: 'Export Configuration - API Key Security',
-      prompt: 'Enter a password to encrypt ApiKey (Leave empty to exclude ApiKey from export)',
+      title: "Export Configuration - API Key Security",
+      prompt:
+        "Enter a password to encrypt ApiKey (Leave empty to exclude ApiKey from export)",
       password: true,
-      placeHolder: 'Password (minimum 8 characters)',
+      placeHolder: "Password (minimum 8 characters)",
       validateInput: (value) => {
         if (value && value.length < 8) {
-          return 'Password must be at least 8 characters';
+          return "Password must be at least 8 characters";
         }
         return undefined;
       },
@@ -589,10 +625,11 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    */
   private async promptForDecryptionPassword(): Promise<string | undefined> {
     const result = await vscode.window.showInputBox({
-      title: 'Import Configuration - Decrypt API Key',
-      prompt: 'This configuration contains encrypted API Keys. Enter password to decrypt:',
+      title: "Import Configuration - Decrypt API Key",
+      prompt:
+        "This configuration contains encrypted API Keys. Enter password to decrypt:",
       password: true,
-      placeHolder: 'Password',
+      placeHolder: "Password",
     });
 
     return result;
@@ -600,7 +637,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
   private async encodeProvidersForExport(
     providers: Provider[],
-    password: string | undefined
+    password: string | undefined,
   ): Promise<string> {
     // Collect API Keys for encryption
     const apiKeys: ProviderApiKeys = {};
@@ -620,7 +657,12 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         }
 
         // Strip unnecessary fields for clean export
-        const { apiKey: _apiKey, options: _providerOptions, order: _order, ...providerCore } = p;
+        const {
+          apiKey: _apiKey,
+          options: _providerOptions,
+          order: _order,
+          ...providerCore
+        } = p;
 
         // Filter models: strip runtime stats and empty optional fields
         const cleanedModels = providerCore.models.map((m) => {
@@ -633,30 +675,33 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
           // Remove empty extraBody/extraHeader
           const cleanedModel: Record<string, unknown> = { ...modelCore };
-          if (!cleanedModel['extraBody']) {
-            delete cleanedModel['extraBody'];
+          if (!cleanedModel["extraBody"]) {
+            delete cleanedModel["extraBody"];
           }
-          if (!cleanedModel['extraHeader']) {
-            delete cleanedModel['extraHeader'];
+          if (!cleanedModel["extraHeader"]) {
+            delete cleanedModel["extraHeader"];
           }
-          if (!cleanedModel['isUserSelectable']) {
-            delete cleanedModel['isUserSelectable'];
+          if (!cleanedModel["isUserSelectable"]) {
+            delete cleanedModel["isUserSelectable"];
           }
 
           return cleanedModel;
         });
 
         // Remove empty extraBody/extraHeader from provider
-        const cleanedProvider: Record<string, unknown> = { ...providerCore, models: cleanedModels };
-        if (!cleanedProvider['extraBody']) {
-          delete cleanedProvider['extraBody'];
+        const cleanedProvider: Record<string, unknown> = {
+          ...providerCore,
+          models: cleanedModels,
+        };
+        if (!cleanedProvider["extraBody"]) {
+          delete cleanedProvider["extraBody"];
         }
-        if (!cleanedProvider['extraHeader']) {
-          delete cleanedProvider['extraHeader'];
+        if (!cleanedProvider["extraHeader"]) {
+          delete cleanedProvider["extraHeader"];
         }
 
         return cleanedProvider;
-      })
+      }),
     );
 
     const exportMeta: Record<string, unknown> = {
@@ -667,10 +712,15 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     // Add encrypted API Keys if password provided
     if (password && Object.keys(apiKeys).length > 0) {
       try {
-        exportMeta['encryptionApiKey'] = CryptoService.encryptApiKeys(apiKeys, password);
+        exportMeta["encryptionApiKey"] = CryptoService.encryptApiKeys(
+          apiKeys,
+          password,
+        );
       } catch (error) {
-        logger.error('Failed to encrypt API keys during export', error);
-        UserFeedback.showError('Failed to encrypt API keys, exporting without API keys');
+        logger.error("Failed to encrypt API keys during export", error);
+        UserFeedback.showError(
+          "Failed to encrypt API keys, exporting without API keys",
+        );
       }
     }
 
@@ -678,9 +728,9 @@ export class ConfigCommandHandler extends BaseCommandHandler {
   }
 
   private ensureJsonExtension(uri: vscode.Uri): vscode.Uri {
-    if (uri.fsPath.endsWith('.json')) {
+    if (uri.fsPath.endsWith(".json")) {
       return uri;
     }
-    return vscode.Uri.file(uri.fsPath + '.json');
+    return vscode.Uri.file(uri.fsPath + ".json");
   }
 }

@@ -1,4 +1,4 @@
-import { JSONSchema7 } from 'ai';
+import type { JSONSchema7 } from "ai";
 
 /**
  * Custom Tool 定义
@@ -26,7 +26,7 @@ export interface CustomTool {
   description: string;
   parameters: JSONSchema7; // JSON Schema object
   steps: ToolStep[];
-  source?: 'global' | 'workspace';
-  visibility?: 'public' | 'private' | 'global';
+  source?: "global" | "workspace";
+  visibility?: "public" | "private" | "global";
   fileName?: string;
 }

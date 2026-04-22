@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { randomUUID } from "crypto";
 
 /**
  * ID 生成器
@@ -6,7 +6,7 @@ import { randomUUID } from 'crypto';
 export class IdGenerator {
   static generate(): string {
     try {
-      if (typeof randomUUID === 'function') {
+      if (typeof randomUUID === "function") {
         return randomUUID();
       }
     } catch {
