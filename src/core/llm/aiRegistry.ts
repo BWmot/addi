@@ -195,6 +195,9 @@ export class AIProviderRegistry {
 
   /**
    * 根据 Provider 配置和 Model ID 创建 AI SDK 的 LanguageModel 实例
+   * 
+   * 重要: 这里必须使用 model.rid (远程模型 ID)，而不是 model.id (本地 UUID)
+   * 因为 AI SDK 需要知道实际的远程模型标识符来正确路由请求
    */
   static createModel(
     provider: Provider,
@@ -202,9 +205,20 @@ export class AIProviderRegistry {
   ): LanguageModel {
     AIProviderRegistry.ensureInitialized();
 
-    const modelId = typeof modelOrId === "string" ? modelOrId : modelOrId.id;
-    let model =
-      typeof modelOrId === "object" ? (modelOrId as Model) : undefined;
+    // 关键修复: 如果传入的是 Model 对象，必须使用 rid 而非 id
+    // - id 是本地生成的 UUID，用于在 addi 扩展内部唯一标识模型
+    // - rid 是远程 API 接受的模型 ID（如 "gpt-4o", "claude-3-5-sonnet"）
+    let modelId: string;
+    let model: Model | undefined;
+    
+    if (typeof modelOrId === "string") {
+      // 如果直接传入的是字符串，当作 rid 处理
+      modelId = modelOrId;
+    } else {
+      // 如果传入的是 Model 对象，使用 rid
+      modelId = modelOrId.rid;
+      model = modelOrId as Model;
+    }
 
     // If model object is not provided but ID is, try to find it in the provider's model list
     if (
@@ -212,7 +226,7 @@ export class AIProviderRegistry {
       typeof modelOrId === "string" &&
       Array.isArray(provider.models)
     ) {
-      model = provider.models.find((m) => m.id === modelOrId);
+      model = provider.models.find((m) => m.rid === modelOrId);
     }
 
     // 尝试获取对应的工厂，如果找不到则默认使用 openai (兼容模式)
