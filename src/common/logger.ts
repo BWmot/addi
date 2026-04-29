@@ -92,7 +92,10 @@ export class AddiLogger {
 
   private getChannel(): vscode.LogOutputChannel {
     if (!this.channel) {
-      throw new Error("Logger not initialized. Call logger.initialize(context) first.");
+      // Graceful degradation: when running outside extension host (e.g. tests),
+      // create a lightweight fallback so callers don't crash.
+      // Production code always calls initialize() first.
+      this.channel = vscode.window.createOutputChannel("Addi", { log: true });
     }
     return this.channel;
   }

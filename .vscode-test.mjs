@@ -15,6 +15,7 @@ export default defineConfig({
 
   // Optional: additional mocha options
   mocha: {
+    ui: "bdd",
     timeout: 60000,
   },
 
