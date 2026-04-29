@@ -29,6 +29,8 @@ import { fetchProviderModelsFromApi as fetchRemoteModels } from "./remoteModelFe
 export class ProviderModelManager implements IProviderModelManager {
   private _onDidUpdate = new vscode.EventEmitter<void>();
   public readonly onDidUpdate = this._onDidUpdate.event;
+  /** Mutex: ensures read-modify-write sequences are atomic */
+  private _saveLock: Promise<void> = Promise.resolve();
 
   constructor(private storageService: IStorageService) {
     this.storageService.onDidUpdate(() => this._onDidUpdate.fire());
@@ -40,6 +42,23 @@ export class ProviderModelManager implements IProviderModelManager {
       );
       return { mutated };
     });
+  }
+
+  /**
+   * Promise-based mutex to serialize read-modify-write sequences.
+   * Prevents race conditions when multiple async operations try to
+   * modify and save provider data concurrently.
+   */
+  private async withLock<T>(fn: () => Promise<T>): Promise<T> {
+    const prev = this._saveLock;
+    let resolveNext!: () => void;
+    this._saveLock = new Promise<void>((r) => { resolveNext = r; });
+    try {
+      await prev;
+      return await fn();
+    } finally {
+      resolveNext();
+    }
   }
 
   dispose() {
@@ -148,127 +167,135 @@ export class ProviderModelManager implements IProviderModelManager {
   async addProvider(
     providerData: Omit<Provider, "id" | "models">,
   ): Promise<Provider> {
-    if (InputValidator.validateName(providerData.name)) {
-      throw new Error("Provider name is required");
-    }
+    return this.withLock(async () => {
+      if (InputValidator.getNameError(providerData.name)) {
+        throw new Error("Provider name is required");
+      }
 
-    const providers = this.getProviders();
-    const newProvider: Provider = {
-      ...providerData,
-      id: IdGenerator.generate(),
-      models: [],
-    };
-    // Ensure providerType exists - default to openai-completions
-    if (!newProvider.providerType) {
-      newProvider.providerType = "openai-completions";
-    }
+      const providers = this.getProviders();
+      const newProvider: Provider = {
+        ...providerData,
+        id: IdGenerator.generate(),
+        models: [],
+      };
+      // Ensure providerType exists - default to openai-completions
+      if (!newProvider.providerType) {
+        newProvider.providerType = "openai-completions";
+      }
 
-    // All providers require an API endpoint
-    if (!newProvider.apiEndpoint || !newProvider.apiEndpoint.trim()) {
-      throw new Error("API Endpoint is required");
-    }
+      // All providers require an API endpoint
+      if (!newProvider.apiEndpoint || !newProvider.apiEndpoint.trim()) {
+        throw new Error("API Endpoint is required");
+      }
 
-    providers.push(newProvider);
-    await this.saveProviders(providers);
-    logger.info("Provider added", logger.sanitizeProvider(newProvider));
-    return newProvider;
+      providers.push(newProvider);
+      await this.saveProviders(providers);
+      logger.info("Provider added", logger.sanitizeProvider(newProvider));
+      return newProvider;
+    });
   }
 
   async updateProvider(
     id: string,
     providerData: Partial<Omit<Provider, "id" | "models">>,
   ): Promise<boolean> {
-    const providers = this.getProviders();
-    const index = providers.findIndex((p) => p.id === id);
-    if (index >= 0 && providers[index]) {
-      const updatedProvider = {
-        ...providers[index]!,
-        ...providerData,
-      };
+    return this.withLock(async () => {
+      const providers = this.getProviders();
+      const index = providers.findIndex((p) => p.id === id);
+      if (index >= 0 && providers[index]) {
+        const updatedProvider = {
+          ...providers[index]!,
+          ...providerData,
+        };
 
-      if (InputValidator.validateName(updatedProvider.name)) {
-        throw new Error("Provider name cannot be empty");
+        if (InputValidator.getNameError(updatedProvider.name)) {
+          throw new Error("Provider name cannot be empty");
+        }
+
+        if (!updatedProvider.providerType) {
+          updatedProvider.providerType = "openai-completions";
+        }
+
+        if (!updatedProvider.apiEndpoint || !updatedProvider.apiEndpoint.trim()) {
+          throw new Error("API Endpoint is required");
+        }
+
+        providers[index] = updatedProvider;
+        await this.saveProviders(providers);
+        logger.info(
+          "Provider updated",
+          logger.sanitizeProvider(providers[index]!),
+        );
+        return true;
       }
-
-      if (!updatedProvider.providerType) {
-        updatedProvider.providerType = "openai-completions";
-      }
-
-      if (!updatedProvider.apiEndpoint || !updatedProvider.apiEndpoint.trim()) {
-        throw new Error("API Endpoint is required");
-      }
-
-      providers[index] = updatedProvider;
-      await this.saveProviders(providers);
-      logger.info(
-        "Provider updated",
-        logger.sanitizeProvider(providers[index]!),
-      );
-      return true;
-    }
-    logger.warn("Attempted to update missing provider", { providerId: id });
-    return false;
+      logger.warn("Attempted to update missing provider", { providerId: id });
+      return false;
+    });
   }
 
   async deleteProvider(id: string): Promise<boolean> {
-    const providers = this.getProviders();
-    const filtered = providers.filter((p) => p.id !== id);
-    if (filtered.length !== providers.length) {
-      // Also delete the API key from SecretStorage when provider is deleted
-      await this.storageService.deleteApiKey(id);
-      await this.saveProviders(filtered);
-      logger.info("Provider deleted", { providerId: id });
-      return true;
-    }
-    logger.warn("Attempted to delete missing provider", { providerId: id });
-    return false;
+    return this.withLock(async () => {
+      const providers = this.getProviders();
+      const filtered = providers.filter((p) => p.id !== id);
+      if (filtered.length !== providers.length) {
+        // Also delete the API key from SecretStorage when provider is deleted
+        await this.storageService.deleteApiKey(id);
+        await this.saveProviders(filtered);
+        logger.info("Provider deleted", { providerId: id });
+        return true;
+      }
+      logger.warn("Attempted to delete missing provider", { providerId: id });
+      return false;
+    });
   }
 
   async addModel(
     providerId: string,
     modelData: ModelDraft,
   ): Promise<Model | null> {
-    if (InputValidator.validateName(modelData.name)) {
-      throw new Error("Model name is required");
-    }
-
-    const providers = this.getProviders();
-    const providerIndex = providers.findIndex((p) => p.id === providerId);
-    if (providerIndex >= 0) {
-      const id = modelData.id?.trim() || IdGenerator.generate();
-
-      if (!modelData.rid || !modelData.rid.trim()) {
-        throw new Error("Model remote ID (rid) is required");
+    return this.withLock(async () => {
+      if (InputValidator.getNameError(modelData.name)) {
+        throw new Error("Model name is required");
       }
-      const rid = modelData.rid.trim();
 
-      const newModel: Model = {
-        id,
-        rid,
-        name: modelData.name,
-        family: modelData.family || ConfigManager.getDefaultModelFamily(),
-        version: modelData.version || ConfigManager.getDefaultModelVersion(),
-        maxInputTokens: modelData.maxInputTokens,
-        maxOutputTokens: modelData.maxOutputTokens,
-        capabilities: normalizeCapabilities(modelData.capabilities),
-        ...(modelData.extraBody ? { extraBody: modelData.extraBody } : {}),
-        ...(modelData.extraHeader
-          ? { extraHeader: modelData.extraHeader }
-          : {}),
-        ...(modelData.options ? { options: modelData.options } : {}),
-        // Default to show in picker when model is added
-        isUserSelectable: true,
-      };
-      providers[providerIndex]!.models.push(newModel);
-      await this.saveProviders(providers);
-      logger.info("Model added", {
-        provider: logger.sanitizeProvider(providers[providerIndex]!),
-        model: logger.sanitizeModel(newModel),
-      });
-      return newModel;
-    }
-    logger.warn("Attempted to add model to missing provider", { providerId });
-    return null;
+      const providers = this.getProviders();
+      const providerIndex = providers.findIndex((p) => p.id === providerId);
+      if (providerIndex >= 0) {
+        const id = modelData.id?.trim() || IdGenerator.generate();
+
+        if (!modelData.rid || !modelData.rid.trim()) {
+          throw new Error("Model remote ID (rid) is required");
+        }
+        const rid = modelData.rid.trim();
+
+        const newModel: Model = {
+          id,
+          rid,
+          name: modelData.name,
+          family: modelData.family || ConfigManager.getDefaultModelFamily(),
+          version: modelData.version || ConfigManager.getDefaultModelVersion(),
+          maxInputTokens: modelData.maxInputTokens,
+          maxOutputTokens: modelData.maxOutputTokens,
+          capabilities: normalizeCapabilities(modelData.capabilities),
+          ...(modelData.extraBody ? { extraBody: modelData.extraBody } : {}),
+          ...(modelData.extraHeader
+            ? { extraHeader: modelData.extraHeader }
+            : {}),
+          ...(modelData.options ? { options: modelData.options } : {}),
+          // Default to show in picker when model is added
+          isUserSelectable: true,
+        };
+        providers[providerIndex]!.models.push(newModel);
+        await this.saveProviders(providers);
+        logger.info("Model added", {
+          provider: logger.sanitizeProvider(providers[providerIndex]!),
+          model: logger.sanitizeModel(newModel),
+        });
+        return newModel;
+      }
+      logger.warn("Attempted to add model to missing provider", { providerId });
+      return null;
+    });
   }
 
   async updateModel(
@@ -276,26 +303,123 @@ export class ProviderModelManager implements IProviderModelManager {
     modelId: string,
     modelData: Partial<ModelDraft>,
   ): Promise<boolean> {
-    const providers = this.getProviders();
-    const providerIndex = providers.findIndex((p) => p.id === providerId);
-    if (providerIndex >= 0) {
-      const modelIndex = providers[providerIndex]!.models.findIndex(
-        (m) => m.id === modelId,
-      );
-      if (modelIndex >= 0) {
-        const existingModel = providers[providerIndex]!.models[modelIndex]!;
+    return this.withLock(async () => {
+      const providers = this.getProviders();
+      const providerIndex = providers.findIndex((p) => p.id === providerId);
+      if (providerIndex >= 0) {
+        const modelIndex = providers[providerIndex]!.models.findIndex(
+          (m) => m.id === modelId,
+        );
+        if (modelIndex >= 0) {
+          const existingModel = providers[providerIndex]!.models[modelIndex]!;
+
+          if (
+            modelData.name !== undefined &&
+            InputValidator.getNameError(modelData.name)
+          ) {
+            throw new Error("Model name cannot be empty");
+          }
+          // Only validate rid if it's explicitly provided as a non-empty string
+          if (
+            modelData.rid !== undefined &&
+            modelData.rid !== "" &&
+            !modelData.rid.trim()
+          ) {
+            throw new Error("Model remote ID (rid) cannot be empty");
+          }
+
+          const updatedModel: Model = {
+            id: existingModel.id,
+            rid:
+              modelData.rid !== undefined && modelData.rid !== ""
+                ? modelData.rid.trim()
+                : existingModel.rid,
+            name: modelData.name ?? existingModel.name,
+            family: modelData.family ?? existingModel.family,
+            version: modelData.version ?? existingModel.version,
+            maxInputTokens:
+              modelData.maxInputTokens ?? existingModel.maxInputTokens,
+            maxOutputTokens:
+              modelData.maxOutputTokens ?? existingModel.maxOutputTokens,
+            capabilities: normalizeCapabilities(
+              modelData.capabilities,
+              existingModel.capabilities,
+            ),
+            ...((modelData.extraBody ?? existingModel.extraBody)
+              ? { extraBody: modelData.extraBody ?? existingModel.extraBody }
+              : {}),
+            ...((modelData.extraHeader ?? existingModel.extraHeader)
+              ? {
+                  extraHeader: modelData.extraHeader ?? existingModel.extraHeader,
+                }
+              : {}),
+            ...((modelData.options ?? existingModel.options)
+              ? { options: modelData.options ?? existingModel.options }
+              : {}),
+            ...((modelData.speedHistory ?? existingModel.speedHistory)
+              ? {
+                  speedHistory:
+                    modelData.speedHistory ?? existingModel.speedHistory,
+                }
+              : {}),
+            ...((modelData.averageSpeed ?? existingModel.averageSpeed) !==
+            undefined
+              ? {
+                  averageSpeed:
+                    modelData.averageSpeed ?? existingModel.averageSpeed,
+                }
+              : {}),
+          };
+          providers[providerIndex]!.models[modelIndex] = updatedModel;
+          await this.saveProviders(providers);
+          logger.info("Model updated", {
+            provider: logger.sanitizeProvider(providers[providerIndex]!),
+            model: logger.sanitizeModel(updatedModel),
+          });
+          return true;
+        }
+      }
+      logger.warn("Attempted to update missing model", {
+        providerId,
+        modelId,
+      });
+      return false;
+    });
+  }
+
+  async updateModels(
+    providerId: string,
+    modelIds: string[],
+    modelData: Partial<ModelDraft>,
+  ): Promise<number> {
+    return this.withLock(async () => {
+      const providers = this.getProviders();
+      const providerIndex = providers.findIndex((p) => p.id === providerId);
+      if (providerIndex < 0) {
+        logger.warn("Attempted batch update on missing provider", { providerId });
+        return 0;
+      }
+
+      let updatedCount = 0;
+      const models = providers[providerIndex]!.models;
+
+      for (const id of modelIds) {
+        const modelIndex = models.findIndex((m) => m.id === id);
+        if (modelIndex < 0) {
+          continue;
+        }
+
+        const existingModel = models[modelIndex]!;
 
         if (
           modelData.name !== undefined &&
-          InputValidator.validateName(modelData.name)
+          InputValidator.getNameError(modelData.name)
         ) {
           throw new Error("Model name cannot be empty");
         }
-        // Only validate rid if it's explicitly provided as a non-empty string
         if (
           modelData.rid !== undefined &&
-          modelData.rid !== "" &&
-          !modelData.rid.trim()
+          (!modelData.rid || !modelData.rid.trim())
         ) {
           throw new Error("Model remote ID (rid) cannot be empty");
         }
@@ -342,102 +466,18 @@ export class ProviderModelManager implements IProviderModelManager {
               }
             : {}),
         };
+
         providers[providerIndex]!.models[modelIndex] = updatedModel;
+        updatedCount++;
+      }
+
+      if (updatedCount > 0) {
         await this.saveProviders(providers);
-        logger.info("Model updated", {
-          provider: logger.sanitizeProvider(providers[providerIndex]!),
-          model: logger.sanitizeModel(updatedModel),
-        });
-        return true;
-      }
-    }
-    logger.warn("Attempted to update missing model", { providerId, modelId });
-    return false;
-  }
-
-  async updateModels(
-    providerId: string,
-    modelIds: string[],
-    modelData: Partial<ModelDraft>,
-  ): Promise<number> {
-    const providers = this.getProviders();
-    const providerIndex = providers.findIndex((p) => p.id === providerId);
-    if (providerIndex < 0) {
-      logger.warn("Attempted batch update on missing provider", { providerId });
-      return 0;
-    }
-
-    let updatedCount = 0;
-    const models = providers[providerIndex]!.models;
-
-    for (const id of modelIds) {
-      const modelIndex = models.findIndex((m) => m.id === id);
-      if (modelIndex < 0) {
-        continue;
+        logger.info("Models batch updated", { providerId, count: updatedCount });
       }
 
-      const existingModel = models[modelIndex]!;
-
-      if (
-        modelData.name !== undefined &&
-        InputValidator.validateName(modelData.name)
-      ) {
-        throw new Error("Model name cannot be empty");
-      }
-      if (
-        modelData.rid !== undefined &&
-        (!modelData.rid || !modelData.rid.trim())
-      ) {
-        throw new Error("Model remote ID (rid) cannot be empty");
-      }
-
-      const updatedModel: Model = {
-        id: existingModel.id,
-        rid: (modelData.rid ?? existingModel.rid)?.trim() || existingModel.rid,
-        name: modelData.name ?? existingModel.name,
-        family: modelData.family ?? existingModel.family,
-        version: modelData.version ?? existingModel.version,
-        maxInputTokens:
-          modelData.maxInputTokens ?? existingModel.maxInputTokens,
-        maxOutputTokens:
-          modelData.maxOutputTokens ?? existingModel.maxOutputTokens,
-        capabilities: normalizeCapabilities(
-          modelData.capabilities,
-          existingModel.capabilities,
-        ),
-        ...((modelData.extraBody ?? existingModel.extraBody)
-          ? { extraBody: modelData.extraBody ?? existingModel.extraBody }
-          : {}),
-        ...((modelData.extraHeader ?? existingModel.extraHeader)
-          ? { extraHeader: modelData.extraHeader ?? existingModel.extraHeader }
-          : {}),
-        ...((modelData.options ?? existingModel.options)
-          ? { options: modelData.options ?? existingModel.options }
-          : {}),
-        ...((modelData.speedHistory ?? existingModel.speedHistory)
-          ? {
-              speedHistory:
-                modelData.speedHistory ?? existingModel.speedHistory,
-            }
-          : {}),
-        ...((modelData.averageSpeed ?? existingModel.averageSpeed) !== undefined
-          ? {
-              averageSpeed:
-                modelData.averageSpeed ?? existingModel.averageSpeed,
-            }
-          : {}),
-      };
-
-      providers[providerIndex]!.models[modelIndex] = updatedModel;
-      updatedCount++;
-    }
-
-    if (updatedCount > 0) {
-      await this.saveProviders(providers);
-      logger.info("Models batch updated", { providerId, count: updatedCount });
-    }
-
-    return updatedCount;
+      return updatedCount;
+    });
   }
 
   /**
@@ -465,45 +505,47 @@ export class ProviderModelManager implements IProviderModelManager {
     modelIds: string[],
     isUserSelectable: boolean,
   ): Promise<number> {
-    if (!Array.isArray(modelIds) || modelIds.length === 0) {
-      return 0;
-    }
-
-    const providers = this.getProviders();
-    const providerIndex = providers.findIndex((p) => p.id === providerId);
-    if (providerIndex < 0) {
-      logger.warn("Attempted visibility update on missing provider", {
-        providerId,
-      });
-      return 0;
-    }
-
-    let updatedCount = 0;
-    const models = providers[providerIndex]!.models;
-
-    for (const id of modelIds) {
-      const modelIndex = models.findIndex((m) => m.id === id);
-      if (modelIndex < 0) {
-        continue;
+    return this.withLock(async () => {
+      if (!Array.isArray(modelIds) || modelIds.length === 0) {
+        return 0;
       }
 
-      models[modelIndex] = {
-        ...models[modelIndex]!,
-        isUserSelectable,
-      };
-      updatedCount++;
-    }
+      const providers = this.getProviders();
+      const providerIndex = providers.findIndex((p) => p.id === providerId);
+      if (providerIndex < 0) {
+        logger.warn("Attempted visibility update on missing provider", {
+          providerId,
+        });
+        return 0;
+      }
 
-    if (updatedCount > 0) {
-      await this.saveProviders(providers);
-      logger.info("Models visibility updated", {
-        providerId,
-        count: updatedCount,
-        isUserSelectable,
-      });
-    }
+      let updatedCount = 0;
+      const models = providers[providerIndex]!.models;
 
-    return updatedCount;
+      for (const id of modelIds) {
+        const modelIndex = models.findIndex((m) => m.id === id);
+        if (modelIndex < 0) {
+          continue;
+        }
+
+        models[modelIndex] = {
+          ...models[modelIndex]!,
+          isUserSelectable,
+        };
+        updatedCount++;
+      }
+
+      if (updatedCount > 0) {
+        await this.saveProviders(providers);
+        logger.info("Models visibility updated", {
+          providerId,
+          count: updatedCount,
+          isUserSelectable,
+        });
+      }
+
+      return updatedCount;
+    });
   }
 
   /**
@@ -513,38 +555,40 @@ export class ProviderModelManager implements IProviderModelManager {
     providerId: string,
     isUserSelectable: boolean,
   ): Promise<number> {
-    const providers = this.getProviders();
-    const providerIndex = providers.findIndex((p) => p.id === providerId);
-    if (providerIndex < 0) {
-      logger.warn("Attempted visibility update on missing provider", {
-        providerId,
-      });
-      return 0;
-    }
-
-    const models = providers[providerIndex]!.models;
-    let updatedCount = 0;
-
-    for (let i = 0; i < models.length; i++) {
-      if (models[i]!.isUserSelectable !== isUserSelectable) {
-        models[i] = {
-          ...models[i]!,
-          isUserSelectable,
-        };
-        updatedCount++;
+    return this.withLock(async () => {
+      const providers = this.getProviders();
+      const providerIndex = providers.findIndex((p) => p.id === providerId);
+      if (providerIndex < 0) {
+        logger.warn("Attempted visibility update on missing provider", {
+          providerId,
+        });
+        return 0;
       }
-    }
 
-    if (updatedCount > 0) {
-      await this.saveProviders(providers);
-      logger.info("Provider all models visibility updated", {
-        providerId,
-        count: updatedCount,
-        isUserSelectable,
-      });
-    }
+      let updatedCount = 0;
+      const models = providers[providerIndex]!.models;
 
-    return updatedCount;
+      for (let i = 0; i < models.length; i++) {
+        if (models[i]!.isUserSelectable !== isUserSelectable) {
+          models[i] = {
+            ...models[i]!,
+            isUserSelectable,
+          };
+          updatedCount++;
+        }
+      }
+
+      if (updatedCount > 0) {
+        await this.saveProviders(providers);
+        logger.info("Provider all models visibility updated", {
+          providerId,
+          count: updatedCount,
+          isUserSelectable,
+        });
+      }
+
+      return updatedCount;
+    });
   }
 
   async updateModelSpeed(
@@ -552,83 +596,89 @@ export class ProviderModelManager implements IProviderModelManager {
     modelId: string,
     speed: number,
   ): Promise<void> {
-    logger.debug("updateModelSpeed called", { providerId, modelId, speed });
-    const providers = this.getProviders();
-    const providerIndex = providers.findIndex((p) => p.id === providerId);
-    if (providerIndex >= 0) {
-      const modelIndex = providers[providerIndex]!.models.findIndex(
-        (m) => m.id === modelId,
-      );
-      if (modelIndex >= 0) {
-        const model = providers[providerIndex]!.models[modelIndex]!;
-        const history = model.speedHistory ? [...model.speedHistory] : [];
-        history.push(speed);
-        if (history.length > 5) {
-          history.shift();
-        }
-        const average = history.reduce((a, b) => a + b, 0) / history.length;
+    await this.withLock(async () => {
+      logger.debug("updateModelSpeed called", { providerId, modelId, speed });
+      const providers = this.getProviders();
+      const providerIndex = providers.findIndex((p) => p.id === providerId);
+      if (providerIndex >= 0) {
+        const modelIndex = providers[providerIndex]!.models.findIndex(
+          (m) => m.id === modelId,
+        );
+        if (modelIndex >= 0) {
+          const model = providers[providerIndex]!.models[modelIndex]!;
+          const history = model.speedHistory ? [...model.speedHistory] : [];
+          history.push(speed);
+          if (history.length > 5) {
+            history.shift();
+          }
+          const average = history.reduce((a, b) => a + b, 0) / history.length;
 
-        providers[providerIndex]!.models[modelIndex] = {
-          ...model,
-          speedHistory: history,
-          averageSpeed: average,
-        };
-        await this.saveProviders(providers);
-        logger.debug("Model speed updated", { modelId, speed, average });
+          providers[providerIndex]!.models[modelIndex] = {
+            ...model,
+            speedHistory: history,
+            averageSpeed: average,
+          };
+          await this.saveProviders(providers);
+          logger.debug("Model speed updated", { modelId, speed, average });
+        } else {
+          logger.warn("Model not found for speed update", { modelId });
+        }
       } else {
-        logger.warn("Model not found for speed update", { modelId });
+        logger.warn("Provider not found for speed update", { providerId });
       }
-    } else {
-      logger.warn("Provider not found for speed update", { providerId });
-    }
+    });
   }
 
   async deleteModel(modelId: string): Promise<boolean> {
-    const providers = this.getProviders();
-    let deleted = false;
+    return this.withLock(async () => {
+      const providers = this.getProviders();
+      let deleted = false;
 
-    for (const provider of providers) {
-      const initialLength = provider.models.length;
-      provider.models = provider.models.filter((m) => m.id !== modelId);
-      if (provider.models.length !== initialLength) {
-        deleted = true;
-        break;
+      for (const provider of providers) {
+        const initialLength = provider.models.length;
+        provider.models = provider.models.filter((m) => m.id !== modelId);
+        if (provider.models.length !== initialLength) {
+          deleted = true;
+          break;
+        }
       }
-    }
 
-    if (deleted) {
-      await this.saveProviders(providers);
-      logger.info("Model deleted", { modelId });
-    }
+      if (deleted) {
+        await this.saveProviders(providers);
+        logger.info("Model deleted", { modelId });
+      }
 
-    return deleted;
+      return deleted;
+    });
   }
 
   async deleteModels(modelIds: string[]): Promise<number> {
-    if (!Array.isArray(modelIds) || modelIds.length === 0) {
-      return 0;
-    }
-    const providers = this.getProviders();
-    const idSet = new Set(modelIds);
-    let deletedCount = 0;
+    return this.withLock(async () => {
+      if (!Array.isArray(modelIds) || modelIds.length === 0) {
+        return 0;
+      }
+      const providers = this.getProviders();
+      const idSet = new Set(modelIds);
+      let deletedCount = 0;
 
-    for (const provider of providers) {
-      provider.models = provider.models.filter((m) => {
-        if (idSet.has(m.id)) {
-          deletedCount++;
-          return false;
-        }
-        return true;
-      });
-      // continue to next provider to remove models across providers
-    }
+      for (const provider of providers) {
+        provider.models = provider.models.filter((m) => {
+          if (idSet.has(m.id)) {
+            deletedCount++;
+            return false;
+          }
+          return true;
+        });
+        // continue to next provider to remove models across providers
+      }
 
-    if (deletedCount > 0) {
-      await this.saveProviders(providers);
-      logger.info("Models batch deleted", { count: deletedCount });
-    }
+      if (deletedCount > 0) {
+        await this.saveProviders(providers);
+        logger.info("Models batch deleted", { count: deletedCount });
+      }
 
-    return deletedCount;
+      return deletedCount;
+    });
   }
 
   findModel(modelId: string): { provider: Provider; model: Model } | null {

@@ -103,8 +103,8 @@ export class CryptoService {
     encryptedBase64: string,
     password: string,
   ): ProviderApiKeys | null {
-    if (!password) {
-      logger.warn("CryptoService.decryptApiKeys: password is empty");
+    if (!CryptoService.isValidPassword(password)) {
+      logger.warn("CryptoService.decryptApiKeys: password is invalid or too short");
       return null;
     }
 

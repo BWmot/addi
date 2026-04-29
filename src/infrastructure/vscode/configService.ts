@@ -18,7 +18,7 @@ export class ConfigManager {
   static getDefaultMaxOutputTokens(): number {
     return ConfigManager.getConfiguration().get<number>(
       "defaultMaxOutputTokens",
-      128000,
+      4096,
     );
   }
 

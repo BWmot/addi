@@ -1,16 +1,13 @@
 /**
  * Unit Tests for InputValidator
  *
- * Tests both the deprecated API (validateName/validateVersion/validateTokens)
- * and the new API (getNameError/getVersionError/getTokensError).
- * All deprecated methods delegate to the new ones, so testing both
- * ensures backward compatibility and correctness.
+ * Tests the validation API (getNameError/getVersionError/getTokensError).
  */
 import * as assert from "assert";
 import { InputValidator } from "../src/common/utils/validator";
 
 describe("InputValidator", () => {
-  // ==================== getNameError() / validateName() ====================
+  // ==================== getNameError() ====================
 
   describe("getNameError()", () => {
     it("should return null for valid names", () => {
@@ -40,15 +37,7 @@ describe("InputValidator", () => {
     });
   });
 
-  describe("validateName() (deprecated)", () => {
-    it("should delegate to getNameError for backward compatibility", () => {
-      assert.strictEqual(InputValidator.validateName("Test"), null);
-      assert.strictEqual(InputValidator.validateName(""), "Name cannot be empty");
-      assert.strictEqual(InputValidator.validateName("   "), "Name cannot be empty");
-    });
-  });
-
-  // ==================== getVersionError() / validateVersion() ====================
+  // ==================== getVersionError() ====================
 
   describe("getVersionError()", () => {
     const expectedError = "Version format is invalid, it should consist of numbers and dots";
@@ -102,15 +91,7 @@ describe("InputValidator", () => {
     });
   });
 
-  describe("validateVersion() (deprecated)", () => {
-    it("should delegate to getVersionError for backward compatibility", () => {
-      assert.strictEqual(InputValidator.validateVersion("1.0.0"), null);
-      assert.strictEqual(InputValidator.validateVersion("v1.0"),
-        "Version format is invalid, it should consist of numbers and dots");
-    });
-  });
-
-  // ==================== getTokensError() / validateTokens() ====================
+  // ==================== getTokensError() ====================
 
   describe("getTokensError()", () => {
     const expectedError = "Token count must be a positive integer";
@@ -153,14 +134,6 @@ describe("InputValidator", () => {
     it("should handle large numbers (clamped by TokenFormatter.parse)", () => {
       assert.strictEqual(InputValidator.getTokensError("4000000"), null); // at limit
       assert.strictEqual(InputValidator.getTokensError("4000001"), null); // clamped to 4M
-    });
-  });
-
-  describe("validateTokens() (deprecated)", () => {
-    it("should delegate to getTokensError for backward compatibility", () => {
-      assert.strictEqual(InputValidator.validateTokens("1000"), null);
-      assert.strictEqual(InputValidator.validateTokens("abc"),
-        "Token count must be a positive integer");
     });
   });
 });

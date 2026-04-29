@@ -172,9 +172,19 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         const parsed = JSON.parse(trimmedContent);
 
         if (Array.isArray(parsed)) {
+          // Legacy format: raw provider array (version 0 implicit)
           providersToImport = parsed;
         } else if (parsed.providers && Array.isArray(parsed.providers)) {
           providersToImport = parsed.providers;
+          // Validate version compatibility
+          if (parsed.version !== undefined) {
+            const v = Number(parsed.version);
+            if (!Number.isFinite(v) || v < 1 || v > 1) {
+              UserFeedback.showWarning(
+                `Export version "${parsed.version}" may not be fully compatible with this extension. Proceed with caution.`,
+              );
+            }
+          }
           // Check for encrypted API Keys
           if (parsed.encryptionApiKey) {
             const password = await this.promptForDecryptionPassword();
@@ -275,12 +285,16 @@ export class ConfigCommandHandler extends BaseCommandHandler {
             }
           }
 
-          await this.manager.saveProviders(mergedProviders);
+          // Strip apiKey from merged providers before save (apiKey handled separately below)
+          const mergedForSave = mergedProviders.map(({ apiKey: _ak, ...rest }) => rest as Provider);
+          await this.manager.saveProviders(mergedForSave);
 
-          // Import API Keys to SecretStorage
-          for (const provider of selectedToImport) {
-            if (provider.apiKey) {
-              await this.manager.setApiKey(provider.id, provider.apiKey);
+          // Import API Keys to SecretStorage using the FINAL provider IDs
+          for (const provider of mergedProviders) {
+            const apiKey = selectedToImport.find((p) => p.id === provider.id)?.apiKey
+              ?? selectedToImport.find((p) => p.name === provider.name)?.apiKey;
+            if (apiKey) {
+              await this.manager.setApiKey(provider.id, apiKey);
             }
           }
 
@@ -575,7 +589,11 @@ export class ConfigCommandHandler extends BaseCommandHandler {
           m.id = IdGenerator.generate();
         }
         if (!m.rid) {
-          m.rid = m.name;
+          // rid is the remote model identifier used in API calls (e.g. "gpt-4o")
+          // Cannot infer from display name — requires explicit value
+          throw new Error(
+            `Model "${m.name}" in provider "${provider.name}" is missing "rid" (remote model identifier)`,
+          );
         }
         if (!m.family) {
           m.family = ConfigManager.getDefaultModelFamily();
@@ -661,7 +679,6 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         // Strip unnecessary fields for clean export
         const {
           apiKey: _apiKey,
-          options: _providerOptions,
           order: _order,
           ...providerCore
         } = p;
@@ -671,7 +688,6 @@ export class ConfigCommandHandler extends BaseCommandHandler {
           const {
             speedHistory: _speedHistory,
             averageSpeed: _averageSpeed,
-            options: _modelOptions,
             ...modelCore
           } = m;
 

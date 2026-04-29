@@ -28,6 +28,9 @@ export class StorageService implements IStorageService {
   // ApiKeyService instance for API key management
   private apiKeyService: ApiKeyService;
 
+  // Debounce timer for configuration change events (prevents rapid-fire during Settings Sync)
+  private configChangeDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+
   constructor(private context: vscode.ExtensionContext) {
     // Initialize ApiKeyService
     this.apiKeyService = new ApiKeyService(context);
@@ -44,11 +47,17 @@ export class StorageService implements IStorageService {
       }
     });
 
-    // Handle settings sync events by refreshing when relevant configuration changes
+    // Handle settings sync events by debouncing rapid configuration changes
     this.context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("addi")) {
-          this._onDidUpdate.fire();
+          if (this.configChangeDebounceTimer) {
+            clearTimeout(this.configChangeDebounceTimer);
+          }
+          this.configChangeDebounceTimer = setTimeout(() => {
+            this.configChangeDebounceTimer = undefined;
+            this._onDidUpdate.fire();
+          }, 200);
         }
       }),
     );
@@ -392,16 +401,10 @@ export class StorageService implements IStorageService {
     );
     const newIds = new Set(providers.map((p) => p.id));
 
-    // Load all existing secrets for preservation logic
-    const existingSecrets = new Map<string, string | undefined>();
+    // Cleanup secrets for deleted providers
     for (const p of oldConfig) {
       if (!newIds.has(p.id)) {
-        // Cleanup secrets for deleted providers
         await this.apiKeyService.deleteApiKey(p.id);
-      } else {
-        // Keep track of secrets for existing providers (in case we need to preserve them)
-        const secret = await this.apiKeyService.getApiKey(p.id);
-        existingSecrets.set(p.id, secret);
       }
     }
 
