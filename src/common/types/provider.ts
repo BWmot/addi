@@ -47,6 +47,7 @@ export interface ProviderRepository {
   findModel(modelId: string): { provider: Provider; model: Model } | null;
   getApiKey(providerId: string): Promise<string | undefined>;
   onDidUpdate?: (listener: () => any) => any;
+  updateModelSpeed?(providerId: string, modelId: string, speed: number): Promise<void>;
 }
 
 // 引入 Model 类型用于 Provider 接口

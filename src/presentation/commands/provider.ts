@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import { BaseCommandHandler } from "./base";
 import type { ProviderTreeItem } from "../views/providerView";
-import { UserFeedback, ConfigManager } from "../../common/utils";
+import { UserFeedback } from "../utils/feedback";
+import { ConfigManager } from "../../infrastructure/vscode/configService";
 import { maskSecret, logger } from "../../common/logger";
 import type { Provider, Model } from "../../common/types";
 
@@ -145,13 +146,12 @@ export class ProviderCommandHandler extends BaseCommandHandler {
     );
 
     if (this.editorViewManager) {
-      const prefillData = {
-        ...item.provider,
+      // Copy provider data without id/models to ensure it's treated as new
+      const { id: _id, models: _models, ...providerWithoutIdModels } = item.provider;
+      const prefillData: Record<string, unknown> = {
+        ...providerWithoutIdModels,
         name: `${item.provider.name} Copy`,
       };
-      // Remove ID and models to ensure it's treated as new
-      delete (prefillData as any).id;
-      delete (prefillData as any).models;
 
       this.editorViewManager.openEditor(
         undefined,

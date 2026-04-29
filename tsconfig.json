@@ -27,6 +27,6 @@
     "removeComments": false,
     "pretty": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "typings/**/*"],
   "exclude": ["node_modules", ".vscode-test", "dist", "tests"]
 }

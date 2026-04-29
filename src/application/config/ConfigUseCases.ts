@@ -1,5 +1,5 @@
 import type { Provider } from "../../common/types";
-import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
+import type { IProviderModelManager } from "../../domain/interfaces";
 import { logger } from "../../common/logger";
 
 export interface ImportResult {
@@ -10,9 +10,11 @@ export interface ImportResult {
 /**
  * Configuration-related use cases
  * Business logic extracted from ConfigCommandHandler
+ *
+ * Depends on `IProviderModelManager` (DIP) — not the concrete class.
  */
 export class ConfigUseCases {
-  constructor(private manager: ProviderModelManager) {}
+  constructor(private manager: IProviderModelManager) {}
 
   /**
    * Export providers to JSON string
@@ -28,7 +30,7 @@ export class ConfigUseCases {
       for (const provider of providersToExport) {
         const apiKey = await this.manager.getApiKey(provider.id);
         if (apiKey) {
-          (provider as any).apiKey = apiKey;
+          provider.apiKey = apiKey;
         }
       }
     }
@@ -79,8 +81,8 @@ export class ConfigUseCases {
     let apiKeysImported = 0;
     if (shouldImportApiKeys) {
       for (const provider of providersToImport) {
-        if ((provider as any).apiKey) {
-          await this.manager.setApiKey(provider.id, (provider as any).apiKey);
+        if (provider.apiKey) {
+          await this.manager.setApiKey(provider.id, provider.apiKey);
           apiKeysImported++;
         }
       }

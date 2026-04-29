@@ -29,8 +29,10 @@ interface ExecutionOptions {
 
 export class LLMService {
   private readonly toolOrchestrator: ToolOrchestrator;
+  private readonly registry: AIProviderRegistry;
 
-  constructor() {
+  constructor(registry?: AIProviderRegistry) {
+    this.registry = registry ?? AIProviderRegistry.getInstance();
     this.toolOrchestrator = new ToolOrchestrator();
   }
 
@@ -167,7 +169,7 @@ export class LLMService {
   private parseExtraBody(
     model: Model,
     provider: Provider,
-  ): Record<string, any> {
+  ): Record<string, unknown> {
     // Model-level extraBody takes precedence, then provider-level
     const extraBodyStr = model.extraBody || provider.extraBody;
     if (!extraBodyStr) {
@@ -221,7 +223,7 @@ export class LLMService {
     tools: Record<string, Tool>,
     options: ExecutionOptions,
   ): any {
-    const aiModel = AIProviderRegistry.createModel(provider, model);
+    const aiModel = this.registry.createModel(provider, model);
     const extraBody = this.parseExtraBody(model, provider);
     const extraHeaders = this.parseExtraHeaders(model, provider);
     const modelOptions = this.getModelOptions(model, provider);

@@ -7,9 +7,28 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { Provider, Model } from "../../common/types";
 import { logger } from "../../common/logger";
 
+/**
+ * Settings object passed to the created AI provider instance (model-level).
+ * Supports provider-specific features like reasoning/thinking.
+ */
+interface ModelSettings {
+  thinking?: { type: "enabled"; budgetTokens: number };
+}
+
+/**
+ * Common settings shape for all AI SDK provider factories.
+ * Defined as a concrete type (not using optional properties) to avoid conflicts
+ * with `exactOptionalPropertyTypes` in tsconfig.
+ */
+interface BaseProviderSettings {
+  baseURL: string;
+  apiKey: string;
+  fetch: typeof globalThis.fetch;
+}
+
 // AI SDK 的 Provider 实例通常是一个函数，接受 modelId 和 settings 返回 LanguageModelV1
 // 我们定义一个通用的类型别名
-type AIProviderInstance = (modelId: string, settings?: any) => LanguageModel;
+type AIProviderInstance = (modelId: string, settings?: ModelSettings) => LanguageModel;
 
 /**
  * Factory interface for creating AI Provider instances (e.g. OpenAI, Anthropic).
@@ -23,40 +42,56 @@ export interface ProviderFactory {
 /**
  * Registry for all supported AI Providers.
  * Maps provider types (vendor strings) to their respective factory functions.
+ *
+ * Instance-based design for testability and dependency injection.
+ * Use `AIProviderRegistry.getInstance()` for the global singleton,
+ * or create a new instance for testing / custom setups.
  */
 export class AIProviderRegistry {
-  private static factories: Record<string, ProviderFactory> = {};
-  private static initialized = false;
+  private static _instance: AIProviderRegistry | undefined;
+  private factories: Record<string, ProviderFactory> = {};
+  private initialized = false;
 
-  static register(factory: ProviderFactory) {
-    AIProviderRegistry.factories[factory.id] = factory;
+  /**
+   * Get or create the global singleton instance.
+   * Factories are registered lazily on first access.
+   */
+  static getInstance(): AIProviderRegistry {
+    if (!AIProviderRegistry._instance) {
+      AIProviderRegistry._instance = new AIProviderRegistry();
+    }
+    return AIProviderRegistry._instance;
   }
 
-  static unregister(id: string) {
-    delete AIProviderRegistry.factories[id];
+  register(factory: ProviderFactory) {
+    this.factories[factory.id] = factory;
   }
 
-  static getFactory(id: string): ProviderFactory | undefined {
-    AIProviderRegistry.ensureInitialized();
-    return AIProviderRegistry.factories[id];
+  unregister(id: string) {
+    delete this.factories[id];
   }
 
-  static getAvailableTypes() {
-    AIProviderRegistry.ensureInitialized();
-    return Object.values(AIProviderRegistry.factories).map((f) => ({
+  getFactory(id: string): ProviderFactory | undefined {
+    this.ensureInitialized();
+    return this.factories[id];
+  }
+
+  getAvailableTypes() {
+    this.ensureInitialized();
+    return Object.values(this.factories).map((f) => ({
       label: f.label,
       value: f.id,
     }));
   }
 
-  static ensureInitialized() {
-    if (AIProviderRegistry.initialized) {
+  private ensureInitialized() {
+    if (this.initialized) {
       return;
     }
 
     // Helper to create a fetch wrapper for error handling
-    const createFetchWithErrorHandling = (baseFetch?: typeof fetch) => {
-      return async (url: string | Request | URL, options?: any) => {
+    const createFetchWithErrorHandling = (baseFetch?: typeof globalThis.fetch) => {
+      return async (url: string | Request | URL, options?: RequestInit) => {
         const urlStr = url.toString();
         try {
           const fetchFn = baseFetch || fetch;
@@ -70,11 +105,18 @@ export class AIProviderRegistry {
             if (!finalOptions.headers.has("User-Agent")) {
               finalOptions.headers.set("User-Agent", "VSCode-Addi-Extension");
             }
-          } else if (
-            !finalOptions.headers["User-Agent"] &&
-            !finalOptions.headers["user-agent"]
-          ) {
-            finalOptions.headers["User-Agent"] = "VSCode-Addi-Extension";
+          } else if (Array.isArray(finalOptions.headers)) {
+            // [string, string][] format — add if missing
+            const headersArray = finalOptions.headers as [string, string][];
+            if (!headersArray.some(([k]) => k.toLowerCase() === "user-agent")) {
+              headersArray.push(["User-Agent", "VSCode-Addi-Extension"]);
+            }
+          } else {
+            const headersRecord: Record<string, string> = (finalOptions.headers as Record<string, string>) || {};
+            if (!headersRecord["User-Agent"] && !headersRecord["user-agent"]) {
+              headersRecord["User-Agent"] = "VSCode-Addi-Extension";
+            }
+            finalOptions.headers = headersRecord;
           }
 
           const response = await fetchFn(url, finalOptions);
@@ -104,93 +146,78 @@ export class AIProviderRegistry {
       };
     };
 
+    /**
+     * Build common provider settings from a Provider config.
+     * All properties are non-optional to be compatible with `exactOptionalPropertyTypes`.
+     */
+    const buildBaseSettings = (p: Provider, overrideBaseURL?: string): BaseProviderSettings => ({
+      baseURL: overrideBaseURL ?? p.apiEndpoint ?? "",
+      apiKey: p.apiKey ?? "",
+      fetch: createFetchWithErrorHandling(),
+    });
+
     // OpenAI (/completions) - Most common, used by OpenAI, DeepSeek, local models, etc.
-    AIProviderRegistry.register({
+    this.register({
       id: "openai-completions",
       label: "OpenAI (/completions)",
       create: (p) => {
-        const settings: any = {};
         const isCustomEndpoint =
           p.apiEndpoint && !p.apiEndpoint.includes("api.openai.com");
-
-        if (p.apiEndpoint) {
-          settings.baseURL = p.apiEndpoint.replace(
-            /\/chat\/completions\/?$/,
-            "",
-          );
-        }
-        if (p.apiKey) {
-          settings.apiKey = p.apiKey;
-        }
-        settings.fetch = createFetchWithErrorHandling();
+        const baseURL = p.apiEndpoint
+          ? p.apiEndpoint.replace(/\/chat\/completions\/?$/, "")
+          : "";
 
         // Smart Fallback: use createOpenAICompatible for custom endpoints
         if (isCustomEndpoint) {
-          settings.name = "openai-proxy";
-          return createOpenAICompatible(settings);
+          return createOpenAICompatible({
+            baseURL,
+            apiKey: p.apiKey ?? "",
+            name: "openai-proxy",
+            fetch: createFetchWithErrorHandling(),
+          });
         }
 
-        return createOpenAI(settings);
+        return createOpenAI(buildBaseSettings(p, baseURL));
       },
     });
 
     // OpenAI (/responses) - Newer API with built-in tool support
-    AIProviderRegistry.register({
+    this.register({
       id: "openai-responses",
       label: "OpenAI (/responses)",
       create: (p) => {
-        const settings: any = {};
-
-        if (p.apiEndpoint) {
-          settings.baseURL = p.apiEndpoint.replace(/\/responses\/?$/, "");
-        }
-        if (p.apiKey) {
-          settings.apiKey = p.apiKey;
-        }
-        settings.fetch = createFetchWithErrorHandling();
-
-        return createOpenAI(settings);
+        const baseURL = p.apiEndpoint
+          ? p.apiEndpoint.replace(/\/responses\/?$/, "")
+          : "";
+        return createOpenAI(buildBaseSettings(p, baseURL));
       },
     });
 
     // Anthropic (/messages)
-    AIProviderRegistry.register({
+    this.register({
       id: "anthropic-messages",
       label: "Anthropic (/messages)",
       create: (p) => {
-        const settings: any = {};
-        if (p.apiEndpoint) {
-          // Manual mode: User must provide the correct baseURL.
-          // e.g. https://api.minimaxi.com/anthropic/v1
-          // We only strip /messages because the SDK adds it.
-          settings.baseURL = p.apiEndpoint.replace(/\/messages\/?$/, "");
-        }
-        if (p.apiKey) {
-          settings.apiKey = p.apiKey;
-        }
-        settings.fetch = createFetchWithErrorHandling();
-        return createAnthropic(settings);
+        // Manual mode: User must provide the correct baseURL.
+        // e.g. https://api.minimaxi.com/anthropic/v1
+        // We only strip /messages because the SDK adds it.
+        const baseURL = p.apiEndpoint
+          ? p.apiEndpoint.replace(/\/messages\/?$/, "")
+          : "";
+        return createAnthropic(buildBaseSettings(p, baseURL));
       },
     });
 
     // Google (/name:generateContent)
-    AIProviderRegistry.register({
+    this.register({
       id: "google-generateContent",
       label: "Google (/name:generateContent)",
       create: (p) => {
-        const settings: any = {};
-        if (p.apiEndpoint) {
-          settings.baseURL = p.apiEndpoint;
-        }
-        if (p.apiKey) {
-          settings.apiKey = p.apiKey;
-        }
-        settings.fetch = createFetchWithErrorHandling();
-        return createGoogleGenerativeAI(settings);
+        return createGoogleGenerativeAI(buildBaseSettings(p));
       },
     });
 
-    AIProviderRegistry.initialized = true;
+    this.initialized = true;
   }
 
   /**
@@ -199,11 +226,11 @@ export class AIProviderRegistry {
    * 重要: 这里必须使用 model.rid (远程模型 ID)，而不是 model.id (本地 UUID)
    * 因为 AI SDK 需要知道实际的远程模型标识符来正确路由请求
    */
-  static createModel(
+  createModel(
     provider: Provider,
     modelOrId: string | Model,
   ): LanguageModel {
-    AIProviderRegistry.ensureInitialized();
+    this.ensureInitialized();
 
     // 关键修复: 如果传入的是 Model 对象，必须使用 rid 而非 id
     // - id 是本地生成的 UUID，用于在 addi 扩展内部唯一标识模型
@@ -230,23 +257,23 @@ export class AIProviderRegistry {
     }
 
     // 尝试获取对应的工厂，如果找不到则默认使用 openai (兼容模式)
-    let factory = AIProviderRegistry.factories[provider.providerType];
+    let factory = this.factories[provider.providerType];
     if (!factory) {
       if (
         ["openai-completions", "openai-responses"].includes(
           provider.providerType,
         )
       ) {
-        factory = AIProviderRegistry.factories["openai-completions"];
+        factory = this.factories["openai-completions"];
       } else {
-        factory = AIProviderRegistry.factories["openai-completions"]; // Default fallback
+        factory = this.factories["openai-completions"]; // Default fallback
       }
     }
 
     if (!factory) {
       // Should not happen if fallback is correct
       // Ensure factory is strictly not undefined for TypeScript
-      factory = AIProviderRegistry.factories["openai-completions"];
+      factory = this.factories["openai-completions"];
       if (!factory) {
         throw new Error(
           `Provider factory not found for type: ${provider.providerType}`,
@@ -257,7 +284,7 @@ export class AIProviderRegistry {
     const aiProviderInstance = factory.create(provider);
 
     // Configure model-specific settings
-    const modelSettings: any = {};
+    const modelSettings: ModelSettings = {};
 
     // Support reasoning/thinking based on capabilities
     if (model && model.capabilities?.reasoning) {

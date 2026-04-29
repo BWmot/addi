@@ -346,7 +346,7 @@ export class StorageService implements IStorageService {
 
       // Ensure no apiKey property leaks from config (if any remains due to old data)
       if ("apiKey" in provider) {
-        delete (provider as any).apiKey;
+        delete provider.apiKey;
       }
 
       // 2. Attach Model Stats
@@ -407,10 +407,7 @@ export class StorageService implements IStorageService {
 
     for (const p of providers) {
       // --- 1. Prepare Config (Strip Stats & Secrets) ---
-      const { apiKey, models, ...restProvider } = p as any;
-
-      // Ensure we don't leak apiKey into the synced config
-      delete (restProvider as any).apiKey;
+      const { apiKey, models, ...restProvider } = p;
 
       // Handle secrets - store to SecretStorage (local only, not synced)
       // null/undefined = preserve existing key (don't touch SecretStorage)
@@ -424,7 +421,7 @@ export class StorageService implements IStorageService {
       }
       // apiKey === null || apiKey === undefined → do nothing (preserve)
 
-      const modelsConfig: ModelConfig[] = (models as Model[]).map((model) => {
+      const modelsConfig: ModelConfig[] = models.map((model) => {
         // Destructure to remove stats properties
         const { speedHistory, averageSpeed, ...staticConfig } = model;
         return staticConfig as ModelConfig;
@@ -433,7 +430,7 @@ export class StorageService implements IStorageService {
       configToSave.push({
         ...restProvider,
         models: modelsConfig,
-      } as any);
+      });
     }
 
     // --- 2. Change Detection ---

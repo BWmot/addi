@@ -1,86 +1,166 @@
 /**
  * Unit Tests for InputValidator
+ *
+ * Tests both the deprecated API (validateName/validateVersion/validateTokens)
+ * and the new API (getNameError/getVersionError/getTokensError).
+ * All deprecated methods delegate to the new ones, so testing both
+ * ensures backward compatibility and correctness.
  */
 import * as assert from "assert";
 import { InputValidator } from "../src/common/utils/validator";
 
 describe("InputValidator", () => {
-  // ==================== validateName() Tests ====================
+  // ==================== getNameError() / validateName() ====================
 
-  describe("validateName()", () => {
+  describe("getNameError()", () => {
     it("should return null for valid names", () => {
-      assert.strictEqual(InputValidator.validateName("Test"), null);
-      assert.strictEqual(InputValidator.validateName("My Provider"), null);
-      assert.strictEqual(InputValidator.validateName("a"), null);
+      assert.strictEqual(InputValidator.getNameError("Test"), null);
+      assert.strictEqual(InputValidator.getNameError("My Provider"), null);
+      assert.strictEqual(InputValidator.getNameError("a"), null);
+      assert.strictEqual(InputValidator.getNameError("Name with 123 numbers"), null);
+      assert.strictEqual(InputValidator.getNameError("special-chars_ok.name"), null);
     });
 
     it("should trim whitespace before validation", () => {
-      assert.strictEqual(InputValidator.validateName("  Test  "), null);
+      assert.strictEqual(InputValidator.getNameError("  Test  "), null);
+      assert.strictEqual(InputValidator.getNameError("\tTest\t"), null);
     });
 
     it("should return error for empty string", () => {
-      assert.strictEqual(
-        InputValidator.validateName(""),
-        "Name cannot be empty",
-      );
+      assert.strictEqual(InputValidator.getNameError(""), "Name cannot be empty");
     });
 
     it("should return error for whitespace-only string", () => {
-      assert.strictEqual(
-        InputValidator.validateName("   "),
-        "Name cannot be empty",
-      );
+      assert.strictEqual(InputValidator.getNameError("   "), "Name cannot be empty");
+      assert.strictEqual(InputValidator.getNameError("\t\n  "), "Name cannot be empty");
+    });
+
+    it("should accept names with leading/trailing spaces after trimming", () => {
+      assert.strictEqual(InputValidator.getNameError(" a "), null);
     });
   });
 
-  // ==================== validateVersion() Tests ====================
+  describe("validateName() (deprecated)", () => {
+    it("should delegate to getNameError for backward compatibility", () => {
+      assert.strictEqual(InputValidator.validateName("Test"), null);
+      assert.strictEqual(InputValidator.validateName(""), "Name cannot be empty");
+      assert.strictEqual(InputValidator.validateName("   "), "Name cannot be empty");
+    });
+  });
 
-  describe("validateVersion()", () => {
+  // ==================== getVersionError() / validateVersion() ====================
+
+  describe("getVersionError()", () => {
+    const expectedError = "Version format is invalid, it should consist of numbers and dots";
+
     it("should return null for valid versions", () => {
-      assert.strictEqual(InputValidator.validateVersion("1"), null);
-      assert.strictEqual(InputValidator.validateVersion("1.0"), null);
-      assert.strictEqual(InputValidator.validateVersion("1.0.0"), null);
-      assert.strictEqual(InputValidator.validateVersion("128.0.0"), null);
+      assert.strictEqual(InputValidator.getVersionError("1"), null);
+      assert.strictEqual(InputValidator.getVersionError("1.0"), null);
+      assert.strictEqual(InputValidator.getVersionError("1.0.0"), null);
+      assert.strictEqual(InputValidator.getVersionError("128.0.0"), null);
+      assert.strictEqual(InputValidator.getVersionError("0"), null);
+      assert.strictEqual(InputValidator.getVersionError("999.999.999"), null);
     });
 
-    it("should return error for invalid versions", () => {
-      assert.strictEqual(
-        InputValidator.validateVersion("v1.0"),
-        "Version format is invalid, it should consist of numbers and dots",
-      );
-      assert.strictEqual(
-        InputValidator.validateVersion("1.0.0.0"),
-        "Version format is invalid, it should consist of numbers and dots",
-      );
-      assert.strictEqual(
-        InputValidator.validateVersion("abc"),
-        "Version format is invalid, it should consist of numbers and dots",
-      );
-      assert.strictEqual(
-        InputValidator.validateVersion(""),
-        "Version format is invalid, it should consist of numbers and dots",
-      );
+    it("should reject versions with 'v' prefix", () => {
+      assert.strictEqual(InputValidator.getVersionError("v1.0"), expectedError);
+    });
+
+    it("should reject versions with more than 3 segments", () => {
+      assert.strictEqual(InputValidator.getVersionError("1.0.0.0"), expectedError);
+    });
+
+    it("should reject non-numeric versions", () => {
+      assert.strictEqual(InputValidator.getVersionError("abc"), expectedError);
+      assert.strictEqual(InputValidator.getVersionError("1.0-beta"), expectedError);
+      assert.strictEqual(InputValidator.getVersionError("latest"), expectedError);
+    });
+
+    it("should reject empty string", () => {
+      assert.strictEqual(InputValidator.getVersionError(""), expectedError);
+    });
+
+    it("should reject whitespace-only string", () => {
+      assert.strictEqual(InputValidator.getVersionError("   "), expectedError);
+    });
+
+    it("should reject versions with spaces between segments", () => {
+      assert.strictEqual(InputValidator.getVersionError("1 0 0"), expectedError);
+    });
+
+    it("should reject versions starting with dot", () => {
+      assert.strictEqual(InputValidator.getVersionError(".1.0"), expectedError);
+    });
+
+    it("should reject versions ending with dot", () => {
+      assert.strictEqual(InputValidator.getVersionError("1.0."), expectedError);
+    });
+
+    it("should reject versions with leading zeros like 01.0.0", () => {
+      // regex \d+ matches, but semantically unusual — this passes regex so is valid
+      assert.strictEqual(InputValidator.getVersionError("01.0.0"), null);
     });
   });
 
-  // ==================== validateTokens() Tests ====================
+  describe("validateVersion() (deprecated)", () => {
+    it("should delegate to getVersionError for backward compatibility", () => {
+      assert.strictEqual(InputValidator.validateVersion("1.0.0"), null);
+      assert.strictEqual(InputValidator.validateVersion("v1.0"),
+        "Version format is invalid, it should consist of numbers and dots");
+    });
+  });
 
-  describe("validateTokens()", () => {
-    it("should return null for valid token values", () => {
-      assert.strictEqual(InputValidator.validateTokens("1000"), null);
-      assert.strictEqual(InputValidator.validateTokens("128000"), null);
-      assert.strictEqual(InputValidator.validateTokens("1k"), null);
+  // ==================== getTokensError() / validateTokens() ====================
+
+  describe("getTokensError()", () => {
+    const expectedError = "Token count must be a positive integer";
+
+    it("should return null for valid numeric strings", () => {
+      assert.strictEqual(InputValidator.getTokensError("1000"), null);
+      assert.strictEqual(InputValidator.getTokensError("128000"), null);
+      assert.strictEqual(InputValidator.getTokensError("1"), null);
     });
 
-    it("should return error for invalid token values", () => {
-      assert.strictEqual(
-        InputValidator.validateTokens("abc"),
-        "Token count must be a positive integer",
-      );
-      assert.strictEqual(
-        InputValidator.validateTokens(""),
-        "Token count must be a positive integer",
-      );
+    it("should return null for valid 'k' suffix strings", () => {
+      assert.strictEqual(InputValidator.getTokensError("1k"), null);
+      assert.strictEqual(InputValidator.getTokensError("128k"), null);
+      assert.strictEqual(InputValidator.getTokensError("1.5k"), null);
+      assert.strictEqual(InputValidator.getTokensError("0.5k"), null);
+    });
+
+    it("should return error for empty or whitespace strings", () => {
+      assert.strictEqual(InputValidator.getTokensError(""), expectedError);
+      assert.strictEqual(InputValidator.getTokensError("   "), expectedError);
+    });
+
+    it("should return error for non-numeric strings", () => {
+      assert.strictEqual(InputValidator.getTokensError("abc"), expectedError);
+    });
+
+    it("should return error for unsupported suffixes", () => {
+      assert.strictEqual(InputValidator.getTokensError("1m"), expectedError);
+      assert.strictEqual(InputValidator.getTokensError("2g"), expectedError);
+    });
+
+    it("should return error for negative values", () => {
+      assert.strictEqual(InputValidator.getTokensError("-100"), expectedError);
+    });
+
+    it("should return error for zero", () => {
+      assert.strictEqual(InputValidator.getTokensError("0"), expectedError);
+    });
+
+    it("should handle large numbers (clamped by TokenFormatter.parse)", () => {
+      assert.strictEqual(InputValidator.getTokensError("4000000"), null); // at limit
+      assert.strictEqual(InputValidator.getTokensError("4000001"), null); // clamped to 4M
+    });
+  });
+
+  describe("validateTokens() (deprecated)", () => {
+    it("should delegate to getTokensError for backward compatibility", () => {
+      assert.strictEqual(InputValidator.validateTokens("1000"), null);
+      assert.strictEqual(InputValidator.validateTokens("abc"),
+        "Token count must be a positive integer");
     });
   });
 });

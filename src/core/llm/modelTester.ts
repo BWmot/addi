@@ -4,7 +4,7 @@ import { AIProviderRegistry } from "./aiRegistry";
 import { generateText, type ModelMessage, type Tool, jsonSchema } from "ai";
 import { logger } from "../../common/logger";
 import { LLMService } from "./llmService";
-import { ConfigManager } from "../../common/utils";
+import { ConfigManager } from "../../infrastructure/vscode/configService";
 
 export interface TestResult {
   success: boolean;
@@ -26,10 +26,14 @@ export interface TestOptions {
 
 export type ProgressCallback = (message: string) => void;
 
-export class ModelTester {
-  private static readonly VISION_TEST_IMAGE =
-    "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAACAAIDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAr/xAAZEAEAAgMAAAAAAAAAAAAAAAAAAQIxcbH/xAAVAQEBAAAAAAAAAAAAAAAAAAAGB//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/ALH64jUcAF1Qf//Z";
+/**
+ * Small JPEG test image (1x1 red pixel) used for vision capability detection.
+ * Extracted to module scope for clarity and easier replacement.
+ */
+const VISION_TEST_IMAGE_BASE64 =
+  "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAACAAIDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAr/xAAZEAEAAgMAAAAAAAAAAAAAAAAAAQIxcbH/xAAVAQEBAAAAAAAAAAAAAAAAAAAGB//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/ALH64jUcAF1Qf//Z";
 
+export class ModelTester {
   static async testModelApi(
     provider: Provider,
     modelDraft: ModelDraft,
@@ -168,7 +172,7 @@ export class ModelTester {
     },
     signal: AbortSignal,
   ): Promise<string | undefined> {
-    const aiModel = AIProviderRegistry.createModel(
+    const aiModel = AIProviderRegistry.getInstance().createModel(
       provider,
       ModelTester.resolveModelIdentifierFromDraft(modelDraft),
     );
@@ -185,7 +189,7 @@ export class ModelTester {
             { type: "text", text: "Describe this image" },
             {
               type: "image",
-              image: Buffer.from(ModelTester.VISION_TEST_IMAGE, "base64"),
+              image: Buffer.from(VISION_TEST_IMAGE_BASE64, "base64"),
             },
           ],
         },

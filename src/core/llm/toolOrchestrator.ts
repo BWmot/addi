@@ -12,7 +12,7 @@ export class ToolOrchestrator {
     const tools: Record<string, Tool> = {};
 
     // VS Code Host Tools (definition only, as VS Code handles execution)
-    const providedTools = (options as any)?.tools as
+    const providedTools = options?.tools as
       | vscode.LanguageModelChatTool[]
       | undefined;
     if (providedTools) {
@@ -24,7 +24,7 @@ export class ToolOrchestrator {
           tools[tool.name] = {
             description: tool.description,
             inputSchema: jsonSchema(schema),
-          } as any;
+          } as Tool;
         } catch (e) {
           logger.error(`Failed to register host tool ${tool.name}`, e);
         }

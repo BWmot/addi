@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
 import { BaseCommandHandler } from "./base";
 import type { Provider } from "../../common/types";
-import { UserFeedback, IdGenerator, ConfigManager } from "../../common/utils";
+import { UserFeedback } from "../utils/feedback";
+import { IdGenerator } from "../../common/utils";
+import { ConfigManager } from "../../infrastructure/vscode/configService";
 import { logger } from "../../common/logger";
 import {
   CryptoService,

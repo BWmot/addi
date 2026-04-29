@@ -1,8 +1,9 @@
 import * as vscode from "vscode";
 import { BaseCommandHandler } from "./base";
 import type { ProviderTreeItem } from "../views/providerView";
-import type { ModelTreeItem } from "../../core/providers/AddiChatProvider";
-import { UserFeedback, ConfigManager } from "../../common/utils";
+import type { ModelTreeItem } from "../views/treeItems";
+import { UserFeedback } from "../utils/feedback";
+import { ConfigManager } from "../../infrastructure/vscode/configService";
 import { logger } from "../../common/logger";
 
 /**
@@ -120,9 +121,12 @@ export class ModelCommandHandler extends BaseCommandHandler {
         return;
       }
 
-      const prefillData = { ...item.model, name: `${item.model.name} Copy` };
-      // Remove id to ensure it's treated as new
-      delete (prefillData as any).id;
+      // Copy model data without id to ensure it's treated as new
+      const { id: _id, ...modelWithoutId } = item.model;
+      const prefillData: Record<string, unknown> = {
+        ...modelWithoutId,
+        name: `${item.model.name} Copy`,
+      };
 
       this.editorViewManager.openEditor(
         undefined,

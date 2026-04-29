@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import type { Provider } from "../../common/types";
 import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
-import { ModelTreeItem } from "../../core/providers/AddiChatProvider";
+import { ModelTreeItem } from "./treeItems";
+import { sortProviders, sortModels, type SortRule } from "../utils/sortStrategy";
 
 export class ProviderTreeItem extends vscode.TreeItem {
   constructor(
@@ -88,35 +89,7 @@ export class AddiTreeDataProvider
         sortRule !== "none" &&
         (sortTarget === "providers" || sortTarget === "both")
       ) {
-        if (sortRule === "alphabet") {
-          providers = [...providers].sort((a, b) =>
-            a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-          );
-        } else if (sortRule === "input tokens") {
-          providers = [...providers].sort((a, b) => {
-            const maxA = Math.max(
-              ...a.models.map((m) => m.maxInputTokens || 0),
-              0,
-            );
-            const maxB = Math.max(
-              ...b.models.map((m) => m.maxInputTokens || 0),
-              0,
-            );
-            return maxB - maxA;
-          });
-        } else if (sortRule === "output tokens") {
-          providers = [...providers].sort((a, b) => {
-            const maxA = Math.max(
-              ...a.models.map((m) => m.maxOutputTokens || 0),
-              0,
-            );
-            const maxB = Math.max(
-              ...b.models.map((m) => m.maxOutputTokens || 0),
-              0,
-            );
-            return maxB - maxA;
-          });
-        }
+        providers = sortProviders(providers, sortRule as SortRule);
       }
 
       // Batch fetch API key availability for all providers
@@ -129,28 +102,13 @@ export class AddiTreeDataProvider
     }
 
     if (element instanceof ProviderTreeItem) {
-      const models = [...element.provider.models];
-
-      // Sort models
+      // Sort models only if target includes models
+      let models = [...element.provider.models];
       if (
         sortRule !== "none" &&
         (sortTarget === "models" || sortTarget === "both")
       ) {
-        models.sort((a, b) => {
-          if (sortRule === "alphabet") {
-            return a.name.localeCompare(b.name, undefined, {
-              sensitivity: "base",
-            });
-          }
-          // Numeric sort for tokens (more to less)
-          if (sortRule === "input tokens") {
-            return (b.maxInputTokens || 0) - (a.maxInputTokens || 0);
-          }
-          if (sortRule === "output tokens") {
-            return (b.maxOutputTokens || 0) - (a.maxOutputTokens || 0);
-          }
-          return 0;
-        });
+        models = sortModels(models, sortRule as SortRule);
       }
 
       // Check if provider has API key in SecretStorage

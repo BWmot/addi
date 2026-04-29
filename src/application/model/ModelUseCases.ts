@@ -1,5 +1,5 @@
 import type { Provider, Model } from "../../common/types";
-import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
+import type { IProviderModelManager } from "../../domain/interfaces";
 import { logger } from "../../common/logger";
 
 export interface ModelWithProvider {
@@ -10,9 +10,11 @@ export interface ModelWithProvider {
 /**
  * Model-related use cases
  * Business logic extracted from ModelCommandHandler
+ *
+ * Depends on `IProviderModelManager` (DIP) — not the concrete class.
  */
 export class ModelUseCases {
-  constructor(private manager: ProviderModelManager) {}
+  constructor(private manager: IProviderModelManager) {}
 
   /**
    * Delete multiple models

@@ -49,10 +49,9 @@ export class ApiKeyService {
    */
   async setApiKey(providerId: string, apiKey: string): Promise<void> {
     if (!apiKey || !apiKey.trim()) {
-      logger.warn(
-        `ApiKeyService.setApiKey: empty apiKey for ${providerId}, skipping`,
+      throw new Error(
+        `ApiKeyService.setApiKey: apiKey cannot be empty for ${providerId}. Use deleteApiKey() to remove a key.`,
       );
-      return;
     }
 
     try {

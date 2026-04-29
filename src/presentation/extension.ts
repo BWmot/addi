@@ -1,17 +1,16 @@
 import * as vscode from "vscode";
-import {
-  AddiChatProvider,
-  type ModelTreeItem,
-} from "../core/providers/AddiChatProvider";
+import { AddiChatProvider } from "../core/providers/AddiChatProvider";
 import { ProviderModelManager } from "../core/providers/ProviderModelManager";
 import { LLMService } from "../core/llm/llmService";
 import {
   AddiTreeDataProvider,
   type ProviderTreeItem,
 } from "./views/providerView";
+import { type ModelTreeItem, normalizeTreeItems } from "./views/treeItems";
 import { CommandHandler } from "./commands";
 import { EditorViewManager } from "./views/editorView";
 import { logger } from "../common/logger";
+import { UserFeedback } from "./utils/feedback";
 import { StorageService } from "../infrastructure/storage/storageService";
 
 /**
@@ -131,207 +130,112 @@ export function activate(context: vscode.ExtensionContext) {
   );
   commandHandler.setEditorViewManager(editorViewManager);
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.manage", async () => {
-      await vscode.commands.executeCommand("addiProviders.focus");
-    }),
+  // Helper: register a command with error handling and auto-dispose
+  function registerCmd(id: string, handler: (...args: any[]) => any): void {
+    context.subscriptions.push(
+      vscode.commands.registerCommand(id, async (...args: any[]) => {
+        try {
+          await handler(...args);
+        } catch (error) {
+          UserFeedback.showError(`Command ${id} failed: ${error}`);
+          logger.error(`Command ${id} failed`, error);
+        }
+      }),
+    );
+  }
+
+  // Helper: resolve multi-select items from explicit arg or treeView.selection
+  function resolveModelItems(
+    item: ModelTreeItem | ModelTreeItem[],
+  ): ModelTreeItem[] {
+    let items = normalizeTreeItems(item);
+    if (items.length <= 1) {
+      const sel = treeView.selection as ModelTreeItem[];
+      if (sel && sel.length > 1) {
+        items = sel;
+      }
+    }
+    return items;
+  }
+
+  registerCmd("addi.manage", async () => {
+    await vscode.commands.executeCommand("addiProviders.focus");
+  });
+
+  registerCmd("addi.addProvider", () => commandHandler.addProvider());
+  registerCmd("addi.editProvider", (item: ProviderTreeItem) =>
+    commandHandler.editProvider(item),
+  );
+  registerCmd("addi.copyProvider", (item: ProviderTreeItem) =>
+    commandHandler.copyProvider(item),
+  );
+  registerCmd("addi.deleteProvider", (item: ProviderTreeItem) =>
+    commandHandler.deleteProvider(item),
+  );
+  registerCmd("addi.pullProviderModels", (item: ProviderTreeItem) =>
+    commandHandler.pullProviderModels(item),
+  );
+  registerCmd("addi.addModel", (item: ProviderTreeItem) =>
+    commandHandler.addModel(item),
+  );
+  registerCmd("addi.setApiKey", (item: ProviderTreeItem) =>
+    commandHandler.setApiKey(item),
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.addProvider", () =>
-      commandHandler.addProvider(),
-    ),
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.editProvider",
-      (item: ProviderTreeItem) => commandHandler.editProvider(item),
-    ),
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.copyProvider",
-      (item: ProviderTreeItem) => commandHandler.copyProvider(item),
-    ),
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.deleteProvider",
-      (item: ProviderTreeItem) => commandHandler.deleteProvider(item),
-    ),
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.pullProviderModels",
-      (item: ProviderTreeItem) => commandHandler.pullProviderModels(item),
-    ),
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.addModel", (item: ProviderTreeItem) =>
-      commandHandler.addModel(item),
-    ),
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.setApiKey",
-      (item: ProviderTreeItem) => commandHandler.setApiKey(item),
-    ),
-  );
   // Unified commands - handle both single and multi-select internally
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.editModels",
-      (item: ModelTreeItem | ModelTreeItem[]) => {
-        let items: ModelTreeItem[] = [];
-        if (Array.isArray(item)) {
-          items = item as ModelTreeItem[];
-        } else if (item) {
-          items = [item as ModelTreeItem];
-        }
-        if (items.length <= 1) {
-          const sel = treeView.selection as ModelTreeItem[];
-          if (sel && sel.length > 1) {
-            items = sel;
-          }
-        }
-        commandHandler.editModels(items);
-      },
-    ),
+  registerCmd(
+    "addi.editModels",
+    (item: ModelTreeItem | ModelTreeItem[]) =>
+      commandHandler.editModels(resolveModelItems(item)),
   );
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.copyModel", (item: ModelTreeItem) =>
-      commandHandler.copyModel(item),
-    ),
+  registerCmd("addi.copyModel", (item: ModelTreeItem) =>
+    commandHandler.copyModel(item),
   );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.deleteModels",
-      (item: ModelTreeItem | ModelTreeItem[]) => {
-        let items: ModelTreeItem[] = [];
-        if (Array.isArray(item)) {
-          items = item as ModelTreeItem[];
-        } else if (item) {
-          items = [item as ModelTreeItem];
-        }
-        if (items.length <= 1) {
-          const sel = treeView.selection as ModelTreeItem[];
-          if (sel && sel.length > 1) {
-            items = sel;
-          }
-        }
-        commandHandler.deleteModels(items);
-      },
-    ),
+  registerCmd(
+    "addi.deleteModels",
+    (item: ModelTreeItem | ModelTreeItem[]) =>
+      commandHandler.deleteModels(resolveModelItems(item)),
   );
 
   // Register visibility commands for models
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.showModelsInPicker",
-      (item: ModelTreeItem | ModelTreeItem[]) => {
-        let items: ModelTreeItem[] = [];
-        if (Array.isArray(item)) {
-          items = item as ModelTreeItem[];
-        } else if (item) {
-          items = [item as ModelTreeItem];
-        }
-        if (items.length <= 1) {
-          const sel = treeView.selection as ModelTreeItem[];
-          if (sel && sel.length > 1) {
-            items = sel;
-          }
-        }
-        commandHandler.showModelsInPicker(items);
-      },
-    ),
+  registerCmd(
+    "addi.showModelsInPicker",
+    (item: ModelTreeItem | ModelTreeItem[]) =>
+      commandHandler.showModelsInPicker(resolveModelItems(item)),
   );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.hideModelsFromPicker",
-      (item: ModelTreeItem | ModelTreeItem[]) => {
-        let items: ModelTreeItem[] = [];
-        if (Array.isArray(item)) {
-          items = item as ModelTreeItem[];
-        } else if (item) {
-          items = [item as ModelTreeItem];
-        }
-        if (items.length <= 1) {
-          const sel = treeView.selection as ModelTreeItem[];
-          if (sel && sel.length > 1) {
-            items = sel;
-          }
-        }
-        commandHandler.hideModelsFromPicker(items);
-      },
-    ),
+  registerCmd(
+    "addi.hideModelsFromPicker",
+    (item: ModelTreeItem | ModelTreeItem[]) =>
+      commandHandler.hideModelsFromPicker(resolveModelItems(item)),
   );
 
   // Register visibility commands for providers
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.showProviderModelsInPicker",
-      (item: ProviderTreeItem) =>
-        commandHandler.showProviderModelsInPicker(item),
-    ),
+  registerCmd("addi.showProviderModelsInPicker", (item: ProviderTreeItem) =>
+    commandHandler.showProviderModelsInPicker(item),
   );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.hideProviderModelsFromPicker",
-      (item: ProviderTreeItem) =>
-        commandHandler.hideProviderModelsFromPicker(item),
-    ),
+  registerCmd("addi.hideProviderModelsFromPicker", (item: ProviderTreeItem) =>
+    commandHandler.hideProviderModelsFromPicker(item),
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.exportConfig", () =>
-      commandHandler.exportConfig(),
-    ),
+  registerCmd("addi.exportConfig", () => commandHandler.exportConfig());
+  registerCmd("addi.importConfig", () => commandHandler.importConfig());
+  registerCmd("addi.openSettings", () => {
+    vscode.commands.executeCommand(
+      "workbench.action.openSettings",
+      "@ext:deepwn.addi",
+    );
+  });
+  registerCmd("addi.setModelToCopilot", (item: ModelTreeItem) =>
+    commandHandler.setModelToCopilot(item),
   );
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.importConfig", () =>
-      commandHandler.importConfig(),
-    ),
+  registerCmd("addi.ineligibleModelInfo", () => {
+    // No action, just provides hover via command title
+  });
+  registerCmd("addi.initExtension", () => commandHandler.initExtension());
+  registerCmd("addi.restoreFromBackup", () =>
+    commandHandler.restoreFromBackup(),
   );
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.openSettings", () => {
-      vscode.commands.executeCommand(
-        "workbench.action.openSettings",
-        "@ext:deepwn.addi",
-      );
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "addi.setModelToCopilot",
-      (item: ModelTreeItem) => commandHandler.setModelToCopilot(item),
-    ),
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.ineligibleModelInfo", () => {
-      // No action, just provides hover via command title
-    }),
-  );
-
-  // Register init extension command
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.initExtension", () =>
-      commandHandler.initExtension(),
-    ),
-  );
-
-  // Register backup/restore commands
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.restoreFromBackup", () =>
-      commandHandler.restoreFromBackup(),
-    ),
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand("addi.manageBackups", () =>
-      commandHandler.manageBackups(),
-    ),
-  );
+  registerCmd("addi.manageBackups", () => commandHandler.manageBackups());
 }
 
 export function deactivate() {}

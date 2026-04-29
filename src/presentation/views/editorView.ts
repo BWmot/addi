@@ -1,10 +1,11 @@
 import * as vscode from "vscode";
 import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
 import { ProviderTreeItem } from "./providerView";
-import { ModelTreeItem } from "../../core/providers/AddiChatProvider";
+import { ModelTreeItem } from "./treeItems";
 import { logger, maskSecret } from "../../common/logger";
 import type { Provider, Model } from "../../common/types";
-import { TokenFormatter, ConfigManager } from "../../common/utils";
+import { TokenFormatter } from "../../common/utils";
+import { ConfigManager } from "../../infrastructure/vscode/configService";
 import { ModelTester } from "../../core/llm/modelTester";
 import { TextDecoder } from "util";
 
@@ -20,7 +21,7 @@ export class EditorViewManager {
     mode: "edit" | "create";
     type: "provider" | "model";
     parentId?: string;
-    prefillData?: any;
+    prefillData?: Record<string, unknown>;
     isBatch?: boolean; // Flag for batch edit mode
     batchCount?: number; // Number of items in batch
   } = { mode: "edit", type: "provider" };
@@ -35,7 +36,7 @@ export class EditorViewManager {
     item: ProviderTreeItem | ModelTreeItem | ModelTreeItem[] | undefined,
     mode: "edit" | "create",
     parentId?: string,
-    prefillData?: any,
+    prefillData?: Record<string, unknown>,
   ) {
     const column = vscode.window.activeTextEditor
       ? vscode.window.activeTextEditor.viewColumn
@@ -97,7 +98,7 @@ export class EditorViewManager {
     item: ProviderTreeItem | ModelTreeItem | ModelTreeItem[] | undefined,
     mode: "edit" | "create",
     parentId?: string,
-    prefillData?: any,
+    prefillData?: Record<string, unknown>,
   ) {
     // Handle array of items for batch editing
     this._currentItems = [];
@@ -153,7 +154,7 @@ export class EditorViewManager {
     this._viewState = {
       mode,
       type,
-      prefillData,
+      ...(prefillData !== undefined && { prefillData }),
       isBatch: isBatchMode,
       batchCount,
     };

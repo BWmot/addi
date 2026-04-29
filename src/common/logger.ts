@@ -92,7 +92,7 @@ export class AddiLogger {
 
   private getChannel(): vscode.LogOutputChannel {
     if (!this.channel) {
-      this.channel = vscode.window.createOutputChannel("Addi", { log: true });
+      throw new Error("Logger not initialized. Call logger.initialize(context) first.");
     }
     return this.channel;
   }

@@ -1,7 +1,8 @@
 import type { Model, RemoteModelInfo } from "../../common/types";
-import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
+import type { IProviderModelManager } from "../../domain/interfaces";
 import { logger } from "../../common/logger";
-import { IdGenerator, ConfigManager } from "../../common/utils";
+import { IdGenerator } from "../../common/utils";
+import { ConfigManager } from "../../infrastructure/vscode/configService";
 
 export interface SyncResult {
   added: number;
@@ -13,9 +14,11 @@ export interface SyncResult {
 /**
  * Provider-related use cases
  * Business logic extracted from ProviderCommandHandler
+ *
+ * Depends on `IProviderModelManager` (DIP) — not the concrete class.
  */
 export class ProviderUseCases {
-  constructor(private manager: ProviderModelManager) {}
+  constructor(private manager: IProviderModelManager) {}
 
   /**
    * Sync models from a provider
