@@ -2,6 +2,37 @@
 
 All notable changes to the "addi" extension will be documented in this file.
 
+## [1.0.5] - 2026-05-07
+
+### Added
+
+- **Remote Model Fetcher**: New `remoteModelFetcher` module for fetching available models from API endpoints with automatic normalization and legacy field migration
+- **Data Normalizer**: New `dataNormalizer` module for normalizing model data across different provider formats, including backward-compatible migration of legacy fields
+- **Provider Model Manager Interface**: New `IProviderModelManager` interface defining the contract for provider and model management operations
+- **Sort Strategy**: New sorting utility for providers and models — supports sort by name (alphabet), input tokens, or output tokens
+- **Tree Item Enhancements**: New `ProviderTreeItem` and `ModelTreeItem` classes for improved sidebar display, showing speed metrics, thinking/vision indicators, and warnings for models without tool calling
+- **Speed History Tracking**: Added `speedHistory` and `averageSpeed` fields to Model type — tracks performance over a rolling window of the last 5 measurements
+- **Proposed API Typings**: Added proposed API type declarations for `chatParticipantPrivate`, `languageModelThinkingPart`, and `toolInvocationApproveCombination`
+
+### Changed
+
+- **Vision Capability**: Simplified model capabilities from three separate flags (`imageInput`, `audioInput`, `videoInput`) to a single `vision` boolean — the previous approach was inaccurate as no models support audio/video input separately; legacy fields are automatically migrated on load
+- **ProviderModelManager Refactor**: Major refactoring with mutex for thread-safe operations, improved validation logic, and cleaner internal architecture
+- **InputValidator**: Updated validation methods with stricter and more consistent rules
+- **Speed Measurement Accuracy**: Replaced estimated token count (`Math.ceil(textLength / 4)`) with precise counts from AI SDK's `result.usage` for streaming responses; added `onFinish` callback for non-streaming stats
+- **Test Coverage**: Expanded unit tests significantly — new tests for `dataNormalizer`, `remoteModelFetcher`, `sortStrategy`, `validator`, `id`, and `token` modules
+- **README & Documentation**: Rewrote README.md as project introduction and added comprehensive user guide (`docs/DOCUMENTATION.md`) with installation, configuration, usage, and troubleshooting
+
+### Removed
+
+- **Domain Events**: Removed unused `DomainEvents`, `EventBus`, and related event bus infrastructure (dead code)
+- **Tool Parser**: Removed unused `toolParser.ts` utility (dead code)
+
+### Fixed
+
+- **Speed Calculation**: Fixed inaccurate speed metrics for streaming responses that relied on character-based estimation instead of actual token counts
+- **Non-streaming Stats**: Fixed missing speed/stats reporting for non-streaming (batch) requests by adding `onFinish` callback in `buildAiOptions()`
+
 ## [1.0.4] - 2026-04-29
 
 ### Change
