@@ -2,100 +2,54 @@
 
 <a href="https://github.com/deepwn/addi/releases"><img alt="Release" src="https://img.shields.io/github/v/release/deepwn/addi?logo=github" /></a>
 <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg" /></a>
+<a href="https://marketplace.visualstudio.com/items?itemName=deepwn.addi"><img alt="VS Code" src="https://img.shields.io/badge/VS%20Code-%3E%3D1.118-blue?logo=visual-studio-code" /></a>
 <a href="https://github.com/deepwn/addi/issues"><img alt="Issues" src="https://img.shields.io/github/issues/deepwn/addi" /></a>
 
 Addi bridges GitHub Copilot with your preferred AI providers. Instead of being locked into a single vendor's models, you can connect Copilot to OpenAI-compatible APIs, Anthropic Claude, Google Gemini, or any custom LLM endpoint — giving you full control over your AI stack while keeping Copilot's interface and workflow.
 
-> [!IMPORTANT]
-> **Upgrading from v0.0.x**: Configuration format has changed in v1.0+. On first upgrade, run `Addi: Clean All Addi Storage` and `Addi: Reset All Addi Settings` via `Ctrl+P` to clear old data before re-adding providers.
+## Features
 
-## What You Can Do
-
-- **Use any OpenAI-compatible model** with Copilot Chat
-- **Connect Claude, Gemini, or custom endpoints** without vendor lock-in
-- **Manage multiple providers and models** from a single VS Code sidebar
-- **Enable advanced features** like Tool Calling and Reasoning on supported models
-- **Import/export configurations** for team sharing or backup
+- **Multi-Provider Support** — Connect OpenAI, Anthropic, Google, DeepSeek, Ollama, or any OpenAI-compatible API
+- **Full Copilot Integration** — Models appear directly in Copilot's model picker
+- **Streaming Responses** — Real-time token-by-token output
+- **Tool Calling** — Use Copilot tools (code search, terminal, file editing) with your models
+- **Reasoning / Thinking** — View the model's reasoning process for supported models
+- **Vision** — Send images to models that support multimodal input
+- **Speed Monitoring** — Track real-time performance metrics per model
+- **Import / Export** — Backup, migrate, or share configurations as JSON
 
 ## Quick Start
 
-### 1. Add a Provider
+1. **Install** the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=deepwn.addi)
+2. **Open the Addi sidebar** in the Activity Bar
+3. **Add a Provider** — click the `+` button, enter your API endpoint and key
+4. **Add a Model** — right-click the provider, fill in the model ID and capabilities
+5. **Open Copilot Chat** — select your model from the model picker and start chatting
 
-A Provider is an API endpoint (e.g., OpenAI API, a local Ollama server):
-
-1. Click **"Add Provider"** in the Addi sidebar
-2. Fill in the connection details:
-   - **Name** — Display label
-   - **API Endpoint** — Base URL (e.g., `https://api.openai.com/v1`)
-   - **API Key** — Your access token
-   - **Type** — Provider API type
-3. Save
-
-### 2. Add a Model
-
-A Model is a specific AI model accessible through that provider:
-
-1. Right-click a Provider → **"Add Model"**
-2. Configure the model:
-   - **Model ID** — Remote identifier (e.g., `gpt-4o`, `claude-sonnet-4-20250514`)
-   - **Display Name** — Label shown in Copilot
-   - **Max Tokens** — Context window size
-   - **Capabilities** — Vision, Audio, Reasoning, Tool Calling
-3. Save
-
-### 3. Use in Copilot
-
-1. Open the model picker in Copilot Chat
-2. Select a model under **Addi**
-3. Start chatting
+> For detailed setup instructions, see the [User Guide](./docs/DOCUMENTATION.md).
 
 ## Supported Providers
 
-| Provider          | Type ID                  | Notes                          |
-| ----------------- | ------------------------ | ------------------------------ |
-| OpenAI-compatible | `openai-completions`     | OpenAI, DeepSeek, local models |
-| OpenAI Responses  | `openai-responses`       | Native tool support            |
-| Anthropic         | `anthropic-messages`     | Claude models with Thinking    |
-| Google            | `google-generateContent` | Gemini multimodal              |
+| Provider          | Type ID                  | Examples                             |
+| ----------------- | ------------------------ | ------------------------------------ |
+| OpenAI-compatible | `openai-completions`     | OpenAI, DeepSeek, local Ollama, etc. |
+| OpenAI Responses  | `openai-responses`       | OpenAI (native tool support)         |
+| Anthropic         | `anthropic-messages`     | Claude Sonnet, Claude Opus           |
+| Google            | `google-generateContent` | Gemini Pro, Gemini Flash             |
 
-## Configuration Management
+## Documentation
 
-Back up or migrate your setup via Command Palette (`Ctrl+Shift+P`):
+| Document                                           | Description                                             |
+| -------------------------------------------------- | ------------------------------------------------------- |
+| [User Guide](./docs/DOCUMENTATION.md)              | Installation, configuration, usage, and troubleshooting |
+| [Changelog](./CHANGELOG.md)                        | Version history and release notes                       |
+| [Architecture](./docs/project-document.md)         | Technical architecture overview                         |
+| [Code Quality Audit](./docs/code-quality-audit.md) | Codebase quality analysis                               |
 
-| Command                      | Description                 |
-| ---------------------------- | --------------------------- |
-| `Addi: Export Configuration` | Export all settings as JSON |
-| `Addi: Import Configuration` | Import from JSON            |
-| `Addi: Backup Providers`     | Local backup of providers   |
-| `Addi: Restore from Backup`  | Restore from backup         |
+## Contributing
 
-## Troubleshooting
-
-### Model doesn't appear in Copilot's model picker
-
-Copilot requires models to have **Tool Calling** capability. Enable it in the model's settings — you'll see a `(?)` warning icon if the capability is missing.
-
-### API errors when using a model
-
-Common causes:
-
-- **Wrong Provider type** — Ensure the provider type matches the API format
-- **Incorrect Endpoint** — Try adding/removing `/v1` from the URL
-- **Invalid API Key** — Test with `curl` or the provider's playground first
-- **Network restrictions** — Some providers are region-locked
-
-### Can't toggle model visibility
-
-VS Code may cache the visibility state. To reset:
-
-1. Open Copilot Chat → model picker → **"Manage Models..."**
-2. Find **Addi** in the list
-3. Right-click → **"Show in the Chat Model Picker"**
-
-After this, Addi will manage visibility correctly.
-
-For other issues, open a [GitHub Issue](https://github.com/deepwn/addi/issues).
+Issues and pull requests are welcome at [github.com/deepwn/addi](https://github.com/deepwn/addi).
 
 ## License
 
-MIT License — see [LICENSE](./LICENSE)
+[MIT License](./LICENSE)
