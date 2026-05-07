@@ -7,13 +7,9 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { Provider, Model } from "../../common/types";
 import { logger } from "../../common/logger";
 
-/**
- * Settings object passed to the created AI provider instance (model-level).
- * Supports provider-specific features like reasoning/thinking.
- */
-interface ModelSettings {
-  thinking?: { type: "enabled"; budgetTokens: number };
-}
+// AI SDK 的 Provider 实例通常是一个函数，接受 modelId 返回 LanguageModelV1
+// 我们定义一个通用的类型别名
+type AIProviderInstance = (modelId: string) => LanguageModel;
 
 /**
  * Common settings shape for all AI SDK provider factories.
@@ -25,10 +21,6 @@ interface BaseProviderSettings {
   apiKey: string;
   fetch: typeof globalThis.fetch;
 }
-
-// AI SDK 的 Provider 实例通常是一个函数，接受 modelId 和 settings 返回 LanguageModelV1
-// 我们定义一个通用的类型别名
-type AIProviderInstance = (modelId: string, settings?: ModelSettings) => LanguageModel;
 
 /**
  * Factory interface for creating AI Provider instances (e.g. OpenAI, Anthropic).
@@ -283,22 +275,10 @@ export class AIProviderRegistry {
 
     const aiProviderInstance = factory.create(provider);
 
-    // Configure model-specific settings
-    const modelSettings: ModelSettings = {};
-
-    // Support reasoning/thinking based on capabilities
-    if (model && model.capabilities?.reasoning) {
-      // Specific provider handling for thinking models (e.g. Anthropic)
-      if (provider.providerType === "anthropic-messages") {
-        // Default budget tokens for thinking.
-        const budget = model.maxOutputTokens
-          ? Math.floor(model.maxOutputTokens / 2)
-          : 4096;
-        // ai-sdk anthropic provider accepts 'thinking' object in settings
-        modelSettings.thinking = { type: "enabled", budgetTokens: budget };
-      }
-    }
-
-    return aiProviderInstance(modelId, modelSettings);
+    // Model instance is created without thinking/reasoning settings.
+    // Per AI SDK official docs, thinking must be passed via providerOptions
+    // at the streamText/generateText call site, not at model creation.
+    // See: buildAiOptions() in llmService.ts
+    return aiProviderInstance(modelId);
   }
 }

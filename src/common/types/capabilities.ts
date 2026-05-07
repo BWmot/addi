@@ -3,9 +3,7 @@
  */
 
 export interface ModelCapabilities {
-  imageInput?: boolean;
-  audioInput?: boolean;
-  videoInput?: boolean;
+  vision?: boolean;
   toolCalling?: boolean | number;
   reasoning?: boolean;
 }

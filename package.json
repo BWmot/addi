@@ -14,24 +14,25 @@
     "url": "https://github.com/deepwn/addi/issues"
   },
   "engines": {
-    "vscode": "^1.116.0"
+    "vscode": "^1.118.0"
   },
   "keywords": [
     "AI",
     "ChatGPT",
     "Copilot",
     "OpenAI",
-    "GPT-4",
-    "GPT-3.5",
+    "GPT",
+    "Anthropic",
+    "Claude",
+    "Gemini",
     "LLM",
-    "Language Model",
+    "Agent",
     "Custom",
     "OAI"
   ],
   "categories": [
     "AI",
     "Chat",
-    "Machine Learning",
     "Other"
   ],
   "activationEvents": [
@@ -491,7 +492,7 @@
     "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.6.0",
-    "@types/vscode": "^1.116.0",
+    "@types/vscode": "^1.118.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.9.1",
@@ -500,10 +501,10 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.72",
-    "@ai-sdk/google": "^3.0.65",
-    "@ai-sdk/openai": "^3.0.54",
-    "@ai-sdk/openai-compatible": "^2.0.42",
-    "ai": "^6.0.169"
+    "@ai-sdk/anthropic": "^3.0.75",
+    "@ai-sdk/google": "^3.0.68",
+    "@ai-sdk/openai": "^3.0.62",
+    "@ai-sdk/openai-compatible": "^2.0.46",
+    "ai": "^6.0.175"
   }
 }

@@ -554,7 +554,7 @@ describe("remoteModelFetcher", () => {
       );
     });
 
-    it("should detect imageInput from inputModalities", async () => {
+    it("should detect vision from inputModalities", async () => {
       globalThis.fetch = createMockFetch({
         ok: true,
         body: {
@@ -571,10 +571,10 @@ describe("remoteModelFetcher", () => {
       const models = await fetchProviderModelsFromApi(provider, mockOptions);
 
       assert.ok(models[0].capabilities, "Should have capabilities");
-      assert.strictEqual(models[0].capabilities?.imageInput, true);
+      assert.strictEqual(models[0].capabilities?.vision, true);
     });
 
-    it("should detect imageInput from supportedInputModalities", async () => {
+    it("should detect vision from supportedInputModalities", async () => {
       globalThis.fetch = createMockFetch({
         ok: true,
         body: {
@@ -590,10 +590,10 @@ describe("remoteModelFetcher", () => {
       const provider = makeProvider({ providerType: "google-generateContent" });
       const models = await fetchProviderModelsFromApi(provider, mockOptions);
 
-      assert.strictEqual(models[0].capabilities?.imageInput, true);
+      assert.strictEqual(models[0].capabilities?.vision, true);
     });
 
-    it("should not set imageInput when IMAGE modality is not present", async () => {
+    it("should not set vision when IMAGE modality is not present", async () => {
       globalThis.fetch = createMockFetch({
         ok: true,
         body: {
@@ -609,7 +609,7 @@ describe("remoteModelFetcher", () => {
       const provider = makeProvider({ providerType: "google-generateContent" });
       const models = await fetchProviderModelsFromApi(provider, mockOptions);
 
-      assert.strictEqual(models[0].capabilities?.imageInput, undefined);
+      assert.strictEqual(models[0].capabilities?.vision, undefined);
     });
 
     it("should skip models without name", async () => {

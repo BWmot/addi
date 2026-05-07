@@ -629,16 +629,8 @@ Model-level Extra Headers overrides this setting.
                 <label for="m-think">think</label>
               </div>
               <div class="checkbox-item">
-                <input type="checkbox" id="m-image" />
-                <label for="m-image">image</label>
-              </div>
-              <div class="checkbox-item">
-                <input type="checkbox" id="m-audio" />
-                <label for="m-audio">audio</label>
-              </div>
-              <div class="checkbox-item">
-                <input type="checkbox" id="m-video" />
-                <label for="m-video">video</label>
+                <input type="checkbox" id="m-vision" />
+                <label for="m-vision">vision</label>
               </div>
             </div>
           </div>
@@ -925,9 +917,7 @@ Overrides provider-level Extra Headers.
       const mOutput = document.getElementById('m-output-tokens');
       const mTools = document.getElementById('m-tools');
       const mThink = document.getElementById('m-think');
-      const mImage = document.getElementById('m-image');
-      const mAudio = document.getElementById('m-audio');
-      const mVideo = document.getElementById('m-video');
+      const mVision = document.getElementById('m-vision');
       const mExtraBody = document.getElementById('m-extra-body');
       const mExtraHeader = document.getElementById('m-extra-header');
       const mOptionsToggle = document.getElementById('m-options-toggle');
@@ -1115,9 +1105,7 @@ Overrides provider-level Extra Headers.
             if (updates.maxOutputTokens) mOutput.value = updates.maxOutputTokens;
             if (updates.toolCalling !== undefined) mTools.checked = updates.toolCalling;
             if (updates.reasoning !== undefined) mThink.checked = updates.reasoning;
-            if (updates.imageInput !== undefined) mImage.checked = updates.imageInput;
-            if (updates.audioInput !== undefined) mAudio.checked = updates.audioInput;
-            if (updates.videoInput !== undefined) mVideo.checked = updates.videoInput;
+            if (updates.vision !== undefined) mVision.checked = updates.vision;
             break;
           }
         }
@@ -1238,9 +1226,7 @@ Overrides provider-level Extra Headers.
           mTools.checked = isCreate ? true : !!hasToolCalling;
 
           mThink.checked = !!(data.capabilities && data.capabilities.reasoning);
-          mImage.checked = !!(data.capabilities && data.capabilities.imageInput);
-          mAudio.checked = !!(data.capabilities && data.capabilities.audioInput);
-          mVideo.checked = !!(data.capabilities && data.capabilities.videoInput);
+          mVision.checked = !!(data.capabilities && data.capabilities.vision);
 
           mExtraBody.value = data.extraBody || '';
           mExtraHeader.value = data.extraHeader || '';
@@ -1362,9 +1348,7 @@ Overrides provider-level Extra Headers.
               isBatchMode: isBatchMode,
               maxInputTokens: mInput.value,
               maxOutputTokens: mOutput.value,
-              imageInput: mImage.checked,
-              audioInput: mAudio.checked,
-              videoInput: mVideo.checked,
+              vision: mVision.checked,
               reasoning: mThink.checked,
               toolCalling: mTools.checked,
               extraBody: mExtraBody.value,

@@ -44,7 +44,7 @@ export class MessageConverter {
               "application/octet-stream";
 
             if (mime.startsWith("image/")) {
-              if (capabilities?.imageInput === false) {
+              if (capabilities?.vision === false) {
                 userContent.push({
                   type: "text",
                   text: "[Image Content - Not Supported by Model]",
@@ -53,25 +53,9 @@ export class MessageConverter {
                 userContent.push({ type: "image", image: data });
               }
             } else if (mime.startsWith("audio/")) {
-              if (capabilities?.audioInput) {
-                // AI SDK currently doesn't standardise AudioPart, so we use a placeholder or extension if possible.
-                // For now, simple text indicator that audio was received.
-                userContent.push({ type: "text", text: "[Audio Content]" });
-              } else {
-                userContent.push({
-                  type: "text",
-                  text: "[Audio Content - Not Supported by Model]",
-                });
-              }
+              userContent.push({ type: "text", text: "[Audio Content]" });
             } else if (mime.startsWith("video/")) {
-              if (capabilities?.videoInput) {
-                userContent.push({ type: "text", text: "[Video Content]" });
-              } else {
-                userContent.push({
-                  type: "text",
-                  text: "[Video Content - Not Supported by Model]",
-                });
-              }
+              userContent.push({ type: "text", text: "[Video Content]" });
             }
           } else if (part instanceof vscode.LanguageModelToolResultPart) {
             toolResults.push(part);

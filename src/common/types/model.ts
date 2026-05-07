@@ -33,6 +33,35 @@ export interface ModelOptions {
     | { type: "tool"; toolName: string };
   /** Maximum steps for tool calls (when tools are enabled) */
   maxSteps?: number;
+
+  /**
+   * Provider-specific options passed directly to the AI SDK provider.
+   *
+   * This is the correct way to pass thinking/reasoning configuration
+   * that varies by provider. Examples:
+   *
+   * **Anthropic** (budget-based):
+   * ```json
+   * { "anthropic": { "thinking": { "type": "enabled", "budgetTokens": 12000 } } }
+   * ```
+   * **Anthropic** (adaptive):
+   * ```json
+   * { "anthropic": { "thinking": { "type": "adaptive" } } }
+   * ```
+   * **OpenAI**:
+   * ```json
+   * { "openai": { "reasoningEffort": "medium", "reasoningSummary": "auto" } }
+   * ```
+   * **Google** (Gemini 3):
+   * ```json
+   * { "google": { "thinkingConfig": { "thinkingLevel": "high", "includeThoughts": true } } }
+   * ```
+   * **Google** (Gemini 2.5):
+   * ```json
+   * { "google": { "thinkingConfig": { "thinkingBudget": 8192, "includeThoughts": true } } }
+   * ```
+   */
+  providerOptions?: Record<string, Record<string, unknown>>;
 }
 
 export interface RemoteModelInfo {

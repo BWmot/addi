@@ -70,7 +70,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
             order: p.order ?? 100,
           },
           capabilities: {
-            imageInput: !!m.capabilities?.imageInput,
+            imageInput: !!m.capabilities?.vision,
             // LanguageModelChatInformation.capabilities.toolCalling expects number | boolean
             toolCalling: (m.capabilities?.toolCalling ?? false) as
               | number

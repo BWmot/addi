@@ -31,39 +31,39 @@ describe("normalizeCapabilities", () => {
     });
   });
 
-  describe("imageInput", () => {
-    it("should preserve imageInput from source", () => {
-      const result = normalizeCapabilities({ imageInput: true }, {});
-      assert.strictEqual(result.imageInput, true);
+  describe("vision", () => {
+    it("should preserve vision from source", () => {
+      const result = normalizeCapabilities({ vision: true }, {});
+      assert.strictEqual(result.vision, true);
     });
 
-    it("should use fallback imageInput when source has none", () => {
-      const result = normalizeCapabilities({}, { imageInput: true });
-      assert.strictEqual(result.imageInput, true);
+    it("should use fallback vision when source has none", () => {
+      const result = normalizeCapabilities({}, { vision: true });
+      assert.strictEqual(result.vision, true);
     });
 
-    it("should prefer source imageInput over fallback", () => {
+    it("should prefer source vision over fallback", () => {
       const result = normalizeCapabilities(
-        { imageInput: true },
-        { imageInput: false },
+        { vision: true },
+        { vision: false },
       );
-      assert.strictEqual(result.imageInput, true);
+      assert.strictEqual(result.vision, true);
     });
 
     it("should coerce falsy values to boolean false", () => {
       const result = normalizeCapabilities(
-        { imageInput: 0 as unknown as boolean },
+        { vision: 0 as unknown as boolean },
         undefined,
       );
-      assert.strictEqual(result.imageInput, false);
+      assert.strictEqual(result.vision, false);
     });
 
     it("should coerce truthy values to boolean true", () => {
       const result = normalizeCapabilities(
-        { imageInput: 1 as unknown as boolean },
+        { vision: 1 as unknown as boolean },
         undefined,
       );
-      assert.strictEqual(result.imageInput, true);
+      assert.strictEqual(result.vision, true);
     });
   });
 
@@ -104,40 +104,36 @@ describe("normalizeCapabilities", () => {
   });
 
   describe("combined capabilities", () => {
-    it("should merge imageInput from source and toolCalling from fallback", () => {
+    it("should merge vision from source and toolCalling from fallback", () => {
       const result = normalizeCapabilities(
-        { imageInput: true },
+        { vision: true },
         { toolCalling: 7 },
       );
-      assert.strictEqual(result.imageInput, true);
+      assert.strictEqual(result.vision, true);
       assert.strictEqual(result.toolCalling, 7);
     });
 
     it("should merge all fields correctly", () => {
       const result = normalizeCapabilities(
-        { imageInput: true, toolCalling: 3 },
-        { imageInput: false, toolCalling: true },
+        { vision: true, toolCalling: 3 },
+        { vision: false, toolCalling: true },
       );
-      assert.strictEqual(result.imageInput, true);
+      assert.strictEqual(result.vision, true);
       assert.strictEqual(result.toolCalling, 3);
     });
   });
 
   describe("ignoring other capability fields", () => {
-    it("should not include audioInput, videoInput, reasoning in result", () => {
+    it("should not include reasoning in result", () => {
       const source: ModelCapabilities = {
-        imageInput: false,
-        audioInput: true,
-        videoInput: true,
+        vision: false,
         toolCalling: false,
         reasoning: true,
       };
       const result = normalizeCapabilities(source, undefined);
-      // Only imageInput and toolCalling are in the result
-      assert.strictEqual(result.imageInput, false);
+      // Only vision and toolCalling are in the result
+      assert.strictEqual(result.vision, false);
       assert.strictEqual(result.toolCalling, false);
-      assert.strictEqual(result.audioInput, undefined);
-      assert.strictEqual(result.videoInput, undefined);
       assert.strictEqual(result.reasoning, undefined);
     });
   });
@@ -291,14 +287,14 @@ describe("normalizeProvidersInPlace", () => {
       assert.strictEqual(typeof provider.models[0].capabilities, "object");
     });
 
-    it("should migrate legacy imageInput from model root to capabilities", () => {
+    it("should migrate legacy imageInput from model root to vision in capabilities", () => {
       const model = makeRawModel({ capabilities: {} });
       (model as any).imageInput = true;
       const provider = makeRawProvider({ models: [model] });
       normalizeProvidersInPlace([provider as any]);
-      // After normalization, imageInput should be in capabilities, not at root
+      // After normalization, legacy imageInput should be migrated to vision in capabilities
       assert.strictEqual(
-        provider.models[0].capabilities.imageInput,
+        provider.models[0].capabilities.vision,
         true,
       );
       assert.strictEqual(

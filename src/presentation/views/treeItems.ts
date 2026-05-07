@@ -35,7 +35,7 @@ export class ModelTreeItem extends vscode.TreeItem {
     }
 
     const capabilityHints: string[] = [];
-    if (model.capabilities?.imageInput) {
+    if (model.capabilities?.vision) {
       capabilityHints.push("vision");
     }
     if (supportsTools) {

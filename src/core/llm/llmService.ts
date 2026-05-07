@@ -21,6 +21,8 @@ interface ExecutionOptions {
   onReasoning?: ((delta: string) => void) | undefined;
   // Internal flag to prevent duplicate stats reporting in streaming mode
   _streamingReported?: boolean;
+  // Timestamp when the request was initiated (for accurate TTFT)
+  requestStartTime?: number;
 }
 
 // ============================================================================
@@ -115,6 +117,9 @@ export class LLMService {
     options: ExecutionOptions,
   ): Promise<void> {
     try {
+      // Record request start time for accurate speed measurement
+      options.requestStartTime = Date.now();
+
       // Build AI SDK options
       const aiOptions = this.buildAiOptions(
         provider,
@@ -243,11 +248,13 @@ export class LLMService {
       responseFormat: modelOptions.responseFormat,
       headers: Object.keys(extraHeaders).length > 0 ? extraHeaders : undefined,
       extraBody: Object.keys(extraBody).length > 0 ? extraBody : undefined,
+      // onFinish fallback for non-streaming: streaming mode reports via fullStream
       onFinish: ({ usage }: any) => {
         if (options.onStats && usage && !options._streamingReported) {
+          const now = Date.now();
           options.onStats({
-            firstTokenTime: Date.now(),
-            endTime: Date.now(),
+            firstTokenTime: options.requestStartTime ?? now,
+            endTime: now,
             tokenCount: usage.outputTokens || 0,
           });
         }
@@ -258,6 +265,71 @@ export class LLMService {
       baseOptions.tools = tools;
       baseOptions.maxSteps = modelOptions.maxSteps ?? 100;
       baseOptions.toolChoice = modelOptions.toolChoice;
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // providerOptions — the correct location for thinking/reasoning config.
+    //
+    // Per AI SDK official docs, provider-specific options (thinking,
+    // reasoningEffort, thinkingConfig, etc.) MUST be passed via
+    // `providerOptions` on the streamText / generateText call, NOT at
+    // model creation time.
+    // ──────────────────────────────────────────────────────────────────────
+
+    // Start with any user-configured providerOptions from model/provider settings
+    const providerOptions: Record<string, Record<string, unknown>> = {};
+
+    if (modelOptions.providerOptions) {
+      Object.assign(providerOptions, modelOptions.providerOptions);
+    }
+
+    // Build default thinking/reasoning config when the model has the
+    // `reasoning` capability and the user hasn't explicitly set providerOptions.
+    if (model.capabilities?.reasoning) {
+      const providerType = provider.providerType;
+
+      // Anthropic — thinking (budget-based by default)
+      if (
+        providerType === "anthropic-messages" &&
+        !providerOptions["anthropic"]
+      ) {
+        const budget = model.maxOutputTokens
+          ? Math.floor(model.maxOutputTokens / 2)
+          : 4096;
+        providerOptions["anthropic"] = {
+          thinking: { type: "enabled", budgetTokens: budget },
+        };
+      }
+
+      // OpenAI — reasoningEffort
+      if (
+        (providerType === "openai-responses" ||
+          providerType === "openai-completions") &&
+        !providerOptions["openai"]
+      ) {
+        providerOptions["openai"] = { reasoningEffort: "medium" };
+      }
+
+      // Google — thinkingConfig
+      if (
+        providerType === "google-generateContent" &&
+        !providerOptions["google"]
+      ) {
+        const budget = model.maxOutputTokens
+          ? Math.floor(model.maxOutputTokens / 2)
+          : 8192;
+        providerOptions["google"] = {
+          thinkingConfig: {
+            thinkingBudget: budget,
+            includeThoughts: true,
+          },
+        };
+      }
+    }
+
+    // Only attach providerOptions when there's actually something to pass
+    if (Object.keys(providerOptions).length > 0) {
+      baseOptions.providerOptions = providerOptions;
     }
 
     const handledParams = [
@@ -304,10 +376,10 @@ export class LLMService {
     let hasReportedContent = false;
     let hasFinished = false;
     let finishReason: string | undefined;
-    let tokenCount = 0;
 
+    let result: any;
     try {
-      const result = streamText({
+      result = streamText({
         ...options,
         abortSignal: abortController.signal,
       });
@@ -348,8 +420,6 @@ export class LLMService {
 
         if (part.type === "text-delta" && part.text) {
           hasReportedContent = true;
-          const textLength = part.text.length;
-          tokenCount += Math.ceil(textLength / 4);
         }
       }
 
@@ -379,10 +449,20 @@ export class LLMService {
       if (executionOptions.onStats && firstTokenTime) {
         const endTime = Date.now();
         executionOptions._streamingReported = true;
+        // Use AI SDK usage for accurate token count (await result.usage)
+        // Falls back to estimation if usage unavailable
+        let accurateTokenCount = 0;
+        try {
+          const usage = await result.usage;
+          accurateTokenCount = usage.outputTokens || 0;
+        } catch {
+          // Usage unavailable (e.g. stream cancelled early), use estimate
+          logger.debug("Could not get usage from stream result");
+        }
         executionOptions.onStats({
           firstTokenTime,
           endTime,
-          tokenCount,
+          tokenCount: accurateTokenCount,
         });
       }
     }

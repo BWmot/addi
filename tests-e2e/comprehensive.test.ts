@@ -37,9 +37,7 @@ const _TEST_MODEL: Model = {
   maxInputTokens: 128000,
   maxOutputTokens: 32768,
   capabilities: {
-    imageInput: true,
-    audioInput: false,
-    videoInput: false,
+    vision: true,
     toolCalling: true,
     reasoning: false,
   },

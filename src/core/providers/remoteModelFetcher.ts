@@ -244,7 +244,7 @@ export async function fetchProviderModelsFromApi(
                 value.toUpperCase().includes("IMAGE"),
             );
             if (hasImage) {
-              capabilities = { imageInput: true };
+              capabilities = { vision: true };
             }
           }
 

@@ -9,7 +9,7 @@
  * - Legacy provider type mapping (e.g., "openai" → "openai-completions")
  * - Provider type inference from endpoint
  * - Model field normalization (tokens, capabilities, IDs, family, version)
- * - Capabilities normalization (imageInput, toolCalling)
+ * - Capabilities normalization (vision, toolCalling)
  */
 
 import type { Model, Provider, ProviderType } from "../../common/types";
@@ -34,8 +34,8 @@ export function normalizeCapabilities(
   const base = fallback ?? {};
   const candidate = source ?? {};
 
-  if (candidate.imageInput !== undefined || base.imageInput !== undefined) {
-    normalized.imageInput = Boolean(candidate.imageInput ?? base.imageInput);
+  if (candidate.vision !== undefined || base.vision !== undefined) {
+    normalized.vision = Boolean(candidate.vision ?? base.vision);
   }
 
   const toolSource = candidate.toolCalling ?? base.toolCalling;
@@ -201,12 +201,36 @@ export function normalizeProvidersInPlace(
         unknown
       >;
 
+      // Migrate legacy imageInput → vision
       if (
-        capabilitiesRecord["imageInput"] === undefined &&
-        typeof mutableModel["imageInput"] === "boolean"
+        capabilitiesRecord["vision"] === undefined
       ) {
-        (capabilitiesRecord as Record<string, unknown>)["imageInput"] =
-          mutableModel["imageInput"];
+        // Check for legacy imageInput in capabilities or at model root
+        if (typeof capabilitiesRecord["imageInput"] === "boolean") {
+          (capabilitiesRecord as Record<string, unknown>)["vision"] =
+            capabilitiesRecord["imageInput"];
+          delete capabilitiesRecord["imageInput"];
+          changed = true;
+        } else if (typeof mutableModel["imageInput"] === "boolean") {
+          (capabilitiesRecord as Record<string, unknown>)["vision"] =
+            mutableModel["imageInput"];
+          changed = true;
+        }
+      }
+
+      // Clean up legacy imageInput from capabilities
+      if ("imageInput" in capabilitiesRecord) {
+        delete capabilitiesRecord["imageInput"];
+        changed = true;
+      }
+
+      // Clean up legacy audioInput/videoInput from capabilities
+      if ("audioInput" in capabilitiesRecord) {
+        delete capabilitiesRecord["audioInput"];
+        changed = true;
+      }
+      if ("videoInput" in capabilitiesRecord) {
+        delete capabilitiesRecord["videoInput"];
         changed = true;
       }
 
@@ -224,6 +248,16 @@ export function normalizeProvidersInPlace(
 
       if ("imageInput" in mutableModel) {
         delete mutableModel["imageInput"];
+        changed = true;
+      }
+
+      if ("audioInput" in mutableModel) {
+        delete mutableModel["audioInput"];
+        changed = true;
+      }
+
+      if ("videoInput" in mutableModel) {
+        delete mutableModel["videoInput"];
         changed = true;
       }
 
@@ -268,7 +302,7 @@ export function normalizeProvidersInPlace(
         capabilitiesRecord as Model["capabilities"],
       );
       if (
-        normalizedCaps.imageInput !== capabilitiesRecord["imageInput"] ||
+        normalizedCaps.vision !== capabilitiesRecord["vision"] ||
         normalizedCaps.toolCalling !== capabilitiesRecord["toolCalling"]
       ) {
         changed = true;

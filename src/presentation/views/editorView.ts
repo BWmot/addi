@@ -358,9 +358,7 @@ export class EditorViewManager {
       maxInputTokens: maxInputTokens,
       maxOutputTokens: maxOutputTokens,
       capabilities: {
-        imageInput: data.imageInput,
-        audioInput: data.audioInput,
-        videoInput: data.videoInput,
+        vision: data.vision,
         reasoning: data.reasoning,
         toolCalling: data.toolCalling,
       },
@@ -430,9 +428,9 @@ export class EditorViewManager {
 
             if (
               result.visionSupported !== undefined &&
-              result.visionSupported !== data.imageInput
+              result.visionSupported !== data.vision
             ) {
-              updates.imageInput = result.visionSupported;
+              updates.vision = result.visionSupported;
               msg += result.visionSupported
                 ? " (Vision detected)"
                 : " (Vision removed)";
@@ -517,9 +515,7 @@ export class EditorViewManager {
       extraHeader:
         data.extraHeader !== undefined ? data.extraHeader : undefined,
       capabilities: {
-        imageInput: data.imageInput,
-        audioInput: data.audioInput,
-        videoInput: data.videoInput,
+        vision: data.vision,
         reasoning: data.reasoning,
         toolCalling: data.toolCalling,
       },
