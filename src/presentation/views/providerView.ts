@@ -52,12 +52,8 @@ export class ProviderTreeItem extends vscode.TreeItem {
   }
 }
 
-export class AddiTreeDataProvider
-  implements vscode.TreeDataProvider<vscode.TreeItem>
-{
-  private readonly _onDidChangeTreeData = new vscode.EventEmitter<
-    vscode.TreeItem | undefined
-  >();
+export class AddiTreeDataProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+  private readonly _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   constructor(private manager: ProviderModelManager) {}
@@ -66,15 +62,11 @@ export class AddiTreeDataProvider
     return element;
   }
 
-  getChildren(
-    element?: vscode.TreeItem,
-  ): vscode.ProviderResult<vscode.TreeItem[]> {
+  getChildren(element?: vscode.TreeItem): vscode.ProviderResult<vscode.TreeItem[]> {
     return this._getChildren(element);
   }
 
-  private async _getChildren(
-    element?: vscode.TreeItem,
-  ): Promise<vscode.TreeItem[]> {
+  private async _getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
     const config = vscode.workspace.getConfiguration("addi");
     const sortRule = config.get<string>("sortRule", "none");
     const sortTarget = config.get<string>("sortTarget", "both");
@@ -85,10 +77,7 @@ export class AddiTreeDataProvider
       // Fetch custom providers
       let providers = this.manager.getProviders();
       // Sort providers only if target includes providers
-      if (
-        sortRule !== "none" &&
-        (sortTarget === "providers" || sortTarget === "both")
-      ) {
+      if (sortRule !== "none" && (sortTarget === "providers" || sortTarget === "both")) {
         providers = sortProviders(providers, sortRule as SortRule);
       }
 
@@ -104,10 +93,7 @@ export class AddiTreeDataProvider
     if (element instanceof ProviderTreeItem) {
       // Sort models only if target includes models
       let models = [...element.provider.models];
-      if (
-        sortRule !== "none" &&
-        (sortTarget === "models" || sortTarget === "both")
-      ) {
+      if (sortRule !== "none" && (sortTarget === "models" || sortTarget === "both")) {
         models = sortModels(models, sortRule as SortRule);
       }
 

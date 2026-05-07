@@ -23,21 +23,9 @@ export class CommandHandler {
     _llmService: LLMService,
   ) {
     // Initialize specialized handlers
-    this.providerHandler = new ProviderCommandHandler(
-      manager,
-      treeDataProvider,
-      context,
-    );
-    this.modelHandler = new ModelCommandHandler(
-      manager,
-      treeDataProvider,
-      context,
-    );
-    this.configHandler = new ConfigCommandHandler(
-      manager,
-      treeDataProvider,
-      context,
-    );
+    this.providerHandler = new ProviderCommandHandler(manager, treeDataProvider, context);
+    this.modelHandler = new ModelCommandHandler(manager, treeDataProvider, context);
+    this.configHandler = new ConfigCommandHandler(manager, treeDataProvider, context);
   }
 
   public setStorageService(service: IStorageService): void {
@@ -58,41 +46,29 @@ export class CommandHandler {
     return this.providerHandler.addProvider();
   }
 
-  async editProvider(item: {
-    provider: { id: string; name: string };
-  }): Promise<void> {
+  async editProvider(item: { provider: { id: string; name: string } }): Promise<void> {
     return this.providerHandler.editProvider(item as any);
   }
 
-  async deleteProvider(item: {
-    provider: { id: string; name: string };
-  }): Promise<void> {
+  async deleteProvider(item: { provider: { id: string; name: string } }): Promise<void> {
     return this.providerHandler.deleteProvider(item as any);
   }
 
-  async setApiKey(item: {
-    provider: { id: string; name: string };
-  }): Promise<void> {
+  async setApiKey(item: { provider: { id: string; name: string } }): Promise<void> {
     return this.providerHandler.setApiKey(item as any);
   }
 
-  async pullProviderModels(item: {
-    provider: { id: string; name: string };
-  }): Promise<void> {
+  async pullProviderModels(item: { provider: { id: string; name: string } }): Promise<void> {
     return this.providerHandler.pullProviderModels(item as any);
   }
 
-  async copyProvider(item: {
-    provider: { id: string; name: string };
-  }): Promise<void> {
+  async copyProvider(item: { provider: { id: string; name: string } }): Promise<void> {
     return this.providerHandler.copyProvider(item as any);
   }
 
   // ==================== Model Commands ====================
 
-  async addModel(item: {
-    provider: { id: string; name: string };
-  }): Promise<void> {
+  async addModel(item: { provider: { id: string; name: string } }): Promise<void> {
     return this.modelHandler.addModel(item as any);
   }
 

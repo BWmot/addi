@@ -151,9 +151,7 @@ async function main() {
     totalSize += await cleanFiles(file);
   }
 
-  console.log(
-    `\n🎉 清理完成! 释放空间: ${(totalSize / 1024 / 1024).toFixed(2)} MB`,
-  );
+  console.log(`\n🎉 清理完成! 释放空间: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
 }
 
 main();

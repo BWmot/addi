@@ -63,11 +63,7 @@ describe("Extension Activation", () => {
   it("should have valid package.json", () => {
     const packageJSON = extension?.packageJSON;
     assert.ok(packageJSON, "packageJSON should exist");
-    assert.strictEqual(
-      packageJSON?.name,
-      "addi",
-      "Extension name should be addi",
-    );
+    assert.strictEqual(packageJSON?.name, "addi", "Extension name should be addi");
     assert.ok(packageJSON?.version, "Extension should have version");
   });
 
@@ -101,31 +97,19 @@ describe("Command Registration", () => {
 
   // Provider Commands
   it("should register addi.addProvider command", () => {
-    assert.ok(
-      commands.includes("addi.addProvider"),
-      "addi.addProvider should be registered",
-    );
+    assert.ok(commands.includes("addi.addProvider"), "addi.addProvider should be registered");
   });
 
   it("should register addi.editProvider command", () => {
-    assert.ok(
-      commands.includes("addi.editProvider"),
-      "addi.editProvider should be registered",
-    );
+    assert.ok(commands.includes("addi.editProvider"), "addi.editProvider should be registered");
   });
 
   it("should register addi.copyProvider command", () => {
-    assert.ok(
-      commands.includes("addi.copyProvider"),
-      "addi.copyProvider should be registered",
-    );
+    assert.ok(commands.includes("addi.copyProvider"), "addi.copyProvider should be registered");
   });
 
   it("should register addi.deleteProvider command", () => {
-    assert.ok(
-      commands.includes("addi.deleteProvider"),
-      "addi.deleteProvider should be registered",
-    );
+    assert.ok(commands.includes("addi.deleteProvider"), "addi.deleteProvider should be registered");
   });
 
   it("should register addi.pullProviderModels command", () => {
@@ -136,39 +120,24 @@ describe("Command Registration", () => {
   });
 
   it("should register addi.setApiKey command", () => {
-    assert.ok(
-      commands.includes("addi.setApiKey"),
-      "addi.setApiKey should be registered",
-    );
+    assert.ok(commands.includes("addi.setApiKey"), "addi.setApiKey should be registered");
   });
 
   // Model Commands
   it("should register addi.addModel command", () => {
-    assert.ok(
-      commands.includes("addi.addModel"),
-      "addi.addModel should be registered",
-    );
+    assert.ok(commands.includes("addi.addModel"), "addi.addModel should be registered");
   });
 
   it("should register addi.editModels command", () => {
-    assert.ok(
-      commands.includes("addi.editModels"),
-      "addi.editModels should be registered",
-    );
+    assert.ok(commands.includes("addi.editModels"), "addi.editModels should be registered");
   });
 
   it("should register addi.copyModel command", () => {
-    assert.ok(
-      commands.includes("addi.copyModel"),
-      "addi.copyModel should be registered",
-    );
+    assert.ok(commands.includes("addi.copyModel"), "addi.copyModel should be registered");
   });
 
   it("should register addi.deleteModels command", () => {
-    assert.ok(
-      commands.includes("addi.deleteModels"),
-      "addi.deleteModels should be registered",
-    );
+    assert.ok(commands.includes("addi.deleteModels"), "addi.deleteModels should be registered");
   });
 
   it("should register addi.setModelToCopilot command", () => {
@@ -216,24 +185,15 @@ describe("Command Registration", () => {
 
   // Config Commands
   it("should register addi.exportConfig command", () => {
-    assert.ok(
-      commands.includes("addi.exportConfig"),
-      "addi.exportConfig should be registered",
-    );
+    assert.ok(commands.includes("addi.exportConfig"), "addi.exportConfig should be registered");
   });
 
   it("should register addi.importConfig command", () => {
-    assert.ok(
-      commands.includes("addi.importConfig"),
-      "addi.importConfig should be registered",
-    );
+    assert.ok(commands.includes("addi.importConfig"), "addi.importConfig should be registered");
   });
 
   it("should register addi.openSettings command", () => {
-    assert.ok(
-      commands.includes("addi.openSettings"),
-      "addi.openSettings should be registered",
-    );
+    assert.ok(commands.includes("addi.openSettings"), "addi.openSettings should be registered");
   });
 
   // Backup/Restore Commands
@@ -245,33 +205,21 @@ describe("Command Registration", () => {
   });
 
   it("should register addi.manageBackups command", () => {
-    assert.ok(
-      commands.includes("addi.manageBackups"),
-      "addi.manageBackups should be registered",
-    );
+    assert.ok(commands.includes("addi.manageBackups"), "addi.manageBackups should be registered");
   });
 
   // Storage Commands
   it("should register addi.initExtension command", () => {
-    assert.ok(
-      commands.includes("addi.initExtension"),
-      "addi.initExtension should be registered",
-    );
+    assert.ok(commands.includes("addi.initExtension"), "addi.initExtension should be registered");
   });
 
   // Utility Commands
   it("should register addi.manage command", () => {
-    assert.ok(
-      commands.includes("addi.manage"),
-      "addi.manage should be registered",
-    );
+    assert.ok(commands.includes("addi.manage"), "addi.manage should be registered");
   });
 
   it("should register addi.showLogs command", () => {
-    assert.ok(
-      commands.includes("addi.showLogs"),
-      "addi.showLogs should be registered",
-    );
+    assert.ok(commands.includes("addi.showLogs"), "addi.showLogs should be registered");
   });
 });
 
@@ -350,20 +298,12 @@ describe("Sync Functionality", () => {
     const config = vscode.workspace.getConfiguration("addi");
     const originalValue = config.get<boolean>("syncConfiguration");
 
-    await config.update(
-      "syncConfiguration",
-      true,
-      vscode.ConfigurationTarget.Global,
-    );
+    await config.update("syncConfiguration", true, vscode.ConfigurationTarget.Global);
     const newValue = config.get<boolean>("syncConfiguration");
     assert.strictEqual(newValue, true, "Sync should be enabled");
 
     // Restore original
-    await config.update(
-      "syncConfiguration",
-      originalValue,
-      vscode.ConfigurationTarget.Global,
-    );
+    await config.update("syncConfiguration", originalValue, vscode.ConfigurationTarget.Global);
   });
 });
 
@@ -393,9 +333,7 @@ describe("Edge Cases", () => {
   }
 
   it("should handle invalid provider data", async () => {
-    const manager = new ProviderModelManager(
-      createMockStorageService() as any,
-    );
+    const manager = new ProviderModelManager(createMockStorageService() as any);
 
     const providers = manager.getProviders();
     assert.ok(Array.isArray(providers), "Should return empty array");
@@ -408,15 +346,9 @@ describe("Edge Cases", () => {
       name: "A".repeat(1000),
     };
 
-    const manager = new ProviderModelManager(
-      createMockStorageService([longNameProvider]) as any,
-    );
+    const manager = new ProviderModelManager(createMockStorageService([longNameProvider]) as any);
 
     const providers = manager.getProviders();
-    assert.strictEqual(
-      providers[0]?.name.length,
-      1000,
-      "Long name should be preserved",
-    );
+    assert.strictEqual(providers[0]?.name.length, 1000, "Long name should be preserved");
   });
 });

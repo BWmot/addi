@@ -37,11 +37,7 @@ export abstract class BaseCommandHandler {
     this.treeDataProvider.refresh();
   }
 
-  protected logError(
-    source: string,
-    error: unknown,
-    context?: Record<string, unknown>,
-  ): void {
+  protected logError(source: string, error: unknown, context?: Record<string, unknown>): void {
     logger.error(source, {
       error: error instanceof Error ? error.message : String(error),
       ...context,

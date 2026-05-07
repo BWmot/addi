@@ -5,12 +5,7 @@
  * decoupling them from the concrete `ProviderModelManager` class (DIP).
  * Implementation lives in `core/providers/ProviderModelManager.ts`.
  */
-import type {
-  Provider,
-  Model,
-  ModelDraft,
-  RemoteModelInfo,
-} from "../../common/types";
+import type { Provider, Model, ModelDraft, RemoteModelInfo } from "../../common/types";
 
 export interface IProviderModelManager {
   // ─── Provider CRUD ──────────────────────────────────────────────────────
@@ -26,9 +21,7 @@ export interface IProviderModelManager {
    * @returns The created provider (with generated id)
    * @throws if name or endpoint validation fails
    */
-  addProvider(
-    providerData: Omit<Provider, "id" | "models">,
-  ): Promise<Provider>;
+  addProvider(providerData: Omit<Provider, "id" | "models">): Promise<Provider>;
 
   /**
    * Update an existing provider's fields.
@@ -106,19 +99,12 @@ export interface IProviderModelManager {
   ): Promise<number>;
 
   /** Toggle isUserSelectable for ALL models in a provider. */
-  updateProviderAllModelsVisibility(
-    providerId: string,
-    isUserSelectable: boolean,
-  ): Promise<number>;
+  updateProviderAllModelsVisibility(providerId: string, isUserSelectable: boolean): Promise<number>;
 
   // ─── Speed Tracking ─────────────────────────────────────────────────────
 
   /** Record a speed measurement for a model (rolling window of 5). */
-  updateModelSpeed(
-    providerId: string,
-    modelId: string,
-    speed: number,
-  ): Promise<void>;
+  updateModelSpeed(providerId: string, modelId: string, speed: number): Promise<void>;
 
   // ─── API Key Management ─────────────────────────────────────────────────
 

@@ -30,9 +30,7 @@ export function sortProviders(providers: Provider[], rule: SortRule): Provider[]
   const copy = [...providers];
 
   if (rule === "alphabet") {
-    return copy.sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-    );
+    return copy.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   }
 
   if (rule === "input tokens") {
@@ -70,9 +68,7 @@ export function sortModels(models: Model[], rule: SortRule): Model[] {
   const copy = [...models];
 
   if (rule === "alphabet") {
-    return copy.sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-    );
+    return copy.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   }
 
   if (rule === "input tokens") {

@@ -8,16 +8,16 @@
 
 ## 总览
 
-| 序号 | 原编号 | 任务 | 优先级 | 预估工作量 | 依赖关系 | 状态 |
-|------|--------|------|--------|------------|----------|------|
-| 1 | P1-8 | 拆分 `common/utils/` 跨层工具 | 🟡 P1 | 中 | 无 | ✅ 完成 |
-| 2 | P1-14 | `AIProviderRegistry` settings 类型化 | 🟡 P1 | 小 | 无 | ✅ |
-| 3 | P2-21 | 提取排序策略到独立模块 | 🟢 P2 | 小 | 无 | ✅ |
-| 4 | P2-17 | `AIProviderRegistry` 实例化 + DI | 🟢 P2 | 中 | 依赖 #2 | ✅ |
-| 5 | P2-16 | 拆分 `ProviderModelManager` 上帝对象 | 🟢 P2 | 大 | 依赖 #4 | ✅ 完成 |
-| 6 | P2-24 | UseCases 层接口化 (DIP) | 🟢 P2 | 大 | 依赖 #5 | ✅ 完成 |
-| 7 | P1-15 | 添加核心模块单元测试 | 🟡 P1 | 大 | 依赖 #1-6 | ✅ 完成 |
-| 8 | NEW | 改进现有测试 | 🟡 P1 | 中 | 依赖 #7 | ✅ 完成 |
+| 序号 | 原编号 | 任务                                 | 优先级 | 预估工作量 | 依赖关系  | 状态    |
+| ---- | ------ | ------------------------------------ | ------ | ---------- | --------- | ------- |
+| 1    | P1-8   | 拆分 `common/utils/` 跨层工具        | 🟡 P1  | 中         | 无        | ✅ 完成 |
+| 2    | P1-14  | `AIProviderRegistry` settings 类型化 | 🟡 P1  | 小         | 无        | ✅      |
+| 3    | P2-21  | 提取排序策略到独立模块               | 🟢 P2  | 小         | 无        | ✅      |
+| 4    | P2-17  | `AIProviderRegistry` 实例化 + DI     | 🟢 P2  | 中         | 依赖 #2   | ✅      |
+| 5    | P2-16  | 拆分 `ProviderModelManager` 上帝对象 | 🟢 P2  | 大         | 依赖 #4   | ✅ 完成 |
+| 6    | P2-24  | UseCases 层接口化 (DIP)              | 🟢 P2  | 大         | 依赖 #5   | ✅ 完成 |
+| 7    | P1-15  | 添加核心模块单元测试                 | 🟡 P1  | 大         | 依赖 #1-6 | ✅ 完成 |
+| 8    | NEW    | 改进现有测试                         | 🟡 P1  | 中         | 依赖 #7   | ✅ 完成 |
 
 ### 执行顺序策略
 
@@ -41,28 +41,31 @@
 
 `src/common/utils/` 中混入了依赖 VS Code API 的文件，违反分层架构：
 
-| 文件 | 依赖 | 当前归属 | 正确归属 |
-|------|------|----------|----------|
-| `feedback.ts` | `vscode.window` | `common/` | `presentation/` |
-| `config.ts` | `vscode.workspace` | `common/` | `infrastructure/` |
+| 文件            | 依赖                | 当前归属  | 正确归属           |
+| --------------- | ------------------- | --------- | ------------------ |
+| `feedback.ts`   | `vscode.window`     | `common/` | `presentation/`    |
+| `config.ts`     | `vscode.workspace`  | `common/` | `infrastructure/`  |
 | `toolParser.ts` | 无外部依赖 (死代码) | `common/` | 删除或移至 `core/` |
-| `id.ts` | `crypto` | `common/` | `common/` ✅ |
-| `validator.ts` | `token.ts` | `common/` | `common/` ✅ |
-| `token.ts` | 无 | `common/` | `common/` ✅ |
+| `id.ts`         | `crypto`            | `common/` | `common/` ✅       |
+| `validator.ts`  | `token.ts`          | `common/` | `common/` ✅       |
+| `token.ts`      | 无                  | `common/` | `common/` ✅       |
 
 ### 依赖分析
 
 **`feedback.ts` (UserFeedback)** — 消费者 (全部在 presentation 层):
+
 - `src/presentation/extension.ts` — 直接 import `../common/utils/feedback`
 - `src/presentation/commands/config.ts` — 通过 `../../common/utils` barrel import
 
 **`config.ts` (ConfigManager)** — 消费者 (跨层使用):
+
 - `src/application/provider/ProviderUseCases.ts`
 - `src/core/providers/ProviderModelManager.ts`
 - `src/presentation/views/editorView.ts`
 - `src/presentation/commands/config.ts`
 
 **`toolParser.ts` (ToolParser)** — **死代码**:
+
 - 无任何文件 import
 - `common/utils/index.ts` 中未导出
 - 结论: 可安全删除或移至 `core/tools/` 保留备用
@@ -105,12 +108,12 @@ const modelSettings: any = {};
 
 ### 影响范围
 
-| 工厂 | settings 用途 |
-|------|---------------|
-| `openai-completions` | `baseURL`, `apiKey`, `fetch`, `name` |
-| `openai-responses` | 同上 |
-| `anthropic-messages` | `baseURL`, `apiKey`, `fetch`, `name` |
-| `google-generateContent` | `baseURL`, `apiKey`, `fetch` |
+| 工厂                     | settings 用途                        |
+| ------------------------ | ------------------------------------ |
+| `openai-completions`     | `baseURL`, `apiKey`, `fetch`, `name` |
+| `openai-responses`       | 同上                                 |
+| `anthropic-messages`     | `baseURL`, `apiKey`, `fetch`, `name` |
+| `google-generateContent` | `baseURL`, `apiKey`, `fetch`         |
 
 ### 子任务
 
@@ -214,14 +217,14 @@ export class AIProviderRegistry {
 
 经审查，原计划的 6 服务拆分存在过度设计问题：
 
-| 原计划服务 | 评审结论 |
-|-----------|---------|
-| BackupRestoreService | ❌ 不拆 — 已是 storageService 薄委托，再包装无意义 |
-| ModelSpeedService | ❌ 不拆 — 仅 50 行，过小 |
+| 原计划服务                           | 评审结论                                                                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| BackupRestoreService                 | ❌ 不拆 — 已是 storageService 薄委托，再包装无意义                                                           |
+| ModelSpeedService                    | ❌ 不拆 — 仅 50 行，过小                                                                                     |
 | ProviderRepository / ModelRepository | ❌ 不拆 — Provider/Model CRUD 高度耦合 (共享 `saveProviders` + `normalizeInPlace`)，拆分后需互相引用得不偿失 |
-| ProviderModelCoordinator | ❌ 不需要 — 保留原类即可承担协调 |
-| DataNormalizationService | ✅ 提取 — 300 行纯函数，零副作用 |
-| RemoteModelFetcher | ✅ 提取 — 280 行独立网络逻辑 |
+| ProviderModelCoordinator             | ❌ 不需要 — 保留原类即可承担协调                                                                             |
+| DataNormalizationService             | ✅ 提取 — 300 行纯函数，零副作用                                                                             |
+| RemoteModelFetcher                   | ✅ 提取 — 280 行独立网络逻辑                                                                                 |
 
 ### 精简拆分方案 (v2)
 
@@ -234,6 +237,7 @@ export class AIProviderRegistry {
 ```
 
 **优势**:
+
 - ProviderModelManager 从 1292 行降至 ~700 行（降低 46%）
 - **零消费者改动** — 公共 API 不变，8 个消费文件无需修改
 - **零组合根改动** — extension.ts 无需修改
@@ -318,14 +322,14 @@ After:  UseCases → IProviderModelManager (interface)
 
 ### 测试目标
 
-| 模块 | 文件 | 测试点 | 优先级 |
-|------|------|--------|--------|
-| TokenFormatter | `common/utils/token.ts` | `format()`, `parseInput()` | 高 |
-| IdGenerator | `common/utils/id.ts` | `generate()` 返回有效 UUID | 高 |
-| InputValidator | `common/utils/validator.ts` | 所有验证方法 | 高 |
-| SortStrategy | `presentation/utils/sortStrategy.ts` | 各排序规则 | 中 |
-| DataNormalizer | `core/providers/dataNormalizer.ts` | normalizeCapabilities, normalizeProvidersInPlace | 中 |
-| RemoteModelFetcher | `core/providers/remoteModelFetcher.ts` | fetchProviderModelsFromApi (mocked fetch) | 中 |
+| 模块               | 文件                                   | 测试点                                           | 优先级 |
+| ------------------ | -------------------------------------- | ------------------------------------------------ | ------ |
+| TokenFormatter     | `common/utils/token.ts`                | `format()`, `parseInput()`                       | 高     |
+| IdGenerator        | `common/utils/id.ts`                   | `generate()` 返回有效 UUID                       | 高     |
+| InputValidator     | `common/utils/validator.ts`            | 所有验证方法                                     | 高     |
+| SortStrategy       | `presentation/utils/sortStrategy.ts`   | 各排序规则                                       | 中     |
+| DataNormalizer     | `core/providers/dataNormalizer.ts`     | normalizeCapabilities, normalizeProvidersInPlace | 中     |
+| RemoteModelFetcher | `core/providers/remoteModelFetcher.ts` | fetchProviderModelsFromApi (mocked fetch)        | 中     |
 
 ### 子任务
 
@@ -345,6 +349,7 @@ After:  UseCases → IProviderModelManager (interface)
 ### 背景
 
 现有测试存在以下问题：
+
 - `validator.test.ts` 只测试了 deprecated API，缺少新 API 的测试
 - `token.test.ts` 缺少 Infinity/NaN/大小写等边界测试
 - `id.test.ts` 缺少 version nibble/variant bits 等 v4 细节验证
@@ -365,36 +370,36 @@ After:  UseCases → IProviderModelManager (interface)
 
 ## 进度跟踪
 
-| 日期 | 任务 | 状态 | 备注 |
-|------|------|------|------|
-| 2025-07-04 | #1 P1-8 拆分 common/utils 跨层工具 | ✅ 完成 | feedback.ts → presentation/utils/; ConfigManager → infrastructure/vscode/; toolParser.ts 删除(死代码); 修复8个消费者import; tsc + compile 均通过 |
-| 2025-07-04 | #2 P1-14 AIProviderRegistry settings 类型化 | ✅ 完成 | 5处 `any` → 已类型化: BaseProviderSettings + ModelSettings + buildBaseSettings(); fix RequestInit.headers 类型; tsc + compile 均通过 |
-| 2025-07-04 | #3 P2-21 提取排序策略到独立模块 | ✅ 完成 | providerView.ts ~50行排序逻辑 → sortStrategy.ts; sortProviders() + sortModels(); tsc + compile 均通过 |
-| 2025-07-04 | #4 P2-17 AIProviderRegistry 实例化 + DI | ✅ 完成 | static → instance + getInstance() 单例; llmService.ts 构造注入; modelTester.ts 使用 getInstance(); tsc + compile 均通过 |
-| 2025-07-04 | #5 P2-16 拆分 ProviderModelManager 上帝对象 | ✅ 完成 | dataNormalizer.ts + remoteModelFetcher.ts 提取; ProviderModelManager 1292→~700行; tsc + compile 均通过 |
-| 2025-07-04 | #6 P2-24 UseCases 层接口化 (DIP) | ✅ 完成 | IProviderModelManager 接口; 3 个 UseCase 改为依赖接口; ProviderModelManager implements 接口; tsc 验证通过 |
-| 2025-07-04 | #7 P1-15 核心模块单元测试 | ✅ 完成 | sortStrategy.test.ts (~280行) + dataNormalizer.test.ts (~350行) + remoteModelFetcher.test.ts (~400行); tsc 编译验证通过 |
-| 2025-07-04 | #8 改进现有测试 | ✅ 完成 | validator 新API+edge cases; token Infinity/NaN/大写K; id version nibble/variant/1000次唯一性; tsc + compile 通过 |
+| 日期       | 任务                                        | 状态    | 备注                                                                                                                                             |
+| ---------- | ------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2025-07-04 | #1 P1-8 拆分 common/utils 跨层工具          | ✅ 完成 | feedback.ts → presentation/utils/; ConfigManager → infrastructure/vscode/; toolParser.ts 删除(死代码); 修复8个消费者import; tsc + compile 均通过 |
+| 2025-07-04 | #2 P1-14 AIProviderRegistry settings 类型化 | ✅ 完成 | 5处 `any` → 已类型化: BaseProviderSettings + ModelSettings + buildBaseSettings(); fix RequestInit.headers 类型; tsc + compile 均通过             |
+| 2025-07-04 | #3 P2-21 提取排序策略到独立模块             | ✅ 完成 | providerView.ts ~50行排序逻辑 → sortStrategy.ts; sortProviders() + sortModels(); tsc + compile 均通过                                            |
+| 2025-07-04 | #4 P2-17 AIProviderRegistry 实例化 + DI     | ✅ 完成 | static → instance + getInstance() 单例; llmService.ts 构造注入; modelTester.ts 使用 getInstance(); tsc + compile 均通过                          |
+| 2025-07-04 | #5 P2-16 拆分 ProviderModelManager 上帝对象 | ✅ 完成 | dataNormalizer.ts + remoteModelFetcher.ts 提取; ProviderModelManager 1292→~700行; tsc + compile 均通过                                           |
+| 2025-07-04 | #6 P2-24 UseCases 层接口化 (DIP)            | ✅ 完成 | IProviderModelManager 接口; 3 个 UseCase 改为依赖接口; ProviderModelManager implements 接口; tsc 验证通过                                        |
+| 2025-07-04 | #7 P1-15 核心模块单元测试                   | ✅ 完成 | sortStrategy.test.ts (~280行) + dataNormalizer.test.ts (~350行) + remoteModelFetcher.test.ts (~400行); tsc 编译验证通过                          |
+| 2025-07-04 | #8 改进现有测试                             | ✅ 完成 | validator 新API+edge cases; token Infinity/NaN/大写K; id version nibble/variant/1000次唯一性; tsc + compile 通过                                 |
 
 ---
 
 ## 附录: 关键文件影响矩阵
 
-| 文件 | 任务 1 | 任务 2 | 任务 3 | 任务 4 | 任务 5 | 任务 6 | 任务 7 |
-|------|--------|--------|--------|--------|--------|--------|--------|
-| `common/utils/index.ts` | ✏️ 修改 | | | | | | |
-| `common/utils/feedback.ts` | ➡️ 移动 | | | | | | |
-| `common/utils/config.ts` | ➡️ 移动 | | | | | | |
-| `common/utils/toolParser.ts` | 🗑️ 删除 | | | | | | |
-| `presentation/extension.ts` | ✏️ 修改 | | | ✏️ 修改 | ✏️ 修改 | ✏️ 修改 | |
-| `presentation/commands/config.ts` | ✏️ 修改 | | | | | | |
-| `presentation/views/editorView.ts` | ✏️ 修改 | | | | | | |
-| `presentation/views/providerView.ts` | | | ✏️ 修改 | | | | |
-| `core/llm/aiRegistry.ts` | | ✏️ 修改 | | ✏️ 修改 | | | |
-| `core/llm/llmService.ts` | | | | ✏️ 修改 | | | |
-| `core/providers/ProviderModelManager.ts` | ✏️ 修改 | | | | ➡️ 拆分 | | |
-| `application/config/ConfigUseCases.ts` | | | | | ✏️ 修改 | ✏️ 修改 | |
-| `application/model/ModelUseCases.ts` | | | | | ✏️ 修改 | ✏️ 修改 | |
-| `application/provider/ProviderUseCases.ts` | ✏️ 修改 | | | | ✏️ 修改 | ✏️ 修改 | |
-| `domain/interfaces/` | | | | | | ➕ 新增 | |
-| `tests-unit/` | | | | | | | ➕ 新增 |
+| 文件                                       | 任务 1  | 任务 2  | 任务 3  | 任务 4  | 任务 5  | 任务 6  | 任务 7  |
+| ------------------------------------------ | ------- | ------- | ------- | ------- | ------- | ------- | ------- |
+| `common/utils/index.ts`                    | ✏️ 修改 |         |         |         |         |         |         |
+| `common/utils/feedback.ts`                 | ➡️ 移动 |         |         |         |         |         |         |
+| `common/utils/config.ts`                   | ➡️ 移动 |         |         |         |         |         |         |
+| `common/utils/toolParser.ts`               | 🗑️ 删除 |         |         |         |         |         |         |
+| `presentation/extension.ts`                | ✏️ 修改 |         |         | ✏️ 修改 | ✏️ 修改 | ✏️ 修改 |         |
+| `presentation/commands/config.ts`          | ✏️ 修改 |         |         |         |         |         |         |
+| `presentation/views/editorView.ts`         | ✏️ 修改 |         |         |         |         |         |         |
+| `presentation/views/providerView.ts`       |         |         | ✏️ 修改 |         |         |         |         |
+| `core/llm/aiRegistry.ts`                   |         | ✏️ 修改 |         | ✏️ 修改 |         |         |         |
+| `core/llm/llmService.ts`                   |         |         |         | ✏️ 修改 |         |         |         |
+| `core/providers/ProviderModelManager.ts`   | ✏️ 修改 |         |         |         | ➡️ 拆分 |         |         |
+| `application/config/ConfigUseCases.ts`     |         |         |         |         | ✏️ 修改 | ✏️ 修改 |         |
+| `application/model/ModelUseCases.ts`       |         |         |         |         | ✏️ 修改 | ✏️ 修改 |         |
+| `application/provider/ProviderUseCases.ts` | ✏️ 修改 |         |         |         | ✏️ 修改 | ✏️ 修改 |         |
+| `domain/interfaces/`                       |         |         |         |         |         | ➕ 新增 |         |
+| `tests-unit/`                              |         |         |         |         |         |         | ➕ 新增 |

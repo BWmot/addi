@@ -59,12 +59,8 @@ export class ProviderUseCases {
           name: remoteModel.name || remoteModel.id,
           family: remoteModel.family || ConfigManager.getDefaultModelFamily(),
           version: ConfigManager.getDefaultModelVersion(),
-          maxInputTokens:
-            remoteModel.maxInputTokens ||
-            ConfigManager.getDefaultMaxInputTokens(),
-          maxOutputTokens:
-            remoteModel.maxOutputTokens ||
-            ConfigManager.getDefaultMaxOutputTokens(),
+          maxInputTokens: remoteModel.maxInputTokens || ConfigManager.getDefaultMaxInputTokens(),
+          maxOutputTokens: remoteModel.maxOutputTokens || ConfigManager.getDefaultMaxOutputTokens(),
           capabilities: remoteModel.capabilities || {},
           isUserSelectable: true,
         };
@@ -79,10 +75,8 @@ export class ProviderUseCases {
         if (hasChanges) {
           existing.name = remoteModel.name || remoteModel.id;
           existing.family = remoteModel.family || existing.family;
-          existing.maxInputTokens =
-            remoteModel.maxInputTokens || existing.maxInputTokens;
-          existing.maxOutputTokens =
-            remoteModel.maxOutputTokens || existing.maxOutputTokens;
+          existing.maxInputTokens = remoteModel.maxInputTokens || existing.maxInputTokens;
+          existing.maxOutputTokens = remoteModel.maxOutputTokens || existing.maxOutputTokens;
           if (remoteModel.capabilities) {
             existing.capabilities = {
               ...existing.capabilities,

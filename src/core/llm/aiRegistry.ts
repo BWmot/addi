@@ -104,7 +104,8 @@ export class AIProviderRegistry {
               headersArray.push(["User-Agent", "VSCode-Addi-Extension"]);
             }
           } else {
-            const headersRecord: Record<string, string> = (finalOptions.headers as Record<string, string>) || {};
+            const headersRecord: Record<string, string> =
+              (finalOptions.headers as Record<string, string>) || {};
             if (!headersRecord["User-Agent"] && !headersRecord["user-agent"]) {
               headersRecord["User-Agent"] = "VSCode-Addi-Extension";
             }
@@ -128,11 +129,7 @@ export class AIProviderRegistry {
           }
           return response;
         } catch (e) {
-          logger.error(
-            `[AI-SDK Fetch] Network Error: ${urlStr}`,
-            e,
-            "AIRegistry",
-          );
+          logger.error(`[AI-SDK Fetch] Network Error: ${urlStr}`, e, "AIRegistry");
           throw e;
         }
       };
@@ -153,11 +150,8 @@ export class AIProviderRegistry {
       id: "openai-completions",
       label: "OpenAI (/completions)",
       create: (p) => {
-        const isCustomEndpoint =
-          p.apiEndpoint && !p.apiEndpoint.includes("api.openai.com");
-        const baseURL = p.apiEndpoint
-          ? p.apiEndpoint.replace(/\/chat\/completions\/?$/, "")
-          : "";
+        const isCustomEndpoint = p.apiEndpoint && !p.apiEndpoint.includes("api.openai.com");
+        const baseURL = p.apiEndpoint ? p.apiEndpoint.replace(/\/chat\/completions\/?$/, "") : "";
 
         // Smart Fallback: use createOpenAICompatible for custom endpoints
         if (isCustomEndpoint) {
@@ -178,9 +172,7 @@ export class AIProviderRegistry {
       id: "openai-responses",
       label: "OpenAI (/responses)",
       create: (p) => {
-        const baseURL = p.apiEndpoint
-          ? p.apiEndpoint.replace(/\/responses\/?$/, "")
-          : "";
+        const baseURL = p.apiEndpoint ? p.apiEndpoint.replace(/\/responses\/?$/, "") : "";
         return createOpenAI(buildBaseSettings(p, baseURL));
       },
     });
@@ -193,9 +185,7 @@ export class AIProviderRegistry {
         // Manual mode: User must provide the correct baseURL.
         // e.g. https://api.minimaxi.com/anthropic/v1
         // We only strip /messages because the SDK adds it.
-        const baseURL = p.apiEndpoint
-          ? p.apiEndpoint.replace(/\/messages\/?$/, "")
-          : "";
+        const baseURL = p.apiEndpoint ? p.apiEndpoint.replace(/\/messages\/?$/, "") : "";
         return createAnthropic(buildBaseSettings(p, baseURL));
       },
     });
@@ -214,14 +204,11 @@ export class AIProviderRegistry {
 
   /**
    * 根据 Provider 配置和 Model ID 创建 AI SDK 的 LanguageModel 实例
-   * 
+   *
    * 重要: 这里必须使用 model.rid (远程模型 ID)，而不是 model.id (本地 UUID)
    * 因为 AI SDK 需要知道实际的远程模型标识符来正确路由请求
    */
-  createModel(
-    provider: Provider,
-    modelOrId: string | Model,
-  ): LanguageModel {
+  createModel(provider: Provider, modelOrId: string | Model): LanguageModel {
     this.ensureInitialized();
 
     // 关键修复: 如果传入的是 Model 对象，必须使用 rid 而非 id
@@ -229,7 +216,7 @@ export class AIProviderRegistry {
     // - rid 是远程 API 接受的模型 ID（如 "gpt-4o", "claude-3-5-sonnet"）
     let modelId: string;
     let model: Model | undefined;
-    
+
     if (typeof modelOrId === "string") {
       // 如果直接传入的是字符串，当作 rid 处理
       modelId = modelOrId;
@@ -239,23 +226,10 @@ export class AIProviderRegistry {
       model = modelOrId as Model;
     }
 
-    // If model object is not provided but ID is, try to find it in the provider's model list
-    if (
-      !model &&
-      typeof modelOrId === "string" &&
-      Array.isArray(provider.models)
-    ) {
-      model = provider.models.find((m) => m.rid === modelOrId);
-    }
-
     // 尝试获取对应的工厂，如果找不到则默认使用 openai (兼容模式)
     let factory = this.factories[provider.providerType];
     if (!factory) {
-      if (
-        ["openai-completions", "openai-responses"].includes(
-          provider.providerType,
-        )
-      ) {
+      if (["openai-completions", "openai-responses"].includes(provider.providerType)) {
         factory = this.factories["openai-completions"];
       } else {
         factory = this.factories["openai-completions"]; // Default fallback
@@ -267,9 +241,7 @@ export class AIProviderRegistry {
       // Ensure factory is strictly not undefined for TypeScript
       factory = this.factories["openai-completions"];
       if (!factory) {
-        throw new Error(
-          `Provider factory not found for type: ${provider.providerType}`,
-        );
+        throw new Error(`Provider factory not found for type: ${provider.providerType}`);
       }
     }
 

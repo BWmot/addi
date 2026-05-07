@@ -19,10 +19,7 @@ export class ConfigUseCases {
   /**
    * Export providers to JSON string
    */
-  async exportProviders(
-    providers: Provider[],
-    includeApiKeys: boolean,
-  ): Promise<string> {
+  async exportProviders(providers: Provider[], includeApiKeys: boolean): Promise<string> {
     const providersToExport = [...providers];
 
     // Fetch API keys if requested
@@ -64,9 +61,7 @@ export class ConfigUseCases {
     const mergedProviders = [...currentProviders];
 
     for (const provider of providersToImport) {
-      const existingIndex = mergedProviders.findIndex(
-        (p) => p.id === provider.id,
-      );
+      const existingIndex = mergedProviders.findIndex((p) => p.id === provider.id);
       if (existingIndex !== -1) {
         // Provider exists - will be handled by caller for conflict resolution
         mergedProviders[existingIndex] = provider;

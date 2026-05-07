@@ -10,12 +10,7 @@ export type ModelMessage =
   | { role: "assistant"; content: string | Array<MessageContentPart> }
   | { role: "tool"; content: Array<ToolResultPart> };
 
-export type MessageContentPart =
-  | TextPart
-  | ReasoningPart
-  | ImagePart
-  | FilePart
-  | ToolCallPart;
+export type MessageContentPart = TextPart | ReasoningPart | ImagePart | FilePart | ToolCallPart;
 
 export interface TextPart {
   type: "text";
@@ -68,9 +63,7 @@ export type ChatMessageRole = "system" | "user" | "assistant";
 /**
  * 将字符串角色转换为 VS Code 的 LanguageModelChatMessageRole
  */
-export function toVsCodeRole(
-  role: ChatMessageRole,
-): vscode.LanguageModelChatMessageRole {
+export function toVsCodeRole(role: ChatMessageRole): vscode.LanguageModelChatMessageRole {
   return role === "user"
     ? vscode.LanguageModelChatMessageRole.User
     : role === "assistant"
@@ -100,9 +93,7 @@ export type VsCodeMessageContent =
 /**
  * 创建带有多个部分的 Assistant 消息的辅助函数
  */
-export function createAssistantMessage(
-  content: string | VsCodeMessageContent[],
-) {
+export function createAssistantMessage(content: string | VsCodeMessageContent[]) {
   return vscode.LanguageModelChatMessage.Assistant(content as string | any[]);
 }
 

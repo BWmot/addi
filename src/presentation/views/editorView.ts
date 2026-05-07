@@ -60,9 +60,7 @@ export class EditorViewManager {
         this._panel = undefined;
       });
 
-      this._panel.webview.html = await this._getHtmlForWebview(
-        this._panel.webview,
-      );
+      this._panel.webview.html = await this._getHtmlForWebview(this._panel.webview);
 
       this._panel.webview.onDidReceiveMessage(async (data) => {
         logger.debug("Webview message received", data, "EditorView");
@@ -83,9 +81,7 @@ export class EditorViewManager {
             this._panel?.dispose();
             break;
           case "showError":
-            await vscode.window.showErrorMessage(
-              data.payload?.message || "An error occurred",
-            );
+            await vscode.window.showErrorMessage(data.payload?.message || "An error occurred");
             break;
         }
       });
@@ -131,9 +127,7 @@ export class EditorViewManager {
         ? this._manager.getProviders().find((p) => p.id === pId)
         : undefined;
     } else if (mode === "create" && parentId) {
-      this._currentProvider = this._manager
-        .getProviders()
-        .find((p) => p.id === parentId);
+      this._currentProvider = this._manager.getProviders().find((p) => p.id === parentId);
     } else if (isBatchMode && this._currentItems.length > 0) {
       // For batch mode, get provider from first item
       const firstItem = this._currentItems[0];
@@ -148,9 +142,7 @@ export class EditorViewManager {
     }
 
     const type =
-      item instanceof ProviderTreeItem || (mode === "create" && !parentId)
-        ? "provider"
-        : "model";
+      item instanceof ProviderTreeItem || (mode === "create" && !parentId) ? "provider" : "model";
     this._viewState = {
       mode,
       type,
@@ -210,9 +202,7 @@ export class EditorViewManager {
         const modelData = item?.model;
         // If editing a model, also include parent provider options for placeholder suggestions
         const parentId =
-          item instanceof ModelTreeItem
-            ? this._getParentProviderId(item)
-            : undefined;
+          item instanceof ModelTreeItem ? this._getParentProviderId(item) : undefined;
         const parentProvider = parentId
           ? this._manager.getProviders().find((p) => p.id === parentId)
           : undefined;
@@ -237,9 +227,7 @@ export class EditorViewManager {
           data: dataToSend,
           parentId:
             parentId ||
-            (item instanceof ModelTreeItem
-              ? this._getParentProviderId(item)
-              : undefined),
+            (item instanceof ModelTreeItem ? this._getParentProviderId(item) : undefined),
         },
       });
     }
@@ -259,12 +247,8 @@ export class EditorViewManager {
         apiKey: data.apiKey,
         description: data.description,
         website: data.website,
-        ...(data.extraBody !== undefined
-          ? { extraBody: data.extraBody || undefined }
-          : {}),
-        ...(data.extraHeader !== undefined
-          ? { extraHeader: data.extraHeader || undefined }
-          : {}),
+        ...(data.extraBody !== undefined ? { extraBody: data.extraBody || undefined } : {}),
+        ...(data.extraHeader !== undefined ? { extraHeader: data.extraHeader || undefined } : {}),
         ...(data.options ? { options: data.options } : {}),
       };
       if (!providerData.apiKey) {
@@ -293,10 +277,7 @@ export class EditorViewManager {
       return;
     }
 
-    if (
-      !this._currentItem ||
-      !(this._currentItem instanceof ProviderTreeItem)
-    ) {
+    if (!this._currentItem || !(this._currentItem instanceof ProviderTreeItem)) {
       return;
     }
     const provider = this._currentItem.provider;
@@ -313,18 +294,13 @@ export class EditorViewManager {
       website: data.website,
       apiEndpoint: data.apiEndpoint,
       providerType: data.providerType,
-      ...(data.extraBody !== undefined
-        ? { extraBody: data.extraBody || undefined }
-        : {}),
-      ...(data.extraHeader !== undefined
-        ? { extraHeader: data.extraHeader || undefined }
-        : {}),
+      ...(data.extraBody !== undefined ? { extraBody: data.extraBody || undefined } : {}),
+      ...(data.extraHeader !== undefined ? { extraHeader: data.extraHeader || undefined } : {}),
       ...(data.options ? { options: data.options } : {}),
     };
 
     if (apiKeyTouched) {
-      const trimmedApiKey =
-        typeof data.apiKey === "string" ? data.apiKey.trim() : undefined;
+      const trimmedApiKey = typeof data.apiKey === "string" ? data.apiKey.trim() : undefined;
       // trimmedApiKey === '' → user cleared the field → delete the existing key
       // trimmedApiKey non-empty → user entered new key → set it
       updates.apiKey = trimmedApiKey ?? "";
@@ -377,9 +353,7 @@ export class EditorViewManager {
         });
         try {
           // Retrieve API key from SecretStorage before testing
-          const apiKey = await this._manager.getApiKey(
-            this._currentProvider!.id,
-          );
+          const apiKey = await this._manager.getApiKey(this._currentProvider!.id);
 
           if (!apiKey) {
             throw new Error("API Key not found. Please configure it first.");
@@ -426,14 +400,9 @@ export class EditorViewManager {
               hasUpdates = true;
             }
 
-            if (
-              result.visionSupported !== undefined &&
-              result.visionSupported !== data.vision
-            ) {
+            if (result.visionSupported !== undefined && result.visionSupported !== data.vision) {
               updates.vision = result.visionSupported;
-              msg += result.visionSupported
-                ? " (Vision detected)"
-                : " (Vision removed)";
+              msg += result.visionSupported ? " (Vision detected)" : " (Vision removed)";
               hasUpdates = true;
             }
 
@@ -442,9 +411,7 @@ export class EditorViewManager {
               result.toolCallingSupported !== data.toolCalling
             ) {
               updates.toolCalling = result.toolCallingSupported;
-              msg += result.toolCallingSupported
-                ? " (Tools detected)"
-                : " (Tools removed)";
+              msg += result.toolCallingSupported ? " (Tools detected)" : " (Tools removed)";
               hasUpdates = true;
             }
 
@@ -484,8 +451,7 @@ export class EditorViewManager {
     const maxOutputTokens = TokenFormatter.parse(data.maxOutputTokens);
 
     // In batch mode, allow empty values - don't update those fields
-    const isBatchMode =
-      this._viewState.isBatch && this._currentItems.length > 0;
+    const isBatchMode = this._viewState.isBatch && this._currentItems.length > 0;
 
     // For batch mode or single edit, validate that at least one token value is provided
     if (!isBatchMode && (!maxInputTokens || !maxOutputTokens)) {
@@ -495,10 +461,7 @@ export class EditorViewManager {
 
     // Use _lastVerifiedData to check if we can skip verification or warn user
     // For now, we just log it or ignore it as we trust the user's explicit save action
-    if (
-      this._lastVerifiedData &&
-      this._lastVerifiedData !== JSON.stringify(data)
-    ) {
+    if (this._lastVerifiedData && this._lastVerifiedData !== JSON.stringify(data)) {
       // Data changed since last verification
     }
 
@@ -512,8 +475,7 @@ export class EditorViewManager {
       ...(maxInputTokens !== undefined ? { maxInputTokens } : {}),
       ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
       extraBody: data.extraBody !== undefined ? data.extraBody : undefined,
-      extraHeader:
-        data.extraHeader !== undefined ? data.extraHeader : undefined,
+      extraHeader: data.extraHeader !== undefined ? data.extraHeader : undefined,
       capabilities: {
         vision: data.vision,
         reasoning: data.reasoning,
@@ -527,10 +489,7 @@ export class EditorViewManager {
     }
 
     // Default toolCalling to true for new models
-    if (
-      modelData.capabilities &&
-      modelData.capabilities.toolCalling === undefined
-    ) {
+    if (modelData.capabilities && modelData.capabilities.toolCalling === undefined) {
       modelData.capabilities.toolCalling = true;
     }
 
@@ -540,16 +499,11 @@ export class EditorViewManager {
         delete (modelData as any).speedHistory;
       }
       if (!this._viewState.parentId) {
-        vscode.window.showErrorMessage(
-          "No parent provider specified for new model.",
-        );
+        vscode.window.showErrorMessage("No parent provider specified for new model.");
         return;
       }
       try {
-        await this._manager.addModel(
-          this._viewState.parentId,
-          modelData as any,
-        );
+        await this._manager.addModel(this._viewState.parentId, modelData as any);
         vscode.window.showInformationMessage(`Model "${data.name}" added.`);
         this._refreshTree();
         this._panel?.dispose();
@@ -575,29 +529,19 @@ export class EditorViewManager {
     const parentId = this._getParentProviderId(this._currentItem);
 
     if (!parentId) {
-      vscode.window.showErrorMessage(
-        "Could not find parent provider for model.",
-      );
+      vscode.window.showErrorMessage("Could not find parent provider for model.");
       return;
     }
 
     // Update model speed separately to preserve speedHistory
     if (this._detectedSpeed) {
-      await this._manager.updateModelSpeed(
-        parentId,
-        model.id,
-        this._detectedSpeed,
-      );
+      await this._manager.updateModelSpeed(parentId, model.id, this._detectedSpeed);
       // Remove speedHistory and averageSpeed from modelData to avoid overriding
       delete (modelData as any).speedHistory;
       delete (modelData as any).averageSpeed;
     }
 
-    const success = await this._manager.updateModel(
-      parentId,
-      model.id,
-      modelData,
-    );
+    const success = await this._manager.updateModel(parentId, model.id, modelData);
     if (success) {
       vscode.window.showInformationMessage(`Model "${data.name}" updated.`);
       this._refreshTree();
@@ -609,9 +553,7 @@ export class EditorViewManager {
 
   private async _saveBatchModels(modelData: Partial<Model>) {
     if (!this._currentProvider) {
-      vscode.window.showErrorMessage(
-        "No provider context found for batch update.",
-      );
+      vscode.window.showErrorMessage("No provider context found for batch update.");
       return;
     }
 
@@ -622,14 +564,8 @@ export class EditorViewManager {
 
     try {
       const ids = this._currentItems.map((i) => i.model.id);
-      const updatedCount = await this._manager.updateModels(
-        parentId,
-        ids,
-        batchUpdateData as any,
-      );
-      vscode.window.showInformationMessage(
-        `${updatedCount} model(s) updated successfully.`,
-      );
+      const updatedCount = await this._manager.updateModels(parentId, ids, batchUpdateData as any);
+      vscode.window.showInformationMessage(`${updatedCount} model(s) updated successfully.`);
       this._refreshTree();
       this._panel?.dispose();
     } catch (e) {
@@ -642,11 +578,7 @@ export class EditorViewManager {
   private async _getHtmlForWebview(webview: vscode.Webview): Promise<string> {
     const nonce = getNonce();
     try {
-      const fileUri = vscode.Uri.joinPath(
-        this._extensionUri,
-        "resources",
-        "editor.html",
-      );
+      const fileUri = vscode.Uri.joinPath(this._extensionUri, "resources", "editor.html");
       const bytes = await vscode.workspace.fs.readFile(fileUri);
       let html = new TextDecoder().decode(bytes);
 
@@ -663,8 +595,7 @@ export class EditorViewManager {
 
 function getNonce() {
   let text = "";
-  const possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (let i = 0; i < 32; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }

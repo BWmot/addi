@@ -80,10 +80,7 @@ async function githubFetch<T = unknown>(
     logWarn(`请求 URL: ${url}`);
 
     // 检查是否是代理问题
-    if (
-      errorMessage.includes("Unable to connect") ||
-      errorMessage.includes("ECONNREFUSED")
-    ) {
+    if (errorMessage.includes("Unable to connect") || errorMessage.includes("ECONNREFUSED")) {
       logWarn("无法连接到 GitHub，可能需要配置代理");
       logWarn('设置代理: $env:HTTPS_PROXY="http://127.0.0.1:7890"');
     }
@@ -368,9 +365,7 @@ async function releaseToGitHub(): Promise<boolean> {
     return false;
   }
 
-  logSuccess(
-    `发布成功: https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/tag/${tag}`,
-  );
+  logSuccess(`发布成功: https://github.com/${REPO_OWNER}/${REPO_NAME}/releases/tag/${tag}`);
   return true;
 }
 
@@ -499,10 +494,7 @@ async function uploadAsset(
     const errorMessage = error instanceof Error ? error.message : String(error);
     logError(`上传请求失败: ${errorMessage}`);
 
-    if (
-      errorMessage.includes("Unable to connect") ||
-      errorMessage.includes("ECONNREFUSED")
-    ) {
+    if (errorMessage.includes("Unable to connect") || errorMessage.includes("ECONNREFUSED")) {
       logWarn("无法连接到 GitHub，请检查网络或配置代理");
     }
   }

@@ -14,10 +14,7 @@ export class ModelCommandHandler extends BaseCommandHandler {
    * Add a new model to a provider
    */
   async addModel(item: ProviderTreeItem): Promise<void> {
-    logger.info(
-      "Command addModel invoked",
-      logger.sanitizeProvider(item.provider),
-    );
+    logger.info("Command addModel invoked", logger.sanitizeProvider(item.provider));
     if (this.editorViewManager) {
       this.editorViewManager.openEditor(undefined, "create", item.provider.id);
     } else {
@@ -128,12 +125,7 @@ export class ModelCommandHandler extends BaseCommandHandler {
         name: `${item.model.name} Copy`,
       };
 
-      this.editorViewManager.openEditor(
-        undefined,
-        "create",
-        result.provider.id,
-        prefillData,
-      );
+      this.editorViewManager.openEditor(undefined, "create", result.provider.id, prefillData);
     } else {
       UserFeedback.showError("Editor view manager not initialized");
     }
@@ -180,17 +172,10 @@ export class ModelCommandHandler extends BaseCommandHandler {
    */
   async setModelToCopilot(item: ModelTreeItem): Promise<void> {
     const vendor = item.vendor;
-    const modelId =
-      vendor === "addi-provider"
-        ? `addi-model:${item.model.id}`
-        : item.model.rid;
+    const modelId = vendor === "addi-provider" ? `addi-model:${item.model.id}` : item.model.rid;
     const family = item.model.family;
 
-    logger.debug(
-      "Executing setModelToCopilot",
-      { vendor, modelId, family },
-      "Commands",
-    );
+    logger.debug("Executing setModelToCopilot", { vendor, modelId, family }, "Commands");
 
     try {
       // Ensure the model is visible in the picker before selecting it
@@ -198,11 +183,7 @@ export class ModelCommandHandler extends BaseCommandHandler {
         const result = this.manager.findModel(item.model.id);
         if (result) {
           try {
-            await this.manager.updateModelVisibility(
-              result.provider.id,
-              item.model.id,
-              true,
-            );
+            await this.manager.updateModelVisibility(result.provider.id, item.model.id, true);
             this.refreshTreeView();
           } catch (error) {
             logger.warn("Failed to force-show model before selection", {
@@ -214,14 +195,11 @@ export class ModelCommandHandler extends BaseCommandHandler {
       }
 
       // Execute internal VS Code command to change the chat model
-      await vscode.commands.executeCommand(
-        "workbench.action.chat.changeModel",
-        {
-          vendor,
-          family,
-          id: modelId,
-        },
-      );
+      await vscode.commands.executeCommand("workbench.action.chat.changeModel", {
+        vendor,
+        family,
+        id: modelId,
+      });
 
       // Open chat side bar if not already open
       try {
@@ -244,9 +222,7 @@ export class ModelCommandHandler extends BaseCommandHandler {
         vendor,
         modelId,
       });
-      UserFeedback.showError(
-        "Failed to switch model in Chat UI. Please select it manually.",
-      );
+      UserFeedback.showError("Failed to switch model in Chat UI. Please select it manually.");
     }
   }
 
@@ -314,10 +290,7 @@ export class ModelCommandHandler extends BaseCommandHandler {
   ): Promise<void> {
     try {
       const visible = action === "show";
-      const updated = await this.manager.updateProviderAllModelsVisibility(
-        providerId,
-        visible,
-      );
+      const updated = await this.manager.updateProviderAllModelsVisibility(providerId, visible);
 
       this.refreshTreeView();
       UserFeedback.showInfo(

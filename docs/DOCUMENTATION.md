@@ -177,6 +177,7 @@ Enable capabilities that your model supports. These affect how Addi handles requ
 #### Tool Calling Depth
 
 Tool Calling can be set to:
+
 - **`true`** (enabled) — Model supports tool use
 - **`false`** (disabled) — Model cannot use tools
 - **A number** (e.g., `3`) — Maximum number of sequential tool call rounds
@@ -232,6 +233,7 @@ Tool Calling can be set to:
 ### Tool Calling
 
 When a model supports Tool Calling, Copilot can:
+
 - Search your workspace for files and code
 - Run terminal commands
 - Edit files directly
@@ -242,6 +244,7 @@ Without Tool Calling, the model can only respond with text (no agent capabilitie
 ### Reasoning / Thinking
 
 For models with **Reasoning** enabled:
+
 - Claude models show extended thinking output
 - OpenAI models use reasoning effort levels
 - Google models show thinking summaries
@@ -251,6 +254,7 @@ Reasoning output appears as collapsible blocks in the chat panel.
 ### Vision
 
 For models with **Vision** enabled:
+
 - Paste or drag images into Copilot Chat
 - The model receives images alongside your text prompt
 - Supports common formats: PNG, JPEG, GIF, WebP
@@ -362,6 +366,7 @@ Addi tracks model speed during chat usage:
 **Cause**: Tool Calling capability is not enabled.
 
 **Fix**:
+
 1. Right-click the model → **"Edit Models"**
 2. Enable **Tool Calling**
 3. Save
@@ -382,6 +387,7 @@ Models without Tool Calling cannot be used in Copilot Chat.
 | Connection refused | Wrong endpoint or network issue      | Verify the URL; check firewall/proxy     |
 
 **Verify your setup**:
+
 1. Test the API endpoint directly with `curl` or the provider's playground
 2. Ensure the **Provider Type** matches the API format
 3. Check the **Output** panel (`Ctrl+Shift+U` → select "Addi") for detailed error logs

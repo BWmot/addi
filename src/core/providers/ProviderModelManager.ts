@@ -1,18 +1,10 @@
 import * as vscode from "vscode";
-import type {
-  Model,
-  Provider,
-  ModelDraft,
-  RemoteModelInfo,
-} from "../../common/types";
+import type { Model, Provider, ModelDraft, RemoteModelInfo } from "../../common/types";
 import type { IStorageService, IProviderModelManager, BackupEntry } from "../../domain/interfaces";
 import { IdGenerator, InputValidator } from "../../common/utils";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
 import { logger } from "../../common/logger";
-import {
-  normalizeCapabilities,
-  normalizeProvidersInPlace,
-} from "./dataNormalizer";
+import { normalizeCapabilities, normalizeProvidersInPlace } from "./dataNormalizer";
 import { fetchProviderModelsFromApi as fetchRemoteModels } from "./remoteModelFetcher";
 
 /**
@@ -52,7 +44,9 @@ export class ProviderModelManager implements IProviderModelManager {
   private async withLock<T>(fn: () => Promise<T>): Promise<T> {
     const prev = this._saveLock;
     let resolveNext!: () => void;
-    this._saveLock = new Promise<void>((r) => { resolveNext = r; });
+    this._saveLock = new Promise<void>((r) => {
+      resolveNext = r;
+    });
     try {
       await prev;
       return await fn();
@@ -144,12 +138,9 @@ export class ProviderModelManager implements IProviderModelManager {
         },
       );
     } else if (mutated) {
-      logger.debug(
-        "Applied cosmetic provider data normalization (in-memory only)",
-        {
-          providerCount: stored.length,
-        },
-      );
+      logger.debug("Applied cosmetic provider data normalization (in-memory only)", {
+        providerCount: stored.length,
+      });
     }
 
     logger.debug("Loaded providers", { providerCount: stored.length });
@@ -157,16 +148,12 @@ export class ProviderModelManager implements IProviderModelManager {
   }
 
   async saveProviders(providers: Provider[]): Promise<void> {
-    normalizeProvidersInPlace(
-      providers as Array<Provider & Record<string, unknown>>,
-    );
+    normalizeProvidersInPlace(providers as Array<Provider & Record<string, unknown>>);
     await this.storageService.saveProviders(providers);
     logger.info("Saved providers", { providerCount: providers.length });
   }
 
-  async addProvider(
-    providerData: Omit<Provider, "id" | "models">,
-  ): Promise<Provider> {
+  async addProvider(providerData: Omit<Provider, "id" | "models">): Promise<Provider> {
     return this.withLock(async () => {
       if (InputValidator.getNameError(providerData.name)) {
         throw new Error("Provider name is required");
@@ -222,10 +209,7 @@ export class ProviderModelManager implements IProviderModelManager {
 
         providers[index] = updatedProvider;
         await this.saveProviders(providers);
-        logger.info(
-          "Provider updated",
-          logger.sanitizeProvider(providers[index]!),
-        );
+        logger.info("Provider updated", logger.sanitizeProvider(providers[index]!));
         return true;
       }
       logger.warn("Attempted to update missing provider", { providerId: id });
@@ -249,10 +233,7 @@ export class ProviderModelManager implements IProviderModelManager {
     });
   }
 
-  async addModel(
-    providerId: string,
-    modelData: ModelDraft,
-  ): Promise<Model | null> {
+  async addModel(providerId: string, modelData: ModelDraft): Promise<Model | null> {
     return this.withLock(async () => {
       if (InputValidator.getNameError(modelData.name)) {
         throw new Error("Model name is required");
@@ -278,9 +259,7 @@ export class ProviderModelManager implements IProviderModelManager {
           maxOutputTokens: modelData.maxOutputTokens,
           capabilities: normalizeCapabilities(modelData.capabilities),
           ...(modelData.extraBody ? { extraBody: modelData.extraBody } : {}),
-          ...(modelData.extraHeader
-            ? { extraHeader: modelData.extraHeader }
-            : {}),
+          ...(modelData.extraHeader ? { extraHeader: modelData.extraHeader } : {}),
           ...(modelData.options ? { options: modelData.options } : {}),
           // Default to show in picker when model is added
           isUserSelectable: true,
@@ -307,24 +286,15 @@ export class ProviderModelManager implements IProviderModelManager {
       const providers = this.getProviders();
       const providerIndex = providers.findIndex((p) => p.id === providerId);
       if (providerIndex >= 0) {
-        const modelIndex = providers[providerIndex]!.models.findIndex(
-          (m) => m.id === modelId,
-        );
+        const modelIndex = providers[providerIndex]!.models.findIndex((m) => m.id === modelId);
         if (modelIndex >= 0) {
           const existingModel = providers[providerIndex]!.models[modelIndex]!;
 
-          if (
-            modelData.name !== undefined &&
-            InputValidator.getNameError(modelData.name)
-          ) {
+          if (modelData.name !== undefined && InputValidator.getNameError(modelData.name)) {
             throw new Error("Model name cannot be empty");
           }
           // Only validate rid if it's explicitly provided as a non-empty string
-          if (
-            modelData.rid !== undefined &&
-            modelData.rid !== "" &&
-            !modelData.rid.trim()
-          ) {
+          if (modelData.rid !== undefined && modelData.rid !== "" && !modelData.rid.trim()) {
             throw new Error("Model remote ID (rid) cannot be empty");
           }
 
@@ -337,14 +307,9 @@ export class ProviderModelManager implements IProviderModelManager {
             name: modelData.name ?? existingModel.name,
             family: modelData.family ?? existingModel.family,
             version: modelData.version ?? existingModel.version,
-            maxInputTokens:
-              modelData.maxInputTokens ?? existingModel.maxInputTokens,
-            maxOutputTokens:
-              modelData.maxOutputTokens ?? existingModel.maxOutputTokens,
-            capabilities: normalizeCapabilities(
-              modelData.capabilities,
-              existingModel.capabilities,
-            ),
+            maxInputTokens: modelData.maxInputTokens ?? existingModel.maxInputTokens,
+            maxOutputTokens: modelData.maxOutputTokens ?? existingModel.maxOutputTokens,
+            capabilities: normalizeCapabilities(modelData.capabilities, existingModel.capabilities),
             ...((modelData.extraBody ?? existingModel.extraBody)
               ? { extraBody: modelData.extraBody ?? existingModel.extraBody }
               : {}),
@@ -358,15 +323,12 @@ export class ProviderModelManager implements IProviderModelManager {
               : {}),
             ...((modelData.speedHistory ?? existingModel.speedHistory)
               ? {
-                  speedHistory:
-                    modelData.speedHistory ?? existingModel.speedHistory,
+                  speedHistory: modelData.speedHistory ?? existingModel.speedHistory,
                 }
               : {}),
-            ...((modelData.averageSpeed ?? existingModel.averageSpeed) !==
-            undefined
+            ...((modelData.averageSpeed ?? existingModel.averageSpeed) !== undefined
               ? {
-                  averageSpeed:
-                    modelData.averageSpeed ?? existingModel.averageSpeed,
+                  averageSpeed: modelData.averageSpeed ?? existingModel.averageSpeed,
                 }
               : {}),
           };
@@ -396,7 +358,9 @@ export class ProviderModelManager implements IProviderModelManager {
       const providers = this.getProviders();
       const providerIndex = providers.findIndex((p) => p.id === providerId);
       if (providerIndex < 0) {
-        logger.warn("Attempted batch update on missing provider", { providerId });
+        logger.warn("Attempted batch update on missing provider", {
+          providerId,
+        });
         return 0;
       }
 
@@ -411,16 +375,10 @@ export class ProviderModelManager implements IProviderModelManager {
 
         const existingModel = models[modelIndex]!;
 
-        if (
-          modelData.name !== undefined &&
-          InputValidator.getNameError(modelData.name)
-        ) {
+        if (modelData.name !== undefined && InputValidator.getNameError(modelData.name)) {
           throw new Error("Model name cannot be empty");
         }
-        if (
-          modelData.rid !== undefined &&
-          (!modelData.rid || !modelData.rid.trim())
-        ) {
+        if (modelData.rid !== undefined && (!modelData.rid || !modelData.rid.trim())) {
           throw new Error("Model remote ID (rid) cannot be empty");
         }
 
@@ -433,14 +391,9 @@ export class ProviderModelManager implements IProviderModelManager {
           name: modelData.name ?? existingModel.name,
           family: modelData.family ?? existingModel.family,
           version: modelData.version ?? existingModel.version,
-          maxInputTokens:
-            modelData.maxInputTokens ?? existingModel.maxInputTokens,
-          maxOutputTokens:
-            modelData.maxOutputTokens ?? existingModel.maxOutputTokens,
-          capabilities: normalizeCapabilities(
-            modelData.capabilities,
-            existingModel.capabilities,
-          ),
+          maxInputTokens: modelData.maxInputTokens ?? existingModel.maxInputTokens,
+          maxOutputTokens: modelData.maxOutputTokens ?? existingModel.maxOutputTokens,
+          capabilities: normalizeCapabilities(modelData.capabilities, existingModel.capabilities),
           ...((modelData.extraBody ?? existingModel.extraBody)
             ? { extraBody: modelData.extraBody ?? existingModel.extraBody }
             : {}),
@@ -454,15 +407,12 @@ export class ProviderModelManager implements IProviderModelManager {
             : {}),
           ...((modelData.speedHistory ?? existingModel.speedHistory)
             ? {
-                speedHistory:
-                  modelData.speedHistory ?? existingModel.speedHistory,
+                speedHistory: modelData.speedHistory ?? existingModel.speedHistory,
               }
             : {}),
-          ...((modelData.averageSpeed ?? existingModel.averageSpeed) !==
-          undefined
+          ...((modelData.averageSpeed ?? existingModel.averageSpeed) !== undefined
             ? {
-                averageSpeed:
-                  modelData.averageSpeed ?? existingModel.averageSpeed,
+                averageSpeed: modelData.averageSpeed ?? existingModel.averageSpeed,
               }
             : {}),
         };
@@ -473,7 +423,10 @@ export class ProviderModelManager implements IProviderModelManager {
 
       if (updatedCount > 0) {
         await this.saveProviders(providers);
-        logger.info("Models batch updated", { providerId, count: updatedCount });
+        logger.info("Models batch updated", {
+          providerId,
+          count: updatedCount,
+        });
       }
 
       return updatedCount;
@@ -488,13 +441,7 @@ export class ProviderModelManager implements IProviderModelManager {
     modelId: string,
     isUserSelectable: boolean,
   ): Promise<boolean> {
-    return (
-      (await this.updateModelVisibilityBatch(
-        providerId,
-        [modelId],
-        isUserSelectable,
-      )) > 0
-    );
+    return (await this.updateModelVisibilityBatch(providerId, [modelId], isUserSelectable)) > 0;
   }
 
   /**
@@ -591,19 +538,13 @@ export class ProviderModelManager implements IProviderModelManager {
     });
   }
 
-  async updateModelSpeed(
-    providerId: string,
-    modelId: string,
-    speed: number,
-  ): Promise<void> {
+  async updateModelSpeed(providerId: string, modelId: string, speed: number): Promise<void> {
     await this.withLock(async () => {
       logger.debug("updateModelSpeed called", { providerId, modelId, speed });
       const providers = this.getProviders();
       const providerIndex = providers.findIndex((p) => p.id === providerId);
       if (providerIndex >= 0) {
-        const modelIndex = providers[providerIndex]!.models.findIndex(
-          (m) => m.id === modelId,
-        );
+        const modelIndex = providers[providerIndex]!.models.findIndex((m) => m.id === modelId);
         if (modelIndex >= 0) {
           const model = providers[providerIndex]!.models[modelIndex]!;
           const history = model.speedHistory ? [...model.speedHistory] : [];
@@ -713,9 +654,7 @@ export class ProviderModelManager implements IProviderModelManager {
    * Fetch available models from a remote AI provider API.
    * Delegates to the extracted remoteModelFetcher module.
    */
-  public async fetchProviderModelsFromApi(
-    provider: Provider,
-  ): Promise<RemoteModelInfo[]> {
+  public async fetchProviderModelsFromApi(provider: Provider): Promise<RemoteModelInfo[]> {
     return fetchRemoteModels(provider, {
       getApiKey: (id) => this.getApiKey(id),
     });

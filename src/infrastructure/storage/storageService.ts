@@ -1,11 +1,5 @@
 import * as vscode from "vscode";
-import type {
-  Provider,
-  ProviderConfig,
-  ModelConfig,
-  ModelStats,
-  Model,
-} from "../../common/types";
+import type { Provider, ProviderConfig, ModelConfig, ModelStats, Model } from "../../common/types";
 import type { IStorageService, BackupEntry } from "../../domain/interfaces";
 import { logger } from "../../common/logger";
 import { ApiKeyService } from "./ApiKeyService";
@@ -68,17 +62,12 @@ export class StorageService implements IStorageService {
    * Performs migration of API keys from globalState to SecretStorage.
    * @param normalizer A function to normalize provider data during initialization.
    */
-  async initialize(
-    normalizer?: (providers: Provider[]) => { mutated: boolean },
-  ) {
+  async initialize(normalizer?: (providers: Provider[]) => { mutated: boolean }) {
     try {
       // Initially read as Provider[] to handle migration from old format
       // Note: We cast to Provider[] because runtime data might still have old fields like apiKey
       // but conceptually we are treating it as ProviderConfig + optional extra fields
-      const stored = this.context.globalState.get<Provider[]>(
-        StorageService.CONFIG_KEY,
-        [],
-      );
+      const stored = this.context.globalState.get<Provider[]>(StorageService.CONFIG_KEY, []);
 
       // Step 1: Capture existing secrets BEFORE normalization
       // This is crucial because normalization might change provider IDs (e.g., migrating to UUID)
@@ -163,9 +152,10 @@ export class StorageService implements IStorageService {
    * @returns A map of provider ID to model ID to extended data.
    */
   private getExtendedData(): Map<string, Map<string, ModelStats>> {
-    const stored = this.context.globalState.get<
-      Record<string, Record<string, ModelStats>>
-    >(StorageService.STATS_STORAGE_KEY, {});
+    const stored = this.context.globalState.get<Record<string, Record<string, ModelStats>>>(
+      StorageService.STATS_STORAGE_KEY,
+      {},
+    );
     const result = new Map<string, Map<string, ModelStats>>();
 
     for (const [providerId, models] of Object.entries(stored)) {
@@ -212,10 +202,7 @@ export class StorageService implements IStorageService {
       }
     }
 
-    await this.context.globalState.update(
-      StorageService.STATS_STORAGE_KEY,
-      extendData,
-    );
+    await this.context.globalState.update(StorageService.STATS_STORAGE_KEY, extendData);
   }
 
   /**
@@ -260,24 +247,18 @@ export class StorageService implements IStorageService {
    * - Sync state
    */
   async clearAllData(): Promise<void> {
-    logger.info(
-      'Starting to clear all plugin data with wildcard pattern "addi.*"',
-    );
+    logger.info('Starting to clear all plugin data with wildcard pattern "addi.*"');
 
     // 1. Clear ALL SecretStorage keys matching "addi.*"
     try {
       const secretKeys = await this.context.secrets.keys();
-      const secretsDeleted = secretKeys.filter((key) =>
-        key.startsWith("addi."),
-      );
+      const secretsDeleted = secretKeys.filter((key) => key.startsWith("addi."));
 
       for (const key of secretsDeleted) {
         await this.context.secrets.delete(key);
         logger.debug(`Deleted SecretStorage key: ${key}`);
       }
-      logger.info(
-        `Cleared ${secretsDeleted.length} SecretStorage keys matching "addi.*"`,
-      );
+      logger.info(`Cleared ${secretsDeleted.length} SecretStorage keys matching "addi.*"`);
     } catch (error) {
       // keys() might not be available on older VS Code versions
       logger.warn("Failed to use secrets.keys() method", error);
@@ -295,32 +276,15 @@ export class StorageService implements IStorageService {
         await this.context.globalState.update(key, undefined);
         logger.debug(`Cleared globalState key: ${key}`);
       }
-      logger.info(
-        `Cleared ${globalStateKeys.length} globalState keys matching "addi.*"`,
-      );
+      logger.info(`Cleared ${globalStateKeys.length} globalState keys matching "addi.*"`);
     } catch (error) {
       logger.warn("Failed to clear globalState keys", error);
       // Fallback: clear known keys individually
-      await this.context.globalState.update(
-        StorageService.CONFIG_KEY,
-        undefined,
-      );
-      await this.context.globalState.update(
-        StorageService.CONFIG_MODIFIED_AT_KEY,
-        undefined,
-      );
-      await this.context.globalState.update(
-        StorageService.STATS_STORAGE_KEY,
-        undefined,
-      );
-      await this.context.globalState.update(
-        StorageService.DEVICE_ID_KEY,
-        undefined,
-      );
-      await this.context.globalState.update(
-        StorageService.BACKUPS_KEY,
-        undefined,
-      );
+      await this.context.globalState.update(StorageService.CONFIG_KEY, undefined);
+      await this.context.globalState.update(StorageService.CONFIG_MODIFIED_AT_KEY, undefined);
+      await this.context.globalState.update(StorageService.STATS_STORAGE_KEY, undefined);
+      await this.context.globalState.update(StorageService.DEVICE_ID_KEY, undefined);
+      await this.context.globalState.update(StorageService.BACKUPS_KEY, undefined);
     }
 
     // 3. Reset sync state
@@ -339,10 +303,7 @@ export class StorageService implements IStorageService {
    */
   getProviders(): Provider[] {
     // Read persisted config (no stats, no secrets)
-    const stored = this.context.globalState.get<ProviderConfig[]>(
-      StorageService.CONFIG_KEY,
-      [],
-    );
+    const stored = this.context.globalState.get<ProviderConfig[]>(StorageService.CONFIG_KEY, []);
     const extendedData = this.getExtendedData();
 
     // Reassemble full Provider objects
@@ -395,10 +356,7 @@ export class StorageService implements IStorageService {
 
     // Detect deleted providers to clean up secrets
     // Note: We use the raw globalState access here to get previous IDs cheaply
-    const oldConfig = this.context.globalState.get<ProviderConfig[]>(
-      StorageService.CONFIG_KEY,
-      [],
-    );
+    const oldConfig = this.context.globalState.get<ProviderConfig[]>(StorageService.CONFIG_KEY, []);
     const newIds = new Set(providers.map((p) => p.id));
 
     // Cleanup secrets for deleted providers
@@ -456,10 +414,7 @@ export class StorageService implements IStorageService {
 
     // --- 4. Save Config (Synced) ---
     // Updating the synced key automatically triggers Settings Sync to push to other devices
-    await this.context.globalState.update(
-      StorageService.CONFIG_KEY,
-      configToSave,
-    );
+    await this.context.globalState.update(StorageService.CONFIG_KEY, configToSave);
 
     // --- 5. Update modifiedAt timestamp ---
     await this.updateModifiedAt();
@@ -473,20 +428,14 @@ export class StorageService implements IStorageService {
    * 获取配置的 modifiedAt 时间戳 (Memento，同步)
    */
   getConfigModifiedAt(): number {
-    return this.context.globalState.get<number>(
-      StorageService.CONFIG_MODIFIED_AT_KEY,
-      0,
-    );
+    return this.context.globalState.get<number>(StorageService.CONFIG_MODIFIED_AT_KEY, 0);
   }
 
   /**
    * 设置配置的 modifiedAt 时间戳 (Memento，同步)
    */
   private async setConfigModifiedAt(timestamp: number): Promise<void> {
-    await this.context.globalState.update(
-      StorageService.CONFIG_MODIFIED_AT_KEY,
-      timestamp,
-    );
+    await this.context.globalState.update(StorageService.CONFIG_MODIFIED_AT_KEY, timestamp);
   }
 
   /**
@@ -503,9 +452,7 @@ export class StorageService implements IStorageService {
    * Get or create a unique device ID for conflict resolution
    */
   private getOrCreateDeviceId(): string {
-    const stored = this.context.globalState.get<string>(
-      StorageService.DEVICE_ID_KEY,
-    );
+    const stored = this.context.globalState.get<string>(StorageService.DEVICE_ID_KEY);
     if (stored) {
       return stored;
     }
@@ -528,10 +475,7 @@ export class StorageService implements IStorageService {
   // ==================== Backup & Recovery ====================
 
   private getBackupEntry(): BackupEntry[] {
-    return this.context.globalState.get<BackupEntry[]>(
-      StorageService.BACKUPS_KEY,
-      [],
-    );
+    return this.context.globalState.get<BackupEntry[]>(StorageService.BACKUPS_KEY, []);
   }
 
   private saveBackupEntries(entries: BackupEntry[]): void {

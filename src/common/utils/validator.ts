@@ -21,8 +21,6 @@ export class InputValidator {
 
   /** Returns an error message if token value is invalid, null if valid. */
   static getTokensError(value: string): string | null {
-    return TokenFormatter.parse(value)
-      ? null
-      : "Token count must be a positive integer";
+    return TokenFormatter.parse(value) ? null : "Token count must be a positive integer";
   }
 }

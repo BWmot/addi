@@ -12,11 +12,11 @@ Addi 桥接 AI SDK 与 VS Code Copilot API，支持自定义 LLM 提供商。
 
 ## 开发环境
 
-| 要求     | 版本   | 说明                |
-| -------- | ------ | ------------------- |
-| VS Code  | 1.109+ | Proposed API 支持   |
-| Bun      | 最新版 | 运行时和包管理      |
-| Windows  | PowerShell | 终端           |
+| 要求    | 版本       | 说明              |
+| ------- | ---------- | ----------------- |
+| VS Code | 1.109+     | Proposed API 支持 |
+| Bun     | 最新版     | 运行时和包管理    |
+| Windows | PowerShell | 终端              |
 
 ---
 
@@ -36,22 +36,22 @@ bun run clean      # 清理构建产物
 
 ### 命名
 
-| 类型   | 规范          | 示例                  |
-| ------ | ------------- | --------------------- |
-| 类/接口 | PascalCase    | `LLMService`         |
-| 方法/变量 | camelCase  | `getProviderInstance` |
-| 常量   | UPPER_SNAKE   | `DEFAULT_MAX_TOKENS` |
-| 文件名 | kebab-case    | `llm-service.ts`      |
+| 类型      | 规范        | 示例                  |
+| --------- | ----------- | --------------------- |
+| 类/接口   | PascalCase  | `LLMService`          |
+| 方法/变量 | camelCase   | `getProviderInstance` |
+| 常量      | UPPER_SNAKE | `DEFAULT_MAX_TOKENS`  |
+| 文件名    | kebab-case  | `llm-service.ts`      |
 
 ### 日志
 
 ```typescript
-import { logger } from './common/logger';
+import { logger } from "./common/logger";
 
-logger.debug('Debug info', { data: 'value' }, 'Component');
-logger.info('Info message');
-logger.warn('Warning message');
-logger.error('Error message', error);
+logger.debug("Debug info", { data: "value" }, "Component");
+logger.info("Info message");
+logger.warn("Warning message");
+logger.error("Error message", error);
 ```
 
 ### 类型
@@ -74,13 +74,13 @@ function parse(data: unknown): string { ... }
 
 ## 存储键规范
 
-| 键名                    | 存储     | 说明           |
-| ----------------------- | -------- | -------------- |
-| `addi.config`           | Memento  | Provider/Model 配置（同步） |
-| `addi.config.modifiedAt` | Memento  | 配置修改时间   |
-| `addi.local.apikeys.*`  | SecretStorage | API Keys（不同步）|
-| `addi.local.deviceId`  | SecretStorage | 设备标识      |
-| `addi.local.backups`   | Memento  | 本地备份记录   |
+| 键名                     | 存储          | 说明                        |
+| ------------------------ | ------------- | --------------------------- |
+| `addi.config`            | Memento       | Provider/Model 配置（同步） |
+| `addi.config.modifiedAt` | Memento       | 配置修改时间                |
+| `addi.local.apikeys.*`   | SecretStorage | API Keys（不同步）          |
+| `addi.local.deviceId`    | SecretStorage | 设备标识                    |
+| `addi.local.backups`     | Memento       | 本地备份记录                |
 
 ---
 
@@ -90,8 +90,8 @@ function parse(data: unknown): string { ... }
 
 ```typescript
 this.register({
-  id: 'custom-provider',
-  label: 'Custom Provider',
+  id: "custom-provider",
+  label: "Custom Provider",
   create: (p) => {
     const settings = { baseURL: p.apiEndpoint, apiKey: p.apiKey };
     return createCustomProvider(settings);

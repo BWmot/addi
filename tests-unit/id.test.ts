@@ -33,12 +33,8 @@ describe("IdGenerator", () => {
     const id = IdGenerator.generate();
     // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
     // where y is one of [8, 9, a, b]
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    assert.ok(
-      uuidRegex.test(id),
-      `Generated ID "${id}" should match UUID v4 format`,
-    );
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    assert.ok(uuidRegex.test(id), `Generated ID "${id}" should match UUID v4 format`);
   });
 
   it("generate() should have version nibble set to 4", () => {
@@ -50,10 +46,7 @@ describe("IdGenerator", () => {
   it("generate() should have variant bits in [8,9,a,b]", () => {
     // Position 19 (0-indexed) should be one of [8,9,a,b] for RFC 4122 variant
     const id = IdGenerator.generate();
-    assert.ok(
-      /[89ab]/i.test(id[19]),
-      `Variant nibble should be 8/9/a/b, got "${id[19]}"`,
-    );
+    assert.ok(/[89ab]/i.test(id[19]), `Variant nibble should be 8/9/a/b, got "${id[19]}"`);
   });
 
   it("generate() should return unique IDs (uniqueness guarantee)", () => {

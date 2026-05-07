@@ -13,23 +13,11 @@ export class UserFeedback {
     const options: vscode.MessageOptions = { modal };
     switch (type) {
       case "warning":
-        return await vscode.window.showWarningMessage(
-          message,
-          options,
-          ...actions,
-        );
+        return await vscode.window.showWarningMessage(message, options, ...actions);
       case "error":
-        return await vscode.window.showErrorMessage(
-          message,
-          options,
-          ...actions,
-        );
+        return await vscode.window.showErrorMessage(message, options, ...actions);
       default:
-        return await vscode.window.showInformationMessage(
-          message,
-          options,
-          ...actions,
-        );
+        return await vscode.window.showInformationMessage(message, options, ...actions);
     }
   }
 
@@ -61,9 +49,7 @@ export class UserFeedback {
     return await UserFeedback.showMessage("error", message, actions, modal);
   }
 
-  static async showInputBox(
-    options: vscode.InputBoxOptions,
-  ): Promise<string | undefined> {
+  static async showInputBox(options: vscode.InputBoxOptions): Promise<string | undefined> {
     const finalOptions: vscode.InputBoxOptions = {
       ignoreFocusOut: true,
       ...options,
@@ -93,12 +79,7 @@ export class UserFeedback {
     severity: "info" | "warning" | "error" = "warning",
     modal = false,
   ): Promise<boolean> {
-    const choice = await UserFeedback.showMessage(
-      severity,
-      message,
-      ["Confirm", "Cancel"],
-      modal,
-    );
+    const choice = await UserFeedback.showMessage(severity, message, ["Confirm", "Cancel"], modal);
     return choice === "Confirm";
   }
 }

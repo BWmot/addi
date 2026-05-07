@@ -6,10 +6,10 @@
 
 ## 环境要求
 
-| 工具    | 版本要求 | 说明            |
-| ------- | -------- | --------------- |
+| 工具    | 版本要求 | 说明              |
+| ------- | -------- | ----------------- |
 | VS Code | 1.109+   | Proposed API 支持 |
-| Bun     | 最新版   | 包管理          |
+| Bun     | 最新版   | 包管理            |
 
 ```powershell
 bun install    # 安装依赖
@@ -53,22 +53,22 @@ src/
 
 ### 命名
 
-| 类型     | 规范             | 示例                          |
-| -------- | ---------------- | ----------------------------- |
-| 类/接口  | PascalCase       | `LLMService`, `ProviderFactory` |
-| 方法/变量 | camelCase        | `getProvider()`, `modelList`  |
-| 常量     | UPPER_SNAKE_CASE | `DEFAULT_MAX_TOKENS`          |
-| 文件     | kebab-case       | `llm-service.ts`              |
+| 类型      | 规范             | 示例                            |
+| --------- | ---------------- | ------------------------------- |
+| 类/接口   | PascalCase       | `LLMService`, `ProviderFactory` |
+| 方法/变量 | camelCase        | `getProvider()`, `modelList`    |
+| 常量      | UPPER_SNAKE_CASE | `DEFAULT_MAX_TOKENS`            |
+| 文件      | kebab-case       | `llm-service.ts`                |
 
 ### 日志
 
 ```typescript
-import { logger } from './common/logger';
+import { logger } from "./common/logger";
 
-logger.debug('Debug info', { data: 'value' }, 'ComponentName');
-logger.info('Info message');
-logger.warn('Warning message');
-logger.error('Error message', error);
+logger.debug("Debug info", { data: "value" }, "ComponentName");
+logger.info("Info message");
+logger.warn("Warning message");
+logger.error("Error message", error);
 ```
 
 ### 错误处理
@@ -78,7 +78,7 @@ try {
   const result = await someAsyncOperation();
   return result;
 } catch (error) {
-  logger.error('Operation failed', error, 'ComponentName');
+  logger.error("Operation failed", error, "ComponentName");
   throw error;
 }
 ```
@@ -94,14 +94,14 @@ try {
 
 所有存储键必须以 `addi.` 前缀：
 
-| 键                          | 存储   | 说明             |
-| --------------------------- | ------ | ---------------- |
-| `addi.config`               | Memento | Provider 配置    |
-| `addi.config.modifiedAt`    | Memento | 配置修改时间     |
-| `addi.local.stats`          | State   | 本地模型统计     |
-| `addi.local.deviceId`       | Secret  | 设备 ID          |
-| `addi.local.apikeys.{id}`   | Secret  | API Key          |
-| `addi.local.backups`        | State   | 配置备份         |
+| 键                        | 存储    | 说明          |
+| ------------------------- | ------- | ------------- |
+| `addi.config`             | Memento | Provider 配置 |
+| `addi.config.modifiedAt`  | Memento | 配置修改时间  |
+| `addi.local.stats`        | State   | 本地模型统计  |
+| `addi.local.deviceId`     | Secret  | 设备 ID       |
+| `addi.local.apikeys.{id}` | Secret  | API Key       |
+| `addi.local.backups`      | State   | 配置备份      |
 
 ---
 
@@ -111,8 +111,8 @@ try {
 
 ```typescript
 this.register({
-  id: 'provider-id',
-  label: 'Display Name',
+  id: "provider-id",
+  label: "Display Name",
   create: (p) => {
     return createProvider({
       baseURL: p.apiEndpoint,
@@ -139,8 +139,8 @@ bun run test     # 测试
 ```typescript
 // 示例: 添加新 Provider
 this.register({
-  id: 'custom-provider',
-  label: 'Custom Provider',
+  id: "custom-provider",
+  label: "Custom Provider",
   create: (p) => {
     const settings = {
       baseURL: p.apiEndpoint,
@@ -158,7 +158,7 @@ this.register({
 
 ```typescript
 // 注册命令
-vscode.commands.registerCommand('addi.myCommand', async () => {
+vscode.commands.registerCommand("addi.myCommand", async () => {
   // 命令逻辑
 });
 ```
@@ -192,17 +192,17 @@ export interface NewFeature {
 项目使用统一的日志系统：
 
 ```typescript
-import { logger } from './common/logger';
+import { logger } from "./common/logger";
 
 // 调试 LLM 请求
 logger.debug(
-  'Chat request',
+  "Chat request",
   {
     provider: provider.name,
     model: model.id,
     messages: messageSummary,
   },
-  'LLMService'
+  "LLMService",
 );
 ```
 

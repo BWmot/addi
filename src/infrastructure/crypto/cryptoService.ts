@@ -52,9 +52,7 @@ export class CryptoService {
    */
   static encryptApiKeys(apiKeys: ProviderApiKeys, password: string): string {
     if (!CryptoService.isValidPassword(password)) {
-      throw new Error(
-        `Password must be at least ${CryptoService.MIN_PASSWORD_LENGTH} characters`,
-      );
+      throw new Error(`Password must be at least ${CryptoService.MIN_PASSWORD_LENGTH} characters`);
     }
 
     try {
@@ -72,10 +70,7 @@ export class CryptoService {
 
       // 加密数据
       const data = JSON.stringify(apiKeys);
-      const encrypted = Buffer.concat([
-        cipher.update(data, "utf8"),
-        cipher.final(),
-      ]);
+      const encrypted = Buffer.concat([cipher.update(data, "utf8"), cipher.final()]);
 
       // 获取认证标签
       const tag = cipher.getAuthTag();
@@ -89,7 +84,7 @@ export class CryptoService {
       return result;
     } catch (error) {
       logger.error("CryptoService.encryptApiKeys: encryption failed", error);
-      throw new Error("Failed to encrypt API keys");
+      throw new Error("Failed to encrypt API keys", { cause: error });
     }
   }
 
@@ -99,10 +94,7 @@ export class CryptoService {
    * @param password 用户密码
    * @returns 解密后的数据，失败返回 null
    */
-  static decryptApiKeys(
-    encryptedBase64: string,
-    password: string,
-  ): ProviderApiKeys | null {
+  static decryptApiKeys(encryptedBase64: string, password: string): ProviderApiKeys | null {
     if (!CryptoService.isValidPassword(password)) {
       logger.warn("CryptoService.decryptApiKeys: password is invalid or too short");
       return null;
@@ -128,18 +120,11 @@ export class CryptoService {
       const key = CryptoService.deriveKey(password, salt);
 
       // 创建解密器
-      const decipher = crypto.createDecipheriv(
-        CryptoService.ALGORITHM,
-        key,
-        iv,
-      );
+      const decipher = crypto.createDecipheriv(CryptoService.ALGORITHM, key, iv);
       decipher.setAuthTag(tag);
 
       // 解密数据
-      const decrypted = Buffer.concat([
-        decipher.update(ciphertext),
-        decipher.final(),
-      ]);
+      const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 
       const result = JSON.parse(decrypted.toString("utf8"));
       logger.debug("CryptoService.decryptApiKeys: decryption successful");

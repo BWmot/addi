@@ -7,12 +7,12 @@
 
 ## 支持的 Providers
 
-| Provider ID               | 适用场景         | 特性                         |
-| ------------------------- | ---------------- | ---------------------------- |
-| `openai-completions`      | OpenAI/DeepSeek  | Chat completions, 流式       |
-| `openai-responses`        | 新版 OpenAI API  | 原生工具支持                 |
-| `anthropic-messages`      | Claude 模型      | Thinking, Vision, 工具使用    |
-| `google-generateContent`  | Gemini 模型      | 多模态                       |
+| Provider ID              | 适用场景        | 特性                       |
+| ------------------------ | --------------- | -------------------------- |
+| `openai-completions`     | OpenAI/DeepSeek | Chat completions, 流式     |
+| `openai-responses`       | 新版 OpenAI API | 原生工具支持               |
+| `anthropic-messages`     | Claude 模型     | Thinking, Vision, 工具使用 |
+| `google-generateContent` | Gemini 模型     | 多模态                     |
 
 ---
 
@@ -22,8 +22,8 @@
 
 ```typescript
 this.register({
-  id: 'custom-provider',
-  label: 'Custom Provider',
+  id: "custom-provider",
+  label: "Custom Provider",
   create: (p) => {
     const settings = {
       baseURL: p.apiEndpoint,
@@ -41,39 +41,85 @@ this.register({
 AI SDK v6 使用统一的 `TextStreamPart` 类型表示流式输出：
 
 ### text 相关
+
 ```typescript
-{ type: 'text'; text: string }
-{ type: 'text-delta'; textDelta: string }
-{ type: 'text-start' }
-{ type: 'text-end' }
+{
+  type: "text";
+  text: string;
+}
+{
+  type: "text-delta";
+  textDelta: string;
+}
+{
+  type: "text-start";
+}
+{
+  type: "text-end";
+}
 ```
 
 ### reasoning 相关
+
 ```typescript
-{ type: 'reasoning'; text: string }
-{ type: 'reasoning-delta'; textDelta: string }
-{ type: 'reasoning-start' }
-{ type: 'reasoning-end' }
-{ type: 'reasoning-part-finish' }
+{
+  type: "reasoning";
+  text: string;
+}
+{
+  type: "reasoning-delta";
+  textDelta: string;
+}
+{
+  type: "reasoning-start";
+}
+{
+  type: "reasoning-end";
+}
+{
+  type: "reasoning-part-finish";
+}
 ```
 
 ### tool-call 相关
+
 ```typescript
-{ type: 'tool-call'; toolCallId: string; toolName: string; input: object }
-{ type: 'tool-call-streaming-start'; toolCallId: string; toolName: string }
-{ type: 'tool-call-delta'; toolCallId: string; toolName: string; argsTextDelta: string }
-{ type: 'tool-result'; toolCallId: string; toolName: string; input: object; output: any }
+{
+  type: "tool-call";
+  toolCallId: string;
+  toolName: string;
+  input: object;
+}
+{
+  type: "tool-call-streaming-start";
+  toolCallId: string;
+  toolName: string;
+}
+{
+  type: "tool-call-delta";
+  toolCallId: string;
+  toolName: string;
+  argsTextDelta: string;
+}
+{
+  type: "tool-result";
+  toolCallId: string;
+  toolName: string;
+  input: object;
+  output: any;
+}
 ```
 
 ### finish reason 值
+
 ```typescript
-type FinishReason = 
-  | 'stop'           // 正常完成
-  | 'length'         // 达到最大输出长度
-  | 'content-filter' // 内容过滤
-  | 'tool-calls'     // 需要调用工具
-  | 'error'          // 错误
-  | 'other'          // 其他原因
+type FinishReason =
+  | "stop" // 正常完成
+  | "length" // 达到最大输出长度
+  | "content-filter" // 内容过滤
+  | "tool-calls" // 需要调用工具
+  | "error" // 错误
+  | "other"; // 其他原因
 ```
 
 ---
@@ -89,13 +135,13 @@ for await (const part of result.fullStream) {
 }
 
 // 便捷属性
-result.textStream     // AsyncIterable<string> - 纯文本流
-result.fullStream     // AsyncIterable<TextStreamPart> - 完整流
-result.reasoning      // Promise<ReasoningOutput[]> - reasoning 输出
-result.toolCalls       // Promise<TypedToolCall[]> - 工具调用
-result.toolResults     // Promise<TypedToolResult[]> - 工具结果
-result.finishReason    // PromiseLike<FinishReason>
-result.usage           // Promise<LanguageModelUsage>
+result.textStream; // AsyncIterable<string> - 纯文本流
+result.fullStream; // AsyncIterable<TextStreamPart> - 完整流
+result.reasoning; // Promise<ReasoningOutput[]> - reasoning 输出
+result.toolCalls; // Promise<TypedToolCall[]> - 工具调用
+result.toolResults; // Promise<TypedToolResult[]> - 工具结果
+result.finishReason; // PromiseLike<FinishReason>
+result.usage; // Promise<LanguageModelUsage>
 ```
 
 ---
@@ -112,12 +158,12 @@ result.usage           // Promise<LanguageModelUsage>
 
 ## 类型映射
 
-| AI SDK v6           | VS Code                     |
-| ------------------- | --------------------------- |
-| `text-delta`        | `LanguageModelTextPart`     |
-| `reasoning-delta`   | `LanguageModelThinkingPart`  |
-| `tool-call`         | `LanguageModelToolCallPart` |
-| `tool-result`       | `LanguageModelToolResultPart` |
+| AI SDK v6         | VS Code                       |
+| ----------------- | ----------------------------- |
+| `text-delta`      | `LanguageModelTextPart`       |
+| `reasoning-delta` | `LanguageModelThinkingPart`   |
+| `tool-call`       | `LanguageModelToolCallPart`   |
+| `tool-result`     | `LanguageModelToolResultPart` |
 
 ---
 
@@ -126,37 +172,57 @@ result.usage           // Promise<LanguageModelUsage>
 ```typescript
 // 系统消息
 type SystemModelMessage = {
-  role: 'system';
+  role: "system";
   content: string;
   providerOptions?: ProviderOptions;
 };
 
 // 用户消息
 type UserModelMessage = {
-  role: 'user';
+  role: "user";
   content: string | Array<TextPart | ImagePart | FilePart>;
   providerOptions?: ProviderOptions;
 };
 
 // 助手消息
 type AssistantModelMessage = {
-  role: 'assistant';
+  role: "assistant";
   content: string | Array<TextPart | FilePart | ReasoningPart | ToolCallPart>;
 };
 
 // 工具消息
 type ToolModelMessage = {
-  role: 'tool';
+  role: "tool";
   content: Array<ToolResultPart>;
 };
 
 // Content Part 类型
-type TextPart = { type: 'text'; text: string };
-type ReasoningPart = { type: 'reasoning'; text: string };
-type ImagePart = { type: 'image'; image: string | Uint8Array | URL; mediaType?: string };
-type FilePart = { type: 'file'; data: string | Uint8Array; mediaType: string; filename?: string };
-type ToolCallPart = { type: 'tool-call'; toolCallId: string; toolName: string; input: object };
-type ToolResultPart = { type: 'tool-result'; toolCallId: string; toolName: string; input: object; output: unknown };
+type TextPart = { type: "text"; text: string };
+type ReasoningPart = { type: "reasoning"; text: string };
+type ImagePart = {
+  type: "image";
+  image: string | Uint8Array | URL;
+  mediaType?: string;
+};
+type FilePart = {
+  type: "file";
+  data: string | Uint8Array;
+  mediaType: string;
+  filename?: string;
+};
+type ToolCallPart = {
+  type: "tool-call";
+  toolCallId: string;
+  toolName: string;
+  input: object;
+};
+type ToolResultPart = {
+  type: "tool-result";
+  toolCallId: string;
+  toolName: string;
+  input: object;
+  output: unknown;
+};
 ```
 
 ---
@@ -168,14 +234,14 @@ type ToolResultPart = { type: 'tool-result'; toolCallId: string; toolName: strin
 ```typescript
 // aiRegistry.ts 中配置
 if (model.capabilities?.reasoning) {
-  modelSettings.thinking = { 
-    type: 'enabled', 
+  modelSettings.thinking = {
+    type: 'enabled',
     budgetTokens: Math.floor(model.maxOutputTokens / 2)
   };
 }
 
 // 支持的类型
-modelSettings.thinking = 
+modelSettings.thinking =
   | { type: 'enabled', budgetTokens: number }  // 启用思考
   | { type: 'disabled' }                       // 禁用
   | { type: 'auto' }                           // 自动（由模型决定）
@@ -187,15 +253,17 @@ modelSettings.thinking =
 ## Tool 定义
 
 ```typescript
-import { tool, jsonSchema } from 'ai';
+import { tool, jsonSchema } from "ai";
 
 // 定义工具
 const myTool = tool({
-  description: 'A tool description',
-  parameters: jsonSchema(z.object({
-    arg1: z.string(),
-    arg2: z.number(),
-  })),
+  description: "A tool description",
+  parameters: jsonSchema(
+    z.object({
+      arg1: z.string(),
+      arg2: z.number(),
+    }),
+  ),
   execute: async (args) => {
     return `Result: ${args.arg1}`;
   },
@@ -203,8 +271,8 @@ const myTool = tool({
 
 // 或使用动态工具
 const dynamicTool = dynamicTool({
-  description: 'Dynamic tool',
-  parameters: jsonSchema({ type: 'object' }),
+  description: "Dynamic tool",
+  parameters: jsonSchema({ type: "object" }),
 });
 ```
 

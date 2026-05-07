@@ -11,10 +11,10 @@
 
 Addi 扩展中的每个 Model 都包含两个关键的标识符：
 
-| 字段 | 名称 | 用途 | 示例 |
-|------|------|------|------|
-| `id` | Local ID / UUID | 本地唯一标识，用于 addi 扩展内部管理 | `550e8400-e29b-41d4-a716-446655440000` |
-| `rid` | Remote ID | 远程 API 接受的模型 ID，用于实际 API 调用 | `gpt-4o`, `claude-3-5-sonnet-20241022` |
+| 字段  | 名称            | 用途                                      | 示例                                   |
+| ----- | --------------- | ----------------------------------------- | -------------------------------------- |
+| `id`  | Local ID / UUID | 本地唯一标识，用于 addi 扩展内部管理      | `550e8400-e29b-41d4-a716-446655440000` |
+| `rid` | Remote ID       | 远程 API 接受的模型 ID，用于实际 API 调用 | `gpt-4o`, `claude-3-5-sonnet-20241022` |
 
 ### 1.2 设计原因
 
@@ -137,6 +137,7 @@ findModel(modelId: string): { provider: Provider; model: Model } | null {
 ```
 
 **关键点**：
+
 - `findModel()` 使用 `model.id` (本地 UUID) 进行查找
 - 返回的 `model` 对象包含完整的 `id` 和 `rid` 字段
 - 后续调用 AI SDK 时，必须使用 `model.rid` 而非 `model.id`
@@ -147,28 +148,28 @@ findModel(modelId: string): { provider: Provider; model: Model } | null {
 
 ### 3.1 已修复的错误位置
 
-| 文件 | 行号 | 修复内容 |
-|------|------|----------|
+| 文件                         | 行号 | 修复内容                                              |
+| ---------------------------- | ---- | ----------------------------------------------------- |
 | `src/core/llm/aiRegistry.ts` | ~200 | 修复 `createModel()` 使用 `model.rid` 而非 `model.id` |
 
 ### 3.2 正确使用 id/rid 的场景
 
-| 场景 | 使用的字段 | 说明 |
-|------|-----------|------|
-| 模型查找 (findModel) | `model.id` | 本地唯一标识用于查找 |
-| UI 显示 | `model.id` | TreeItem 等 UI 元素 |
-| 删除/更新模型 | `model.id` | 作为方法参数传递 |
-| 发送给 AI SDK | `model.rid` | 实际 API 调用 |
-| 配置信息显示 | `model.rid` | 用户看到的远程模型 ID |
+| 场景                 | 使用的字段  | 说明                  |
+| -------------------- | ----------- | --------------------- |
+| 模型查找 (findModel) | `model.id`  | 本地唯一标识用于查找  |
+| UI 显示              | `model.id`  | TreeItem 等 UI 元素   |
+| 删除/更新模型        | `model.id`  | 作为方法参数传递      |
+| 发送给 AI SDK        | `model.rid` | 实际 API 调用         |
+| 配置信息显示         | `model.rid` | 用户看到的远程模型 ID |
 
 ### 3.3 典型错误代码模式
 
 ```typescript
 // ❌ 错误：直接使用 model.id 作为远程 ID
-aiProviderInstance(model.id)
+aiProviderInstance(model.id);
 
 // ✅ 正确：使用 model.rid 作为远程 ID
-aiProviderInstance(model.rid)
+aiProviderInstance(model.rid);
 
 // ❌ 错误：假设 modelOrId 是字符串就是 rid
 const modelId = typeof modelOrId === "string" ? modelOrId : modelOrId.id;
@@ -220,12 +221,12 @@ if (!idCandidate) {
 
 ### 5.1 Provider Type 映射
 
-| providerType | AI SDK Provider | API Endpoint |
-|--------------|-----------------|--------------|
-| `openai-completions` | `createOpenAI` / `createOpenAICompatible` | `/chat/completions` |
-| `openai-responses` | `createOpenAI` (responses API) | `/responses` |
-| `anthropic-messages` | `createAnthropic` | `/messages` |
-| `google-generateContent` | `createGoogleGenerativeAI` | `/name:generateContent` |
+| providerType             | AI SDK Provider                           | API Endpoint            |
+| ------------------------ | ----------------------------------------- | ----------------------- |
+| `openai-completions`     | `createOpenAI` / `createOpenAICompatible` | `/chat/completions`     |
+| `openai-responses`       | `createOpenAI` (responses API)            | `/responses`            |
+| `anthropic-messages`     | `createAnthropic`                         | `/messages`             |
+| `google-generateContent` | `createGoogleGenerativeAI`                | `/name:generateContent` |
 
 ### 5.2 遗留类型迁移
 
@@ -254,11 +255,12 @@ const legacyMapping: Record<string, ProviderType> = {
 ### 6.2 日志检查点
 
 在 `AIProviderRegistry.createModel()` 中添加的日志：
+
 ```typescript
 logger.debug("Creating AI model", {
   requestedId: typeof modelOrId === "string" ? modelOrId : modelOrId.id,
   finalModelId: modelId, // 应该是 rid
-  hasModelObject: typeof modelOrId !== "string"
+  hasModelObject: typeof modelOrId !== "string",
 });
 ```
 
@@ -289,16 +291,16 @@ logger.debug("Creating AI model", {
 
 ## 八、相关文件索引
 
-| 文件 | 职责 |
-|------|------|
-| `src/common/types/model.ts` | Model 数据类型定义 |
-| `src/common/types/provider.ts` | Provider 类型定义 |
-| `src/core/llm/aiRegistry.ts` | AI SDK 工厂方法 **[已修复]** |
-| `src/core/llm/llmService.ts` | LLM 服务主入口 |
-| `src/core/providers/AddiChatProvider.ts` | VS Code Chat Provider |
-| `src/core/providers/ProviderModelManager.ts` | Provider/Model 业务逻辑 |
-| `src/infrastructure/storage/storageService.ts` | 数据持久化 |
+| 文件                                           | 职责                         |
+| ---------------------------------------------- | ---------------------------- |
+| `src/common/types/model.ts`                    | Model 数据类型定义           |
+| `src/common/types/provider.ts`                 | Provider 类型定义            |
+| `src/core/llm/aiRegistry.ts`                   | AI SDK 工厂方法 **[已修复]** |
+| `src/core/llm/llmService.ts`                   | LLM 服务主入口               |
+| `src/core/providers/AddiChatProvider.ts`       | VS Code Chat Provider        |
+| `src/core/providers/ProviderModelManager.ts`   | Provider/Model 业务逻辑      |
+| `src/infrastructure/storage/storageService.ts` | 数据持久化                   |
 
 ---
 
-*文档版本: 1.0.0*
+_文档版本: 1.0.0_

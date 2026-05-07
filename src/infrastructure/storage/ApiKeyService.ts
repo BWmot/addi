@@ -26,9 +26,7 @@ export class ApiKeyService {
       const secretKey = ApiKeyService.SECRET_PREFIX + providerId;
       const secret = await this.context.secrets.get(secretKey);
       if (secret && secret.trim()) {
-        logger.debug(
-          `ApiKeyService.getApiKey: found in SecretStorage for ${providerId}`,
-        );
+        logger.debug(`ApiKeyService.getApiKey: found in SecretStorage for ${providerId}`);
         return secret;
       }
     } catch (error) {
@@ -59,10 +57,7 @@ export class ApiKeyService {
       await this.context.secrets.store(secretKey, apiKey.trim());
       logger.info(`ApiKeyService.setApiKey: stored for ${providerId}`);
     } catch (error) {
-      logger.error(
-        `ApiKeyService.setApiKey: failed to store for ${providerId}`,
-        error,
-      );
+      logger.error(`ApiKeyService.setApiKey: failed to store for ${providerId}`, error);
       throw error;
     }
   }
@@ -79,10 +74,7 @@ export class ApiKeyService {
       logger.info(`ApiKeyService.deleteApiKey: deleted for ${providerId}`);
     } catch (error) {
       // SecretStorage.delete 即使 key 不存在也不会报错
-      logger.debug(
-        `ApiKeyService.deleteApiKey: failed or key not exists for ${providerId}`,
-        error,
-      );
+      logger.debug(`ApiKeyService.deleteApiKey: failed or key not exists for ${providerId}`, error);
     }
   }
 
@@ -93,10 +85,7 @@ export class ApiKeyService {
   async deleteAllApiKeys(): Promise<void> {
     try {
       // 从 globalState 获取 provider IDs
-      const providers = this.context.globalState.get<{ id: string }[]>(
-        "addi.config",
-        [],
-      );
+      const providers = this.context.globalState.get<{ id: string }[]>("addi.config", []);
       for (const provider of providers) {
         await this.deleteApiKey(provider.id);
       }

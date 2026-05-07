@@ -12,8 +12,7 @@ import { MessageConverter } from "../llm/messageConverter";
  * - Manages the lifecycle of chat models available to Copilot.
  */
 export class AddiChatProvider implements vscode.LanguageModelChatProvider {
-  private readonly _onDidChangeLanguageModelChatInformation =
-    new vscode.EventEmitter<void>();
+  private readonly _onDidChangeLanguageModelChatInformation = new vscode.EventEmitter<void>();
   public readonly onDidChangeLanguageModelChatInformation =
     this._onDidChangeLanguageModelChatInformation.event;
 
@@ -51,8 +50,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     });
     return filterProviders.flatMap((p) =>
       p.models.map((m) => {
-        const friendlyInput =
-          TokenFormatter.format(m.maxInputTokens) || String(m.maxInputTokens);
+        const friendlyInput = TokenFormatter.format(m.maxInputTokens) || String(m.maxInputTokens);
         const friendlyOutput =
           TokenFormatter.format(m.maxOutputTokens) || String(m.maxOutputTokens);
         const summary = `${friendlyInput}↑/${friendlyOutput}↓`;
@@ -72,9 +70,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
           capabilities: {
             imageInput: !!m.capabilities?.vision,
             // LanguageModelChatInformation.capabilities.toolCalling expects number | boolean
-            toolCalling: (m.capabilities?.toolCalling ?? false) as
-              | number
-              | boolean,
+            toolCalling: (m.capabilities?.toolCalling ?? false) as number | boolean,
           },
         };
       }),
@@ -131,33 +127,19 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     const apiKey = await this.repository.getApiKey(provider.id);
 
     if (!apiKey || apiKey.trim() === "") {
-      logger.warn(
-        "Provider missing API key",
-        logger.sanitizeProvider(provider),
-      );
-      throw new Error(
-        `API key for provider '${provider.name}' is not configured.`,
-      );
+      logger.warn("Provider missing API key", logger.sanitizeProvider(provider));
+      throw new Error(`API key for provider '${provider.name}' is not configured.`);
     }
 
     if (!provider.apiEndpoint || provider.apiEndpoint.trim() === "") {
-      logger.warn(
-        "Provider missing API endpoint",
-        logger.sanitizeProvider(provider),
-      );
-      throw new Error(
-        `API endpoint for provider '${provider.name}' is not configured.`,
-      );
+      logger.warn("Provider missing API endpoint", logger.sanitizeProvider(provider));
+      throw new Error(`API endpoint for provider '${provider.name}' is not configured.`);
     }
 
     const providerWithKey: Provider = { ...provider, apiKey };
 
     const startTime = Date.now();
-    const onStats = (stats: {
-      firstTokenTime: number;
-      endTime: number;
-      tokenCount: number;
-    }) => {
+    const onStats = (stats: { firstTokenTime: number; endTime: number; tokenCount: number }) => {
       logger.debug("onStats called", stats);
       // Validate the timing data before calculating speed
       if (
@@ -180,11 +162,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
             });
             // Update speed
             if (this.repository.updateModelSpeed) {
-              this.repository.updateModelSpeed(
-                provider.id,
-                storedModel.id,
-                speed,
-              );
+              this.repository.updateModelSpeed(provider.id, storedModel.id, speed);
             } else {
               logger.warn("Repository does not support updateModelSpeed");
             }
@@ -198,10 +176,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     };
 
     try {
-      logger.debug(
-        "Dispatching request via LLMService",
-        logger.sanitizeProvider(providerWithKey),
-      );
+      logger.debug("Dispatching request via LLMService", logger.sanitizeProvider(providerWithKey));
       await this.llmService.chat(
         providerWithKey,
         storedModel,
@@ -244,8 +219,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
       if (Array.isArray(maybe.content)) {
         const parts = (maybe.content as readonly unknown[])
           .filter(
-            (p): p is vscode.LanguageModelTextPart =>
-              p instanceof vscode.LanguageModelTextPart,
+            (p): p is vscode.LanguageModelTextPart => p instanceof vscode.LanguageModelTextPart,
           )
           .map((p: vscode.LanguageModelTextPart) => p.value)
           .join("");

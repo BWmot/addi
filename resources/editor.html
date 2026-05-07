@@ -43,9 +43,9 @@
         font-weight: bold;
         font-size: 0.9em;
       }
-      input[type='text'],
-      input[type='password'],
-      input[type='number'],
+      input[type="text"],
+      input[type="password"],
+      input[type="number"],
       select,
       textarea {
         width: 100%;
@@ -198,7 +198,7 @@
         cursor: not-allowed;
       }
       .batch-disabled label::after {
-        content: ' (batch mode - not editable)';
+        content: " (batch mode - not editable)";
         font-size: 0.8em;
         font-weight: normal;
         color: var(--vscode-descriptionForeground);
@@ -375,18 +375,23 @@
               <label>Global Extra Body (JSON)</label>
               <span class="tooltip">
                 <span class="info-icon">ⓘ</span>
-                <span class="tooltip-text">Additional JSON properties merged into the request body
-for ALL models in this provider.
-Model-level Extra Body overrides this setting.
-<b>Examples:</b>
-• DeepSeek: {"thinking": {"type": "enabled", "budget_tokens": 1000}}
-• Ollama: {"keep_alive": "5m"}
-• Generic: {"stream": false}</span>
+                <span class="tooltip-text"
+                  >Additional JSON properties merged into the request body for ALL models in this
+                  provider. Model-level Extra Body overrides this setting.
+                  <b>Examples:</b>
+                  • DeepSeek: {"thinking": {"type": "enabled", "budget_tokens": 1000}} • Ollama:
+                  {"keep_alive": "5m"} • Generic: {"stream": false}</span
+                >
               </span>
             </div>
             <div class="json-editor-wrapper">
               <div class="json-editor-container" id="p-extra-body-container">
-                <textarea id="p-extra-body" class="json-textarea" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+                <textarea
+                  id="p-extra-body"
+                  class="json-textarea"
+                  placeholder='{"key": "value"}'
+                  spellcheck="false"
+                ></textarea>
               </div>
               <div class="json-editor-actions">
                 <button type="button" class="format-btn" title="Format JSON">Format</button>
@@ -401,17 +406,23 @@ Model-level Extra Body overrides this setting.
               <label>Global Extra Headers (JSON)</label>
               <span class="tooltip">
                 <span class="info-icon">ⓘ</span>
-                <span class="tooltip-text">Additional HTTP headers included in ALL model requests.
-Model-level Extra Headers overrides this setting.
-<b>Examples:</b>
-• Auth: {"Authorization": "Bearer sk-xxx"}
-• Custom: {"X-Custom-Header": "value"}
-• Version: {"X-API-Version": "2024-01"}</span>
+                <span class="tooltip-text"
+                  >Additional HTTP headers included in ALL model requests. Model-level Extra Headers
+                  overrides this setting.
+                  <b>Examples:</b>
+                  • Auth: {"Authorization": "Bearer sk-xxx"} • Custom: {"X-Custom-Header": "value"}
+                  • Version: {"X-API-Version": "2024-01"}</span
+                >
               </span>
             </div>
             <div class="json-editor-wrapper">
               <div class="json-editor-container" id="p-extra-header-container">
-                <textarea id="p-extra-header" class="json-textarea" placeholder='{"X-Custom-Header": "value"}' spellcheck="false"></textarea>
+                <textarea
+                  id="p-extra-header"
+                  class="json-textarea"
+                  placeholder='{"X-Custom-Header": "value"}'
+                  spellcheck="false"
+                ></textarea>
               </div>
               <div class="json-editor-actions">
                 <button type="button" class="format-btn" title="Format JSON">Format</button>
@@ -640,17 +651,23 @@ Model-level Extra Headers overrides this setting.
               <label>Extra Body (JSON)</label>
               <span class="tooltip">
                 <span class="info-icon">ⓘ</span>
-                <span class="tooltip-text">Additional JSON properties merged into the request body.
-Overrides provider-level Extra Body.
-<b>Examples:</b>
-• DeepSeek: {"thinking": {"type": "enabled", "budget_tokens": 1000}}
-• Ollama: {"keep_alive": "5m"}
-• Generic: {"stream": false}</span>
+                <span class="tooltip-text"
+                  >Additional JSON properties merged into the request body. Overrides provider-level
+                  Extra Body.
+                  <b>Examples:</b>
+                  • DeepSeek: {"thinking": {"type": "enabled", "budget_tokens": 1000}} • Ollama:
+                  {"keep_alive": "5m"} • Generic: {"stream": false}</span
+                >
               </span>
             </div>
             <div class="json-editor-wrapper">
               <div class="json-editor-container" id="m-extra-body-container">
-                <textarea id="m-extra-body" class="json-textarea" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+                <textarea
+                  id="m-extra-body"
+                  class="json-textarea"
+                  placeholder='{"key": "value"}'
+                  spellcheck="false"
+                ></textarea>
               </div>
               <div class="json-editor-actions">
                 <button type="button" class="format-btn" title="Format JSON">Format</button>
@@ -665,17 +682,23 @@ Overrides provider-level Extra Body.
               <label>Extra Headers (JSON)</label>
               <span class="tooltip">
                 <span class="info-icon">ⓘ</span>
-                <span class="tooltip-text">Additional HTTP headers included in the request.
-Overrides provider-level Extra Headers.
-<b>Examples:</b>
-• Auth: {"Authorization": "Bearer sk-xxx"}
-• Custom: {"X-Custom-Header": "value"}
-• Version: {"X-API-Version": "2024-01"}</span>
+                <span class="tooltip-text"
+                  >Additional HTTP headers included in the request. Overrides provider-level Extra
+                  Headers.
+                  <b>Examples:</b>
+                  • Auth: {"Authorization": "Bearer sk-xxx"} • Custom: {"X-Custom-Header": "value"}
+                  • Version: {"X-API-Version": "2024-01"}</span
+                >
               </span>
             </div>
             <div class="json-editor-wrapper">
               <div class="json-editor-container" id="m-extra-header-container">
-                <textarea id="m-extra-header" class="json-textarea" placeholder='{"X-Custom-Header": "value"}' spellcheck="false"></textarea>
+                <textarea
+                  id="m-extra-header"
+                  class="json-textarea"
+                  placeholder='{"X-Custom-Header": "value"}'
+                  spellcheck="false"
+                ></textarea>
               </div>
               <div class="json-editor-actions">
                 <button type="button" class="format-btn" title="Format JSON">Format</button>
@@ -843,110 +866,110 @@ Overrides provider-level Extra Headers.
     <script nonce="{{nonce}}">
       const vscode = acquireVsCodeApi();
 
-      const contentContainer = document.getElementById('content-container');
-      const providerForm = document.getElementById('provider-form');
-      const modelForm = document.getElementById('model-form');
+      const contentContainer = document.getElementById("content-container");
+      const providerForm = document.getElementById("provider-form");
+      const modelForm = document.getElementById("model-form");
 
       // Provider inputs
-      const pName = document.getElementById('p-name');
-      const pType = document.getElementById('p-type');
-      const pEndpoint = document.getElementById('p-endpoint');
-      const pApiKey = document.getElementById('p-apikey');
-      const pDesc = document.getElementById('p-description');
-      const pWeb = document.getElementById('p-website');
-      const pExtraBody = document.getElementById('p-extra-body');
-      const pExtraHeader = document.getElementById('p-extra-header');
-      const pOptionsToggle = document.getElementById('p-options-toggle');
-      const pTemperature = document.getElementById('p-temperature');
-      const pTopP = document.getElementById('p-top-p');
-      const pMaxSteps = document.getElementById('p-max-steps');
-      const pTopK = document.getElementById('p-top-k');
-      const pStopSequences = document.getElementById('p-stop-sequences');
-      const pPresencePenalty = document.getElementById('p-presence-penalty');
-      const pFrequencyPenalty = document.getElementById('p-frequency-penalty');
-      const pSeed = document.getElementById('p-seed');
+      const pName = document.getElementById("p-name");
+      const pType = document.getElementById("p-type");
+      const pEndpoint = document.getElementById("p-endpoint");
+      const pApiKey = document.getElementById("p-apikey");
+      const pDesc = document.getElementById("p-description");
+      const pWeb = document.getElementById("p-website");
+      const pExtraBody = document.getElementById("p-extra-body");
+      const pExtraHeader = document.getElementById("p-extra-header");
+      const pOptionsToggle = document.getElementById("p-options-toggle");
+      const pTemperature = document.getElementById("p-temperature");
+      const pTopP = document.getElementById("p-top-p");
+      const pMaxSteps = document.getElementById("p-max-steps");
+      const pTopK = document.getElementById("p-top-k");
+      const pStopSequences = document.getElementById("p-stop-sequences");
+      const pPresencePenalty = document.getElementById("p-presence-penalty");
+      const pFrequencyPenalty = document.getElementById("p-frequency-penalty");
+      const pSeed = document.getElementById("p-seed");
       let pApiKeyTouched = false;
 
       // Collapsible toggle functionality for provider options
       if (pOptionsToggle) {
-        pOptionsToggle.addEventListener('click', () => {
-          const content = document.getElementById('p-options-content');
-          pOptionsToggle.classList.toggle('active');
-          if (content.classList.contains('hidden')) {
-            content.classList.remove('hidden');
+        pOptionsToggle.addEventListener("click", () => {
+          const content = document.getElementById("p-options-content");
+          pOptionsToggle.classList.toggle("active");
+          if (content.classList.contains("hidden")) {
+            content.classList.remove("hidden");
           } else {
-            content.classList.add('hidden');
+            content.classList.add("hidden");
           }
         });
       }
 
       // Model inputs
-      const mName = document.getElementById('m-name');
+      const mName = document.getElementById("m-name");
 
       // --- Hint Logic ---
-      const pEndpointTooltip = document.getElementById('p-endpoint-tooltip');
-      const pTypeTooltip = document.getElementById('p-type-tooltip');
+      const pEndpointTooltip = document.getElementById("p-endpoint-tooltip");
+      const pTypeTooltip = document.getElementById("p-type-tooltip");
       const typeTooltipText =
-        'Can quickly determine type based on API path:\n• /chat/completions → OpenAI (/completions)\n• /responses → OpenAI (/responses)\n• /messages → Anthropic (/messages)\n• /name:generateContent → Google';
+        "Can quickly determine type based on API path:\n• /chat/completions → OpenAI (/completions)\n• /responses → OpenAI (/responses)\n• /messages → Anthropic (/messages)\n• /name:generateContent → Google";
       if (pTypeTooltip) {
         pTypeTooltip.textContent = typeTooltipText;
       }
       function updateHints() {
         const type = pType.value;
-        let hint = '';
-        if (type === 'anthropic-messages') {
+        let hint = "";
+        if (type === "anthropic-messages") {
           hint =
-            'Standard: https://api.anthropic.com/v1\n(Please include /v1 but do not include /messages)';
-        } else if (type === 'openai-completions' || type === 'openai-responses') {
+            "Standard: https://api.anthropic.com/v1\n(Please include /v1 but do not include /messages)";
+        } else if (type === "openai-completions" || type === "openai-responses") {
           hint =
-            'Base URL, e.g. https://api.openai.com/v1\n(Do not include /chat/completions or /responses)';
-        } else if (type === 'google-generateContent') {
-          hint = 'Base URL, e.g. https://generativelanguage.googleapis.com/v1beta';
+            "Base URL, e.g. https://api.openai.com/v1\n(Do not include /chat/completions or /responses)";
+        } else if (type === "google-generateContent") {
+          hint = "Base URL, e.g. https://generativelanguage.googleapis.com/v1beta";
         }
         if (pEndpointTooltip) {
           pEndpointTooltip.textContent = hint;
         }
       }
-      pType.addEventListener('change', updateHints);
+      pType.addEventListener("change", updateHints);
       // Initialize hints on load if we are editing
       setTimeout(updateHints, 100);
-      const mId = document.getElementById('m-id');
-      const mNameGroup = document.getElementById('m-name-group');
-      const mIdGroup = document.getElementById('m-id-group');
-      const mInput = document.getElementById('m-input-tokens');
-      const mOutput = document.getElementById('m-output-tokens');
-      const mTools = document.getElementById('m-tools');
-      const mThink = document.getElementById('m-think');
-      const mVision = document.getElementById('m-vision');
-      const mExtraBody = document.getElementById('m-extra-body');
-      const mExtraHeader = document.getElementById('m-extra-header');
-      const mOptionsToggle = document.getElementById('m-options-toggle');
-      const mTemperature = document.getElementById('m-temperature');
-      const mTopP = document.getElementById('m-top-p');
-      const mTopK = document.getElementById('m-top-k');
-      const mMaxSteps = document.getElementById('m-max-steps');
-      const mStopSequences = document.getElementById('m-stop-sequences');
-      const mPresencePenalty = document.getElementById('m-presence-penalty');
-      const mFrequencyPenalty = document.getElementById('m-frequency-penalty');
-      const mSeed = document.getElementById('m-seed');
+      const mId = document.getElementById("m-id");
+      const mNameGroup = document.getElementById("m-name-group");
+      const mIdGroup = document.getElementById("m-id-group");
+      const mInput = document.getElementById("m-input-tokens");
+      const mOutput = document.getElementById("m-output-tokens");
+      const mTools = document.getElementById("m-tools");
+      const mThink = document.getElementById("m-think");
+      const mVision = document.getElementById("m-vision");
+      const mExtraBody = document.getElementById("m-extra-body");
+      const mExtraHeader = document.getElementById("m-extra-header");
+      const mOptionsToggle = document.getElementById("m-options-toggle");
+      const mTemperature = document.getElementById("m-temperature");
+      const mTopP = document.getElementById("m-top-p");
+      const mTopK = document.getElementById("m-top-k");
+      const mMaxSteps = document.getElementById("m-max-steps");
+      const mStopSequences = document.getElementById("m-stop-sequences");
+      const mPresencePenalty = document.getElementById("m-presence-penalty");
+      const mFrequencyPenalty = document.getElementById("m-frequency-penalty");
+      const mSeed = document.getElementById("m-seed");
 
       // Collapsible toggle functionality
       if (mOptionsToggle) {
-        mOptionsToggle.addEventListener('click', () => {
-          const content = document.getElementById('m-options-content');
-          mOptionsToggle.classList.toggle('active');
-          if (content.classList.contains('hidden')) {
-            content.classList.remove('hidden');
+        mOptionsToggle.addEventListener("click", () => {
+          const content = document.getElementById("m-options-content");
+          mOptionsToggle.classList.toggle("active");
+          if (content.classList.contains("hidden")) {
+            content.classList.remove("hidden");
           } else {
-            content.classList.add('hidden');
+            content.classList.add("hidden");
           }
         });
       }
 
       // Buttons
-      const btnSave = document.getElementById('btn-save');
-      const btnCancel = document.getElementById('btn-cancel');
-      const btnVerify = document.getElementById('btn-verify');
+      const btnSave = document.getElementById("btn-save");
+      const btnCancel = document.getElementById("btn-cancel");
+      const btnVerify = document.getElementById("btn-verify");
 
       // ============================================
       // JSON Editor Enhancement
@@ -956,9 +979,9 @@ Overrides provider-level Extra Headers.
        * Syntax highlight JSON string for preview display
        */
       function highlightJSON(json) {
-        if (!json || !json.trim()) return '';
+        if (!json || !json.trim()) return "";
         // Escape HTML first
-        json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        json = json.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         // Apply syntax highlighting
         return json
           .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
@@ -986,7 +1009,7 @@ Overrides provider-level Extra Headers.
        * Format JSON string (pretty print)
        */
       function formatJSON(str) {
-        if (!str || !str.trim()) return '';
+        if (!str || !str.trim()) return "";
         try {
           return JSON.stringify(JSON.parse(str), null, 2);
         } catch {
@@ -998,7 +1021,7 @@ Overrides provider-level Extra Headers.
        * Minify JSON string
        */
       function minifyJSON(str) {
-        if (!str || !str.trim()) return '';
+        if (!str || !str.trim()) return "";
         try {
           return JSON.stringify(JSON.parse(str));
         } catch {
@@ -1013,10 +1036,10 @@ Overrides provider-level Extra Headers.
         const container = document.getElementById(containerId);
         const textarea = document.getElementById(textareaId);
         // Buttons are in the wrapper, find it first
-        const wrapper = container?.closest('.json-editor-wrapper');
-        const formatBtn = wrapper?.querySelector('.format-btn');
-        const minifyBtn = wrapper?.querySelector('.minify-btn');
-        const clearBtn = wrapper?.querySelector('.clear-btn');
+        const wrapper = container?.closest(".json-editor-wrapper");
+        const formatBtn = wrapper?.querySelector(".format-btn");
+        const minifyBtn = wrapper?.querySelector(".minify-btn");
+        const clearBtn = wrapper?.querySelector(".clear-btn");
 
         if (!container || !textarea) return;
 
@@ -1024,29 +1047,30 @@ Overrides provider-level Extra Headers.
         function validateContent() {
           const value = textarea.value;
           if (!value.trim()) {
-            container.classList.remove('error');
+            container.classList.remove("error");
             return;
           }
           const validation = validateJSON(value);
-          container.classList.toggle('error', !validation.valid);
+          container.classList.toggle("error", !validation.valid);
         }
 
         // Tab key support
-        textarea.addEventListener('keydown', (e) => {
-          if (e.key === 'Tab') {
+        textarea.addEventListener("keydown", (e) => {
+          if (e.key === "Tab") {
             e.preventDefault();
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
-            textarea.value = textarea.value.substring(0, start) + '  ' + textarea.value.substring(end);
+            textarea.value =
+              textarea.value.substring(0, start) + "  " + textarea.value.substring(end);
             textarea.selectionStart = textarea.selectionEnd = start + 2;
           }
         });
 
         // Validate on input
-        textarea.addEventListener('input', validateContent);
+        textarea.addEventListener("input", validateContent);
 
         // Format button
-        formatBtn?.addEventListener('click', () => {
+        formatBtn?.addEventListener("click", () => {
           const formatted = formatJSON(textarea.value);
           if (formatted) {
             textarea.value = formatted;
@@ -1056,7 +1080,7 @@ Overrides provider-level Extra Headers.
         });
 
         // Minify button
-        minifyBtn?.addEventListener('click', () => {
+        minifyBtn?.addEventListener("click", () => {
           const minified = minifyJSON(textarea.value);
           if (minified) {
             textarea.value = minified;
@@ -1066,8 +1090,8 @@ Overrides provider-level Extra Headers.
         });
 
         // Clear button
-        clearBtn?.addEventListener('click', () => {
-          textarea.value = '';
+        clearBtn?.addEventListener("click", () => {
+          textarea.value = "";
           validateContent();
           textarea.focus();
         });
@@ -1077,29 +1101,29 @@ Overrides provider-level Extra Headers.
       }
 
       // Initialize all JSON editors
-      initJsonEditor('p-extra-body-container', 'p-extra-body');
-      initJsonEditor('p-extra-header-container', 'p-extra-header');
-      initJsonEditor('m-extra-body-container', 'm-extra-body');
-      initJsonEditor('m-extra-header-container', 'm-extra-header');
+      initJsonEditor("p-extra-body-container", "p-extra-body");
+      initJsonEditor("p-extra-header-container", "p-extra-header");
+      initJsonEditor("m-extra-body-container", "m-extra-body");
+      initJsonEditor("m-extra-header-container", "m-extra-header");
 
       // Token formatter logic - use 1000 as K multiplier (not 1024)
       function formatToken(val) {
-        if (!val) return '';
+        if (!val) return "";
         const num = Number(val);
-        if (isNaN(num)) return '';
+        if (isNaN(num)) return "";
         if (num >= 1000) {
-          return num / 1000 + 'k';
+          return num / 1000 + "k";
         }
         return num.toString();
       }
 
-      window.addEventListener('message', (event) => {
+      window.addEventListener("message", (event) => {
         const message = event.data;
         switch (message.type) {
-          case 'update':
+          case "update":
             updateContent(message.item, message.mode);
             break;
-          case 'updateFields': {
+          case "updateFields": {
             const updates = message.payload;
             if (updates.maxInputTokens) mInput.value = updates.maxInputTokens;
             if (updates.maxOutputTokens) mOutput.value = updates.maxOutputTokens;
@@ -1121,54 +1145,54 @@ Overrides provider-level Extra Headers.
 
         const isCreate = !item?.data?.id;
 
-        if (item.type === 'provider') {
+        if (item.type === "provider") {
           show(providerForm);
           hide(modelForm);
           hide(btnVerify);
           pApiKeyTouched = false;
 
           const data = item.data;
-          pName.value = data.name || '';
-          pType.value = data.providerType || 'generic';
-          pEndpoint.value = data.apiEndpoint || '';
+          pName.value = data.name || "";
+          pType.value = data.providerType || "generic";
+          pEndpoint.value = data.apiEndpoint || "";
 
           // Show masked key in placeholder
           // Remove separate hint to keep UI clean and follow user preference for placeholder
-          const pKeyHint = document.getElementById('p-key-hint');
+          const pKeyHint = document.getElementById("p-key-hint");
           hide(pKeyHint);
 
           if (isCreate && data.apiKey) {
             pApiKey.value = data.apiKey;
           } else {
-            pApiKey.value = '';
+            pApiKey.value = "";
           }
 
           if (data.maskedApiKey) {
             pApiKey.placeholder = `Current: ${data.maskedApiKey}`;
           } else {
-            pApiKey.placeholder = 'Enter API key';
+            pApiKey.placeholder = "Enter API key";
           }
 
-          pDesc.value = data.description || '';
-          pWeb.value = data.website || '';
-          pExtraBody.value = data.extraBody || '';
-          pExtraHeader.value = data.extraHeader || '';
+          pDesc.value = data.description || "";
+          pWeb.value = data.website || "";
+          pExtraBody.value = data.extraBody || "";
+          pExtraHeader.value = data.extraHeader || "";
 
           // Update JSON editor previews after setting values
-          initJsonEditor('p-extra-body-container', 'p-extra-body');
-          initJsonEditor('p-extra-header-container', 'p-extra-header');
+          initJsonEditor("p-extra-body-container", "p-extra-body");
+          initJsonEditor("p-extra-header-container", "p-extra-header");
 
           // Load provider default options
           const providerOptions = data.options || {};
-          pTemperature.value = providerOptions.temperature ?? '';
-          pTopP.value = providerOptions.topP ?? '';
-          pMaxSteps.value = providerOptions.maxSteps ?? '';
-          pTopK.value = providerOptions.topK ?? '';
-          pStopSequences.value = providerOptions.stopSequences ?? '';
-          pPresencePenalty.value = providerOptions.presencePenalty ?? '';
-          pFrequencyPenalty.value = providerOptions.frequencyPenalty ?? '';
-          pSeed.value = providerOptions.seed ?? '';
-        } else if (item.type === 'model') {
+          pTemperature.value = providerOptions.temperature ?? "";
+          pTopP.value = providerOptions.topP ?? "";
+          pMaxSteps.value = providerOptions.maxSteps ?? "";
+          pTopK.value = providerOptions.topK ?? "";
+          pStopSequences.value = providerOptions.stopSequences ?? "";
+          pPresencePenalty.value = providerOptions.presencePenalty ?? "";
+          pFrequencyPenalty.value = providerOptions.frequencyPenalty ?? "";
+          pSeed.value = providerOptions.seed ?? "";
+        } else if (item.type === "model") {
           show(modelForm);
           hide(providerForm);
 
@@ -1178,10 +1202,10 @@ Overrides provider-level Extra Headers.
           // Handle batch mode UI
           // batchCount > 1 means batch edit (name/id not editable)
           // batchCount === 1 means single edit (name/id editable)
-          const batchIndicator = document.getElementById('batch-indicator');
-          const modelFormTitle = document.getElementById('model-form-title');
-          const mNameEl = document.getElementById('m-name');
-          const mIdEl = document.getElementById('m-id');
+          const batchIndicator = document.getElementById("batch-indicator");
+          const modelFormTitle = document.getElementById("model-form-title");
+          const mNameEl = document.getElementById("m-name");
+          const mIdEl = document.getElementById("m-id");
 
           if (batchCount > 1) {
             // Batch mode: disable name and ID, hide verify button
@@ -1189,8 +1213,8 @@ Overrides provider-level Extra Headers.
             show(batchIndicator);
             mNameEl.disabled = true;
             mIdEl.disabled = true;
-            if (mNameGroup) mNameGroup.classList.add('batch-disabled');
-            if (mIdGroup) mIdGroup.classList.add('batch-disabled');
+            if (mNameGroup) mNameGroup.classList.add("batch-disabled");
+            if (mIdGroup) mIdGroup.classList.add("batch-disabled");
             modelFormTitle.textContent = `Edit ${batchCount} Models`;
           } else {
             // Single edit mode (including when 1 item is passed via array)
@@ -1198,9 +1222,9 @@ Overrides provider-level Extra Headers.
             hide(batchIndicator);
             mNameEl.disabled = false;
             mIdEl.disabled = false;
-            if (mNameGroup) mNameGroup.classList.remove('batch-disabled');
-            if (mIdGroup) mIdGroup.classList.remove('batch-disabled');
-            modelFormTitle.textContent = 'Model Details';
+            if (mNameGroup) mNameGroup.classList.remove("batch-disabled");
+            if (mIdGroup) mIdGroup.classList.remove("batch-disabled");
+            modelFormTitle.textContent = "Model Details";
           }
 
           const data = item.data;
@@ -1210,9 +1234,9 @@ Overrides provider-level Extra Headers.
             mName.value = label;
             mId.value = label;
           } else {
-            mName.value = data.name || '';
+            mName.value = data.name || "";
             // Use rid (remote ID) for model ID field, not local id (UUID)
-            mId.value = data.rid || data.id || '';
+            mId.value = data.rid || data.id || "";
           }
           mInput.value = formatToken(data.maxInputTokens);
           mOutput.value = formatToken(data.maxOutputTokens);
@@ -1222,22 +1246,22 @@ Overrides provider-level Extra Headers.
           const hasToolCalling =
             data.capabilities &&
             (data.capabilities.toolCalling === true ||
-              typeof data.capabilities.toolCalling === 'number');
+              typeof data.capabilities.toolCalling === "number");
           mTools.checked = isCreate ? true : !!hasToolCalling;
 
           mThink.checked = !!(data.capabilities && data.capabilities.reasoning);
           mVision.checked = !!(data.capabilities && data.capabilities.vision);
 
-          mExtraBody.value = data.extraBody || '';
-          mExtraHeader.value = data.extraHeader || '';
+          mExtraBody.value = data.extraBody || "";
+          mExtraHeader.value = data.extraHeader || "";
 
           // Update JSON editor previews after setting values
-          initJsonEditor('m-extra-body-container', 'm-extra-body');
-          initJsonEditor('m-extra-header-container', 'm-extra-header');
+          initJsonEditor("m-extra-body-container", "m-extra-body");
+          initJsonEditor("m-extra-header-container", "m-extra-header");
 
           // Set placeholders to show parent provider's global values (if model doesn't have value)
-          const parentExtraBody = data.parentExtraBody || '';
-          const parentExtraHeader = data.parentExtraHeader || '';
+          const parentExtraBody = data.parentExtraBody || "";
+          const parentExtraHeader = data.parentExtraHeader || "";
           if (!mExtraBody.value && parentExtraBody) {
             mExtraBody.placeholder = parentExtraBody;
           }
@@ -1251,51 +1275,51 @@ Overrides provider-level Extra Headers.
           const parentProviderOptions = data.parentProviderOptions || {};
 
           // Set placeholders to show parent provider's global options (if model doesn't have value)
-          mTemperature.placeholder = parentProviderOptions.temperature ?? '0.7';
-          mTopP.placeholder = parentProviderOptions.topP ?? '0.9';
-          mTopK.placeholder = parentProviderOptions.topK ?? '40';
-          mMaxSteps.placeholder = parentProviderOptions.maxSteps ?? '100';
+          mTemperature.placeholder = parentProviderOptions.temperature ?? "0.7";
+          mTopP.placeholder = parentProviderOptions.topP ?? "0.9";
+          mTopK.placeholder = parentProviderOptions.topK ?? "40";
+          mMaxSteps.placeholder = parentProviderOptions.maxSteps ?? "100";
           mStopSequences.placeholder = parentProviderOptions.stopSequences
-            ? parentProviderOptions.stopSequences.join(', ')
-            : 'USER:, END';
-          mPresencePenalty.placeholder = parentProviderOptions.presencePenalty ?? '0';
-          mFrequencyPenalty.placeholder = parentProviderOptions.frequencyPenalty ?? '0';
-          mSeed.placeholder = parentProviderOptions.seed ?? '42';
+            ? parentProviderOptions.stopSequences.join(", ")
+            : "USER:, END";
+          mPresencePenalty.placeholder = parentProviderOptions.presencePenalty ?? "0";
+          mFrequencyPenalty.placeholder = parentProviderOptions.frequencyPenalty ?? "0";
+          mSeed.placeholder = parentProviderOptions.seed ?? "42";
 
           // Set actual values
-          mTemperature.value = modelOptions.temperature ?? '';
-          mTopP.value = modelOptions.topP ?? '';
-          mTopK.value = modelOptions.topK ?? '';
-          mMaxSteps.value = modelOptions.maxSteps ?? '';
+          mTemperature.value = modelOptions.temperature ?? "";
+          mTopP.value = modelOptions.topP ?? "";
+          mTopK.value = modelOptions.topK ?? "";
+          mMaxSteps.value = modelOptions.maxSteps ?? "";
           mStopSequences.value = modelOptions.stopSequences
-            ? modelOptions.stopSequences.join(', ')
-            : '';
-          mPresencePenalty.value = modelOptions.presencePenalty ?? '';
-          mFrequencyPenalty.value = modelOptions.frequencyPenalty ?? '';
-          mSeed.value = modelOptions.seed ?? '';
+            ? modelOptions.stopSequences.join(", ")
+            : "";
+          mPresencePenalty.value = modelOptions.presencePenalty ?? "";
+          mFrequencyPenalty.value = modelOptions.frequencyPenalty ?? "";
+          mSeed.value = modelOptions.seed ?? "";
         }
       }
 
-      pApiKey.addEventListener('input', () => {
+      pApiKey.addEventListener("input", () => {
         pApiKeyTouched = true;
       });
 
       function show(el) {
-        el.classList.remove('hidden');
+        el.classList.remove("hidden");
       }
       function hide(el) {
-        el.classList.add('hidden');
+        el.classList.add("hidden");
       }
 
-      btnSave.addEventListener('click', () => {
-        console.log('Save button clicked');
-        console.log('providerForm hidden:', providerForm.classList.contains('hidden'));
-        console.log('modelForm hidden:', modelForm.classList.contains('hidden'));
-        
-        if (!providerForm.classList.contains('hidden')) {
-          console.log('Saving provider...');
+      btnSave.addEventListener("click", () => {
+        console.log("Save button clicked");
+        console.log("providerForm hidden:", providerForm.classList.contains("hidden"));
+        console.log("modelForm hidden:", modelForm.classList.contains("hidden"));
+
+        if (!providerForm.classList.contains("hidden")) {
+          console.log("Saving provider...");
           vscode.postMessage({
-            type: 'saveProvider',
+            type: "saveProvider",
             payload: {
               name: pName.value,
               providerType: pType.value,
@@ -1313,7 +1337,7 @@ Overrides provider-level Extra Headers.
                 topK: pTopK.value ? parseInt(pTopK.value) : undefined,
                 stopSequences: pStopSequences.value
                   ? pStopSequences.value
-                      .split(',')
+                      .split(",")
                       .map((s) => s.trim())
                       .filter((s) => s)
                   : undefined,
@@ -1327,21 +1351,21 @@ Overrides provider-level Extra Headers.
               },
             },
           });
-        } else if (!modelForm.classList.contains('hidden')) {
-          console.log('Saving model...');
-          const mNameEl = document.getElementById('m-name');
-          const mIdEl = document.getElementById('m-id');
+        } else if (!modelForm.classList.contains("hidden")) {
+          console.log("Saving model...");
+          const mNameEl = document.getElementById("m-name");
+          const mIdEl = document.getElementById("m-id");
           const isBatchMode = mNameEl.disabled && mIdEl.disabled;
 
-          console.log('model payload:', {
+          console.log("model payload:", {
             name: mName.value,
             id: mId.value,
             maxInputTokens: mInput.value,
-            maxOutputTokens: mOutput.value
+            maxOutputTokens: mOutput.value,
           });
 
           vscode.postMessage({
-            type: 'saveModel',
+            type: "saveModel",
             payload: {
               name: mName.value,
               rid: mId.value,
@@ -1361,7 +1385,7 @@ Overrides provider-level Extra Headers.
                 maxSteps: mMaxSteps.value ? parseInt(mMaxSteps.value) : undefined,
                 stopSequences: mStopSequences.value
                   ? mStopSequences.value
-                      .split(',')
+                      .split(",")
                       .map((s) => s.trim())
                       .filter((s) => s)
                   : undefined,
@@ -1378,13 +1402,13 @@ Overrides provider-level Extra Headers.
         }
       });
 
-      btnCancel.addEventListener('click', () => {
-        vscode.postMessage({ type: 'cancel' });
+      btnCancel.addEventListener("click", () => {
+        vscode.postMessage({ type: "cancel" });
       });
 
-      btnVerify.addEventListener('click', () => {
+      btnVerify.addEventListener("click", () => {
         vscode.postMessage({
-          type: 'verifyModel',
+          type: "verifyModel",
           payload: {
             id: mId.value,
           },

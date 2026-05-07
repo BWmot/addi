@@ -40,8 +40,7 @@ export function normalizeCapabilities(
 
   const toolSource = candidate.toolCalling ?? base.toolCalling;
   if (toolSource !== undefined) {
-    normalized.toolCalling =
-      typeof toolSource === "number" ? toolSource : Boolean(toolSource);
+    normalized.toolCalling = typeof toolSource === "number" ? toolSource : Boolean(toolSource);
   }
 
   return normalized;
@@ -67,16 +66,12 @@ export function normalizeProvidersInPlace(
 
   for (const provider of providers) {
     // Migrate provider ID to UUID if it's a legacy format (e.g., timestamp-based or numeric string)
-    const providerIdCandidate =
-      typeof provider.id === "string" ? provider.id.trim() : "";
-    const isUuidFormat =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        providerIdCandidate,
-      );
+    const providerIdCandidate = typeof provider.id === "string" ? provider.id.trim() : "";
+    const isUuidFormat = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      providerIdCandidate,
+    );
     const isLegacyNumericId =
-      providerIdCandidate &&
-      !isUuidFormat &&
-      /^[0-9]+$/.test(providerIdCandidate);
+      providerIdCandidate && !isUuidFormat && /^[0-9]+$/.test(providerIdCandidate);
 
     if (!providerIdCandidate || isLegacyNumericId) {
       // Store the old API key (if any) before changing the ID
@@ -152,10 +147,7 @@ export function normalizeProvidersInPlace(
     }
 
     if (!Array.isArray(provider.models)) {
-      logger.warn(
-        "Provider models array invalid, resetting",
-        logger.sanitizeProvider(provider),
-      );
+      logger.warn("Provider models array invalid, resetting", logger.sanitizeProvider(provider));
       provider.models = [];
       mutated = true;
       critical = true; // Data loss/reset is critical
@@ -164,9 +156,7 @@ export function normalizeProvidersInPlace(
 
     // Filter out invalid entries that may be present in persisted state
     const initialLength = provider.models.length;
-    provider.models = provider.models.filter(
-      (m) => m && typeof m === "object",
-    );
+    provider.models = provider.models.filter((m) => m && typeof m === "object");
     if (provider.models.length !== initialLength) {
       mutated = true;
       critical = true; // Deletion is critical
@@ -179,32 +169,22 @@ export function normalizeProvidersInPlace(
 
       // Ensure token defaults exist for older or malformed saved models
       if (typeof mutableModel["maxInputTokens"] !== "number") {
-        mutableModel["maxInputTokens"] =
-          ConfigManager.getDefaultMaxInputTokens();
+        mutableModel["maxInputTokens"] = ConfigManager.getDefaultMaxInputTokens();
         changed = true;
       }
       if (typeof mutableModel["maxOutputTokens"] !== "number") {
-        mutableModel["maxOutputTokens"] =
-          ConfigManager.getDefaultMaxOutputTokens();
+        mutableModel["maxOutputTokens"] = ConfigManager.getDefaultMaxOutputTokens();
         changed = true;
       }
-      if (
-        !mutableModel["capabilities"] ||
-        typeof mutableModel["capabilities"] !== "object"
-      ) {
+      if (!mutableModel["capabilities"] || typeof mutableModel["capabilities"] !== "object") {
         mutableModel["capabilities"] = {} as Record<string, unknown>;
         changed = true;
       }
 
-      const capabilitiesRecord = mutableModel["capabilities"] as Record<
-        string,
-        unknown
-      >;
+      const capabilitiesRecord = mutableModel["capabilities"] as Record<string, unknown>;
 
       // Migrate legacy imageInput → vision
-      if (
-        capabilitiesRecord["vision"] === undefined
-      ) {
+      if (capabilitiesRecord["vision"] === undefined) {
         // Check for legacy imageInput in capabilities or at model root
         if (typeof capabilitiesRecord["imageInput"] === "boolean") {
           (capabilitiesRecord as Record<string, unknown>)["vision"] =
@@ -212,8 +192,7 @@ export function normalizeProvidersInPlace(
           delete capabilitiesRecord["imageInput"];
           changed = true;
         } else if (typeof mutableModel["imageInput"] === "boolean") {
-          (capabilitiesRecord as Record<string, unknown>)["vision"] =
-            mutableModel["imageInput"];
+          (capabilitiesRecord as Record<string, unknown>)["vision"] = mutableModel["imageInput"];
           changed = true;
         }
       }
@@ -240,9 +219,7 @@ export function normalizeProvidersInPlace(
       ) {
         const legacyToolCalling = mutableModel["toolCalling"];
         (capabilitiesRecord as Record<string, unknown>)["toolCalling"] =
-          typeof legacyToolCalling === "number"
-            ? legacyToolCalling
-            : Boolean(legacyToolCalling);
+          typeof legacyToolCalling === "number" ? legacyToolCalling : Boolean(legacyToolCalling);
         changed = true;
       }
 
@@ -266,18 +243,12 @@ export function normalizeProvidersInPlace(
         changed = true;
       }
 
-      if (
-        mutableModel["tooltip"] !== undefined &&
-        typeof mutableModel["tooltip"] !== "string"
-      ) {
+      if (mutableModel["tooltip"] !== undefined && typeof mutableModel["tooltip"] !== "string") {
         delete mutableModel["tooltip"];
         changed = true;
       }
 
-      if (
-        mutableModel["detail"] !== undefined &&
-        typeof mutableModel["detail"] !== "string"
-      ) {
+      if (mutableModel["detail"] !== undefined && typeof mutableModel["detail"] !== "string") {
         delete mutableModel["detail"];
         changed = true;
       }
@@ -298,9 +269,7 @@ export function normalizeProvidersInPlace(
         changed = true;
       }
 
-      const normalizedCaps = normalizeCapabilities(
-        capabilitiesRecord as Model["capabilities"],
-      );
+      const normalizedCaps = normalizeCapabilities(capabilitiesRecord as Model["capabilities"]);
       if (
         normalizedCaps.vision !== capabilitiesRecord["vision"] ||
         normalizedCaps.toolCalling !== capabilitiesRecord["toolCalling"]
@@ -310,10 +279,7 @@ export function normalizeProvidersInPlace(
       mutableModel["capabilities"] = normalizedCaps;
 
       // id: 本地生成的唯一标识
-      const idCandidate =
-        typeof mutableModel["id"] === "string"
-          ? mutableModel["id"].trim()
-          : "";
+      const idCandidate = typeof mutableModel["id"] === "string" ? mutableModel["id"].trim() : "";
       if (!idCandidate) {
         mutableModel["id"] = IdGenerator.generate();
         changed = true;
@@ -321,10 +287,7 @@ export function normalizeProvidersInPlace(
       }
 
       // rid: remoteId - 远程模型的ID
-      const ridRaw =
-        typeof mutableModel["rid"] === "string"
-          ? mutableModel["rid"].trim()
-          : "";
+      const ridRaw = typeof mutableModel["rid"] === "string" ? mutableModel["rid"].trim() : "";
 
       if (!ridRaw) {
         // 如果没有 rid，则使用 id 作为 rid
@@ -338,9 +301,7 @@ export function normalizeProvidersInPlace(
 
       // family: 模型系列/家族名称 (必须存在，非用户可编辑字段)
       const familyRaw =
-        typeof mutableModel["family"] === "string"
-          ? mutableModel["family"].trim()
-          : "";
+        typeof mutableModel["family"] === "string" ? mutableModel["family"].trim() : "";
       if (!familyRaw) {
         // 如果没有 family，则使用配置项默认值
         mutableModel["family"] = ConfigManager.getDefaultModelFamily().trim();
@@ -353,13 +314,10 @@ export function normalizeProvidersInPlace(
 
       // version: 模型版本标识 (必须存在，非用户可编辑字段)
       const versionRaw =
-        typeof mutableModel["version"] === "string"
-          ? mutableModel["version"].trim()
-          : "";
+        typeof mutableModel["version"] === "string" ? mutableModel["version"].trim() : "";
       if (!versionRaw) {
         // 如果没有 version，则使用配置项默认值
-        mutableModel["version"] =
-          ConfigManager.getDefaultModelVersion().trim();
+        mutableModel["version"] = ConfigManager.getDefaultModelVersion().trim();
         changed = true;
         modelCritical = true;
       } else if (versionRaw !== mutableModel["version"]) {

@@ -41,12 +41,8 @@ export class ModelTreeItem extends vscode.TreeItem {
     if (supportsTools) {
       capabilityHints.push(`tools`);
     }
-    const inputTokensDetail = TokenFormatter.formatDetailed(
-      model.maxInputTokens,
-    );
-    const outputTokensDetail = TokenFormatter.formatDetailed(
-      model.maxOutputTokens,
-    );
+    const inputTokensDetail = TokenFormatter.formatDetailed(model.maxInputTokens);
+    const outputTokensDetail = TokenFormatter.formatDetailed(model.maxOutputTokens);
     let tooltip = `name: ${model.name}\nvendor: ${vendor}\nid: ${model.id}\nrid: ${model.rid}\nfamily: ${model.family}\nversion: ${model.version}\ninput: ${inputTokensDetail}\noutput: ${outputTokensDetail}`;
     if (model.averageSpeed) {
       tooltip += `\nspeed: ${model.averageSpeed.toFixed(1)} t/s`;
@@ -60,10 +56,7 @@ export class ModelTreeItem extends vscode.TreeItem {
     this.tooltip = tooltip;
     const inputSummary = TokenFormatter.format(model.maxInputTokens);
     const outputSummary = TokenFormatter.format(model.maxOutputTokens);
-    let desc =
-      inputSummary && outputSummary
-        ? ` · ${inputSummary}↑/${outputSummary}↓`
-        : "";
+    let desc = inputSummary && outputSummary ? ` · ${inputSummary}↑/${outputSummary}↓` : "";
     if (model.averageSpeed) {
       desc += ` · ${model.averageSpeed.toFixed(0)}/s`;
     }

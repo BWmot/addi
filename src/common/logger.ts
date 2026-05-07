@@ -1,8 +1,6 @@
 import * as vscode from "vscode";
 
-export function maskSecret(
-  value: string | undefined | null,
-): string | undefined {
+export function maskSecret(value: string | undefined | null): string | undefined {
   if (!value) {
     return value ?? undefined;
   }

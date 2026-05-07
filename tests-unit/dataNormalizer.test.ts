@@ -43,26 +43,17 @@ describe("normalizeCapabilities", () => {
     });
 
     it("should prefer source vision over fallback", () => {
-      const result = normalizeCapabilities(
-        { vision: true },
-        { vision: false },
-      );
+      const result = normalizeCapabilities({ vision: true }, { vision: false });
       assert.strictEqual(result.vision, true);
     });
 
     it("should coerce falsy values to boolean false", () => {
-      const result = normalizeCapabilities(
-        { vision: 0 as unknown as boolean },
-        undefined,
-      );
+      const result = normalizeCapabilities({ vision: 0 as unknown as boolean }, undefined);
       assert.strictEqual(result.vision, false);
     });
 
     it("should coerce truthy values to boolean true", () => {
-      const result = normalizeCapabilities(
-        { vision: 1 as unknown as boolean },
-        undefined,
-      );
+      const result = normalizeCapabilities({ vision: 1 as unknown as boolean }, undefined);
       assert.strictEqual(result.vision, true);
     });
   });
@@ -84,10 +75,7 @@ describe("normalizeCapabilities", () => {
     });
 
     it("should prefer source toolCalling over fallback", () => {
-      const result = normalizeCapabilities(
-        { toolCalling: 3 },
-        { toolCalling: true },
-      );
+      const result = normalizeCapabilities({ toolCalling: 3 }, { toolCalling: true });
       assert.strictEqual(result.toolCalling, 3);
     });
 
@@ -105,10 +93,7 @@ describe("normalizeCapabilities", () => {
 
   describe("combined capabilities", () => {
     it("should merge vision from source and toolCalling from fallback", () => {
-      const result = normalizeCapabilities(
-        { vision: true },
-        { toolCalling: 7 },
-      );
+      const result = normalizeCapabilities({ vision: true }, { toolCalling: 7 });
       assert.strictEqual(result.vision, true);
       assert.strictEqual(result.toolCalling, 7);
     });
@@ -148,25 +133,25 @@ describe("normalizeProvidersInPlace", () => {
    */
   function makeRawProvider(overrides: Record<string, unknown> = {}): Provider {
     return {
-      id: overrides.id as string ?? "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-      name: overrides.name as string ?? "Test Provider",
-      providerType: overrides.providerType as any ?? "openai-completions",
-      apiEndpoint: overrides.apiEndpoint as string ?? "https://api.openai.com/v1",
-      models: overrides.models as any ?? [],
+      id: (overrides.id as string) ?? "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      name: (overrides.name as string) ?? "Test Provider",
+      providerType: (overrides.providerType as any) ?? "openai-completions",
+      apiEndpoint: (overrides.apiEndpoint as string) ?? "https://api.openai.com/v1",
+      models: (overrides.models as any) ?? [],
       ...overrides,
     } as Provider;
   }
 
   function makeRawModel(overrides: Record<string, unknown> = {}): Model {
     return {
-      id: overrides.id as string ?? "model-id-001",
-      rid: overrides.rid as string ?? "gpt-4",
-      name: overrides.name as string ?? "GPT-4",
-      family: overrides.family as string ?? "gpt",
-      version: overrides.version as string ?? "1.0",
-      maxInputTokens: overrides.maxInputTokens as number ?? 128000,
-      maxOutputTokens: overrides.maxOutputTokens as number ?? 32000,
-      capabilities: overrides.capabilities as any ?? {},
+      id: (overrides.id as string) ?? "model-id-001",
+      rid: (overrides.rid as string) ?? "gpt-4",
+      name: (overrides.name as string) ?? "GPT-4",
+      family: (overrides.family as string) ?? "gpt",
+      version: (overrides.version as string) ?? "1.0",
+      maxInputTokens: (overrides.maxInputTokens as number) ?? 128000,
+      maxOutputTokens: (overrides.maxOutputTokens as number) ?? 32000,
+      capabilities: (overrides.capabilities as any) ?? {},
       ...overrides,
     } as Model;
   }
@@ -178,12 +163,8 @@ describe("normalizeProvidersInPlace", () => {
       assert.ok(result.mutated, "Should be mutated");
       assert.ok(result.critical, "Should be critical");
       // New ID should be a UUID v4
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      assert.ok(
-        uuidRegex.test(provider.id),
-        `New ID "${provider.id}" should be UUID format`,
-      );
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      assert.ok(uuidRegex.test(provider.id), `New ID "${provider.id}" should be UUID format`);
     });
 
     it("should migrate empty ID to UUID", () => {
@@ -191,8 +172,7 @@ describe("normalizeProvidersInPlace", () => {
       const result = normalizeProvidersInPlace([provider as any]);
       assert.ok(result.mutated);
       assert.ok(result.critical);
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       assert.ok(uuidRegex.test(provider.id));
     });
 
@@ -248,8 +228,7 @@ describe("normalizeProvidersInPlace", () => {
       const result = normalizeProvidersInPlace([provider as any]);
       assert.ok(result.critical);
       assert.ok(provider.models[0].id, "Should have generated an ID");
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       assert.ok(uuidRegex.test(provider.models[0].id));
     });
 
@@ -257,10 +236,7 @@ describe("normalizeProvidersInPlace", () => {
       const model = makeRawModel({ rid: "" });
       const provider = makeRawProvider({ models: [model] });
       normalizeProvidersInPlace([provider as any]);
-      assert.ok(
-        provider.models[0].rid,
-        "rid should be set (fallback to id or generated)",
-      );
+      assert.ok(provider.models[0].rid, "rid should be set (fallback to id or generated)");
     });
 
     it("should set default family when missing", () => {
@@ -293,10 +269,7 @@ describe("normalizeProvidersInPlace", () => {
       const provider = makeRawProvider({ models: [model] });
       normalizeProvidersInPlace([provider as any]);
       // After normalization, legacy imageInput should be migrated to vision in capabilities
-      assert.strictEqual(
-        provider.models[0].capabilities.vision,
-        true,
-      );
+      assert.strictEqual(provider.models[0].capabilities.vision, true);
       assert.strictEqual(
         (provider.models[0] as any).imageInput,
         undefined,
@@ -430,10 +403,7 @@ describe("normalizeProvidersInPlace", () => {
       (model as any).tooltip = "This is a tooltip";
       const provider = makeRawProvider({ models: [model] });
       normalizeProvidersInPlace([provider as any]);
-      assert.strictEqual(
-        (provider.models[0] as any).tooltip,
-        "This is a tooltip",
-      );
+      assert.strictEqual((provider.models[0] as any).tooltip, "This is a tooltip");
     });
   });
 });

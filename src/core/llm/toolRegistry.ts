@@ -16,9 +16,7 @@ export class ToolRegistry {
   private static hostTools = new Map<string, ToolMetadata>();
   private static fallbackTools: Map<string, ToolMetadata> | null = null;
 
-  static captureHostTools(
-    tools: ReadonlyArray<vscode.LanguageModelChatTool> | undefined,
-  ): void {
+  static captureHostTools(tools: ReadonlyArray<vscode.LanguageModelChatTool> | undefined): void {
     ToolRegistry.hostTools.clear();
     if (!tools || tools.length === 0) {
       return;
@@ -52,9 +50,7 @@ export class ToolRegistry {
       return directHost;
     }
     const fallback = ToolRegistry.ensureFallbackTools();
-    return (
-      fallback.get(trimmed) ?? ToolRegistry.lookupByName(fallback, trimmed)
-    );
+    return fallback.get(trimmed) ?? ToolRegistry.lookupByName(fallback, trimmed);
   }
 
   static resetForTests(): void {
@@ -62,9 +58,7 @@ export class ToolRegistry {
     ToolRegistry.fallbackTools = null;
   }
 
-  static setFallbackToolsForTests(
-    tools: ReadonlyArray<Record<string, unknown>>,
-  ): void {
+  static setFallbackToolsForTests(tools: ReadonlyArray<Record<string, unknown>>): void {
     const map = new Map<string, ToolMetadata>();
     for (const raw of tools) {
       const metadata = ToolRegistry.normalizeTool(raw, "fallback");
@@ -138,12 +132,8 @@ export class ToolRegistry {
         return undefined;
       }
       const rawName = record["name"];
-      name =
-        typeof rawName === "string" && rawName.trim().length > 0
-          ? rawName.trim()
-          : id;
-      const descValue =
-        record["description"] ?? record["detail"] ?? record["summary"];
+      name = typeof rawName === "string" && rawName.trim().length > 0 ? rawName.trim() : id;
+      const descValue = record["description"] ?? record["detail"] ?? record["summary"];
       description = typeof descValue === "string" ? descValue : undefined;
       parameters = ToolRegistry.normalizeParameters(
         record["parameters"] ?? record["inputSchema"] ?? record["schema"],
@@ -165,9 +155,7 @@ export class ToolRegistry {
     return metadata;
   }
 
-  private static extractIdentifier(
-    raw: Record<string, unknown>,
-  ): string | undefined {
+  private static extractIdentifier(raw: Record<string, unknown>): string | undefined {
     const keys = ["id", "identifier", "name"];
     for (const key of keys) {
       const value = raw[key];
@@ -193,9 +181,7 @@ export class ToolRegistry {
     };
   }
 
-  private static toDefinition(
-    tool: ToolMetadata,
-  ): vscode.LanguageModelChatTool {
+  private static toDefinition(tool: ToolMetadata): vscode.LanguageModelChatTool {
     return {
       name: tool.name,
       description: tool.description ?? "",

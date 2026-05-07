@@ -37,11 +37,11 @@ All notable changes to the "addi" extension will be documented in this file.
 
 ### Change
 
- - **fix createModel()** fix a bug extension using `id` (addi uuid) but not `rid` (remote model id) in request. the correct way is use `id` for local storage and UI, but use `rid` for any API request. the `findModel()` function will return both `id` and `rid` in the model object now, so make sure to use the correct field in the right place.
+- **fix createModel()** fix a bug extension using `id` (addi uuid) but not `rid` (remote model id) in request. the correct way is use `id` for local storage and UI, but use `rid` for any API request. the `findModel()` function will return both `id` and `rid` in the model object now, so make sure to use the correct field in the right place.
 
 ### Misc
 
- - **update deps & add some documents** for next minor version dev and refactor do some documents and vibe coding plan.
+- **update deps & add some documents** for next minor version dev and refactor do some documents and vibe coding plan.
 
 ## [1.0.3] - 2026-04-22
 

@@ -48,6 +48,7 @@
 **文件**: `src/core/providers/ProviderModelManager.ts` (~350+ 行)
 
 **问题**: 该类承担了至少 5 种职责：
+
 1. **Provider/Model CRUD** — `getProviders()`, `saveProviders()`, `deleteProvider()`, `deleteModels()`
 2. **数据迁移** — `normalizeProvidersInPlace()` (~200 行遗留迁移逻辑)
 3. **备份/恢复** — `createBackup()`, `restoreBackup()`, `listBackups()`, `deleteBackup()`, `clearAllBackups()`
@@ -58,11 +59,13 @@
 **违反原则**: 单一职责原则 (SRP)
 
 **影响**:
+
 - 难以独立测试单个职责
 - 修改迁移逻辑可能影响备份/恢复功能
 - 新增 Provider 操作需要修改此类
 
 **建议**:
+
 ```
 当前: ProviderModelManager (上帝对象)
 建议拆分为:
@@ -83,6 +86,7 @@
 **文件**: `src/core/providers/AddiChatProvider.ts`
 
 **问题**: 该文件包含两个毫不相关的类：
+
 1. `ModelTreeItem` — VS Code `TreeItem` 子类，纯 UI 组件
 2. `AddiChatProvider` — Chat Participant 实现
 
@@ -91,10 +95,12 @@
 **违反原则**: 分层架构 — `core/` 不应依赖 `vscode.TreeItem`
 
 **影响**:
+
 - 核心业务层引入了 UI 依赖
 - 循环依赖风险：`presentation` → `core`（ModelTreeItem）→ `presentation`（vscode）
 
 **建议**:
+
 ```
 将 ModelTreeItem 移至:
 src/presentation/views/treeItems.ts   # 与 ProviderTreeItem 合并
@@ -109,6 +115,7 @@ src/presentation/views/treeItems.ts   # 与 ProviderTreeItem 合并
 **文件**: `src/domain/`
 
 **问题**:
+
 - `domain/events/DomainEvents.ts` 定义了事件类型
 - `domain/events/EventBus.ts` 实现了事件总线
 - **但项目中没有任何代码 import 或使用它们** — 100% 死代码
@@ -117,6 +124,7 @@ src/presentation/views/treeItems.ts   # 与 ProviderTreeItem 合并
 **影响**: 增加概念复杂度，新人学习成本高，但无实际收益
 
 **建议**:
+
 - **短期**: 删除 `domain/events/`（DomainEvents + EventBus）
 - **决策点**: 是否真正需要 DDD 事件驱动？如需要，应让 Provider/Model 变更通过 EventBus 通知 UI；如不需要，保持当前的 `EventEmitter` 模式即可
 
@@ -129,6 +137,7 @@ src/presentation/views/treeItems.ts   # 与 ProviderTreeItem 合并
 **文件**: `src/core/llm/aiRegistry.ts`
 
 **问题**:
+
 ```typescript
 export class AIProviderRegistry {
   private static factories: Record<string, ProviderFactory> = {};
@@ -141,11 +150,13 @@ export class AIProviderRegistry {
 ```
 
 所有状态和方法均为 `static`，模块级单例：
+
 - 无法在测试中 mock 或替换单个 provider factory
 - `ensureInitialized()` 在每次调用 `getFactory()` 时执行（虽然有 guard），但逻辑耦合在静态初始化中
 - 工厂创建的 `settings: any` 没有类型约束
 
 **建议**:
+
 ```typescript
 // 方案 1: 实例化 + DI
 export class AIProviderRegistry {
@@ -190,6 +201,7 @@ export class ConfigUseCases {
 ### A6. 事件通知机制不统一
 
 **问题**: 项目中存在两套事件通知机制：
+
 1. `domain/events/EventBus` — 未使用
 2. `vscode.EventEmitter` — 在 `StorageService`、`ProviderModelManager`、`AddiChatProvider` 中使用
 
@@ -217,11 +229,13 @@ export class ConfigUseCases {
 | `storageService.ts`       | `(provider as any).apiKey`                    | Provider 类型已有 `apiKey?`           |
 
 **根本原因**:
+
 1. `Provider` 类型定义已有 `apiKey?: string` 字段，但使用时被 `as any` 绕过
 2. `ProviderRepository` 接口缺少 `updateModelSpeed` 方法
 3. VS Code proposed API 类型定义不完整
 
 **建议**:
+
 - 检查 `Provider` 类型是否正确导出 `apiKey` 字段（已确认有）
 - 扩展 `ProviderRepository` 接口添加 `updateModelSpeed`
 - 为 AI SDK settings 定义类型
@@ -243,6 +257,7 @@ static validateName(name: string): string | null {
 **问题**: `null` = 有效, `string` = 错误信息 — 这是反直觉的。阅读调用代码时需要做心理反转：`if (error)` 才是验证失败。
 
 **建议**:
+
 ```typescript
 // 方案 1: 重命名方法名以反映语义
 static getValidationError(name: string): string | null { ... }
@@ -273,6 +288,7 @@ static assertValidName(name: string): void {
 **问题**: 如果用户输入空字符串，命令层取消；如果程序调用 `setApiKey("")`，存储层静默忽略（不删除旧 key）。
 
 **建议**: 统一语义：
+
 - 空字符串 = 无效输入，应抛出错误或返回错误
 - 删除 key = 调用 `deleteApiKey()`
 
@@ -296,6 +312,7 @@ private getChannel(): vscode.LogOutputChannel {
 **问题**: `initialize()` 将 channel 添加到 `context.subscriptions` 以确保释放。但 `getChannel()` 在未初始化时也会创建 channel，**这个 channel 不会被添加到 subscriptions**，导致资源泄漏。
 
 **建议**:
+
 ```typescript
 private getChannel(): vscode.LogOutputChannel {
   if (!this.channel) {
@@ -328,6 +345,7 @@ static generate(): string {
 **问题**: `crypto.randomUUID()` 在 Node.js 16+ (VS Code 1.60+) 中始终可用。fallback 是死代码，且 `Date.now + Math.random` 有碰撞风险。
 
 **建议**: 移除 fallback：
+
 ```typescript
 import { randomUUID } from "crypto";
 export class IdGenerator {
@@ -348,7 +366,7 @@ export class IdGenerator {
 ```typescript
 // 第 28 行
 if (apiKey) {
-  (provider as any).apiKey = apiKey;  // ← 不需要 as any
+  (provider as any).apiKey = apiKey; // ← 不需要 as any
 }
 
 // 第 67 行
@@ -376,6 +394,7 @@ private static readonly VISION_TEST_IMAGE = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAQE
 **问题**: Base64 字符串硬编码在类中，影响可读性和代码审查。图片数据与业务逻辑耦合。
 
 **建议**: 提取为常量文件或资源文件：
+
 ```typescript
 // src/core/llm/testResources.ts
 export const TEST_IMAGE_BASE64 = "iVBORw0KGgo...";
@@ -390,16 +409,21 @@ export const TEST_IMAGE_BASE64 = "iVBORw0KGgo...";
 **文件**: `src/presentation/extension.ts`
 
 以下命令共享相同的多选展开模式：
+
 - `editModels`, `deleteModels`, `editModelsInBatch`
 - `showModelsInPicker`, `hideModelsFromPicker`
 
 ```typescript
 // 重复出现的模式
 const items = Array.isArray(arg) ? arg : [arg];
-if (items.length === 0) { UserFeedback.showWarning("..."); return; }
+if (items.length === 0) {
+  UserFeedback.showWarning("...");
+  return;
+}
 ```
 
 **建议**: 提取工具函数：
+
 ```typescript
 // src/presentation/commands/utils.ts
 export function normalizeTreeItems<T>(arg: T | T[]): T[] {
@@ -421,12 +445,13 @@ const providedTools = (options as any)?.tools as vscode.LanguageModelChatTool[] 
 tools[tool.name] = {
   description: tool.description,
   inputSchema: jsonSchema(schema),
-} as any;  // ← 第二个 as any
+} as any; // ← 第二个 as any
 ```
 
 **问题**: `ProvideLanguageModelChatResponseOptions` 类型中 `tools` 字段可能不在当前类型定义中（proposed API），但使用 `as any` 掩盖了类型不匹配。
 
 **建议**: 扩展类型定义或使用类型守卫。可以为 options 定义扩展接口：
+
 ```typescript
 interface ExtendedLMOptions extends vscode.ProvideLanguageModelChatResponseOptions {
   tools?: vscode.LanguageModelChatTool[];
@@ -452,6 +477,7 @@ if ("updateModelSpeed" in this.repository) {
 **问题**: 运行时检查接口方法存在性 + `as any` 断言，绕过类型系统。这是典型的鸭子类型滥用。
 
 **建议**: 扩展 `ProviderRepository` 接口：
+
 ```typescript
 export interface ProviderRepository {
   // ...existing methods...
@@ -493,9 +519,19 @@ private _viewState: {
 ```
 
 **建议**: 定义具体类型：
+
 ```typescript
-interface ProviderPrefillData { name?: string; apiEndpoint?: string; providerType?: ProviderType; }
-interface ModelPrefillData { family?: string; version?: string; maxInputTokens?: number; maxOutputTokens?: number; }
+interface ProviderPrefillData {
+  name?: string;
+  apiEndpoint?: string;
+  providerType?: ProviderType;
+}
+interface ModelPrefillData {
+  family?: string;
+  version?: string;
+  maxInputTokens?: number;
+  maxOutputTokens?: number;
+}
 type PrefillData = ProviderPrefillData | ModelPrefillData;
 ```
 
@@ -533,6 +569,7 @@ static parse(data: any, fileName: string, source: string): CustomTool | null
 **问题**: `data` 为 `any`，所有字段访问无类型检查，运行时出错无法在编译期发现。
 
 **建议**: 定义输入类型：
+
 ```typescript
 interface ToolDefinitionInput {
   name?: string;
@@ -552,6 +589,7 @@ interface ToolDefinitionInput {
 **文件**: `src/presentation/extension.ts`
 
 每个命令注册都包含相似的 try/catch + logger 模式：
+
 ```typescript
 register("addi.xxx", async (item) => {
   try {
@@ -565,10 +603,11 @@ register("addi.xxx", async (item) => {
 ```
 
 **建议**: 提取注册辅助函数：
+
 ```typescript
 function registerCommand(id: string, handler: (...args: any[]) => Promise<void>) {
   context.subscriptions.push(
-    vscode.commands.registerCommand(id, wrapWithErrorHandling(id, handler))
+    vscode.commands.registerCommand(id, wrapWithErrorHandling(id, handler)),
   );
 }
 
@@ -596,6 +635,7 @@ function wrapWithErrorHandling(id: string, handler: Function) {
 **位置**: `src/proposedApi/`
 
 **当前**:
+
 ```
 src/proposedApi/
   vscode.proposed.chatParticipantPrivate.d.ts
@@ -606,6 +646,7 @@ src/proposedApi/
 **问题**: `.d.ts` 文件属于类型声明，放在 `src/` 中会被编译器处理，增加不必要的编译范围。
 
 **建议**: 移动到项目根目录的 `typings/` 文件夹，并在 `tsconfig.json` 中配置：
+
 ```json
 {
   "compilerOptions": {
@@ -627,13 +668,14 @@ src/proposedApi/
 | `config.ts`     | `vscode.workspace` | `common/` | `infrastructure/` 或 `presentation/` |
 | `feedback.ts`   | `vscode.window`    | `common/` | `presentation/`                      |
 | `toolParser.ts` | 无外部依赖         | `common/` | `core/`                              |
-| `id.ts`         | `crypto`           | `common/` | `common/` ✅                          |
-| `validator.ts`  | `token.ts`         | `common/` | `common/` ✅                          |
-| `token.ts`      | 无                 | `common/` | `common/` ✅                          |
+| `id.ts`         | `crypto`           | `common/` | `common/` ✅                         |
+| `validator.ts`  | `token.ts`         | `common/` | `common/` ✅                         |
+| `token.ts`      | 无                 | `common/` | `common/` ✅                         |
 
 **问题**: `config.ts` 和 `feedback.ts` 依赖 VS Code API，属于基础设施层或表现层，不应在 `common/`（应该是纯工具/无外部依赖）。
 
 **建议**:
+
 ```
 src/common/utils/          → 纯工具: id.ts, validator.ts, token.ts
 src/presentation/utils/    → UI 工具: feedback.ts
@@ -650,6 +692,7 @@ src/core/tools/            → 工具解析: toolParser.ts
 **位置**: `src/core/providers/AddiChatProvider.ts`
 
 **问题**: `ModelTreeItem extends vscode.TreeItem` 是纯 UI 类，但定义在 `core/` 层。它被以下文件 import：
+
 - `src/presentation/views/editorView.ts`
 - `src/presentation/views/providerView.ts`
 
@@ -668,6 +711,7 @@ src/core/tools/            → 工具解析: toolParser.ts
 **影响**: 无法验证核心逻辑的正确性，重构风险高。
 
 **建议**: 优先为以下模块编写单元测试：
+
 - `TokenFormatter` (纯函数，易测试)
 - `IdGenerator` (纯函数)
 - `InputValidator` (纯函数)
@@ -683,6 +727,7 @@ src/core/tools/            → 工具解析: toolParser.ts
 **位置**: `src/domain/events/`
 
 包含文件：
+
 - `DomainEvents.ts` — 事件类型定义
 - `EventBus.ts` — 事件总线实现
 - `index.ts` — 导出
@@ -727,33 +772,33 @@ export { ProviderUseCases } from "./provider";
 
 ### 🟡 P1 — 中优先级（建议 1 个月内处理） ✅ 全部完成
 
-| #   | 问题                                      | 位置                  | 工作量 | 状态 |
-| --- | ----------------------------------------- | --------------------- | ------ | ---- |
-| 6   | 删除 `domain/events/` 死代码              | `domain/events/`      | 小     | ✅   |
-| 7   | 移动 `proposedApi/` 到 `typings/`         | `src/proposedApi/`    | 小     | ✅   |
-| 8   | 拆分 `common/utils/` 跨层工具             | `common/utils/`       | 中     | ✅ |
-| 9   | 统一 `setApiKey` 空字符串语义             | 多处                  | 小     | ✅   |
-| 10  | 改善 `InputValidator` 返回值语义          | `validator.ts`        | 小     | ✅   |
-| 11  | 消除 AddiChatProvider 中的 `as any`       | `AddiChatProvider.ts` | 小     | ✅   |
-| 12  | 消除 ToolOrchestrator 中的 `as any`       | `toolOrchestrator.ts` | 小     | ✅   |
-| 13  | 为 `ToolParser.parse` 定义输入类型        | `toolParser.ts`       | 小     | ✅   |
-| 14  | 为 `AIProviderRegistry` settings 定义类型 | `aiRegistry.ts`       | 小     | ✅   |
+| #   | 问题                                      | 位置                  | 工作量 | 状态   |
+| --- | ----------------------------------------- | --------------------- | ------ | ------ |
+| 6   | 删除 `domain/events/` 死代码              | `domain/events/`      | 小     | ✅     |
+| 7   | 移动 `proposedApi/` 到 `typings/`         | `src/proposedApi/`    | 小     | ✅     |
+| 8   | 拆分 `common/utils/` 跨层工具             | `common/utils/`       | 中     | ✅     |
+| 9   | 统一 `setApiKey` 空字符串语义             | 多处                  | 小     | ✅     |
+| 10  | 改善 `InputValidator` 返回值语义          | `validator.ts`        | 小     | ✅     |
+| 11  | 消除 AddiChatProvider 中的 `as any`       | `AddiChatProvider.ts` | 小     | ✅     |
+| 12  | 消除 ToolOrchestrator 中的 `as any`       | `toolOrchestrator.ts` | 小     | ✅     |
+| 13  | 为 `ToolParser.parse` 定义输入类型        | `toolParser.ts`       | 小     | ✅     |
+| 14  | 为 `AIProviderRegistry` settings 定义类型 | `aiRegistry.ts`       | 小     | ✅     |
 | 15  | 添加核心模块单元测试                      | 项目级                | 大     | 未执行 |
 
 > **说明**: #8 拆分 common/utils 涉及跨层重构，需配合 import 路径全面更新；#14 和 #15 需较大工作量，留作后续迭代。
 
 ### 🟢 P2 — 低优先级（长期改进） ✅ 全部完成
 
-| #   | 问题                                  | 位置                      | 工作量 | 状态 |
-| --- | ------------------------------------- | ------------------------- | ------ | ---- |
+| #   | 问题                                  | 位置                      | 工作量 | 状态   |
+| --- | ------------------------------------- | ------------------------- | ------ | ------ |
 | 16  | 拆分 `ProviderModelManager` 上帝对象  | `ProviderModelManager.ts` | 大     | 未执行 |
-| 17  | `AIProviderRegistry` 改为实例化 + DI  | `aiRegistry.ts`           | 中     | ✅   |
-| 18  | 移除 `IdGenerator` fallback           | `id.ts`                   | 小     | ✅   |
-| 19  | 提取 `ModelTester` 硬编码常量         | `modelTester.ts`          | 小     | ✅   |
-| 20  | 提取多选处理辅助函数                  | `extension.ts`            | 小     | ✅   |
-| 21  | 提取排序策略到独立模块                | `providerView.ts`         | 小     | ✅   |
-| 22  | 类型化 `EditorViewManager._viewState` | `editorView.ts`           | 小     | ✅   |
-| 23  | 提取命令注册辅助函数                  | `extension.ts`            | 小     | ✅   |
+| 17  | `AIProviderRegistry` 改为实例化 + DI  | `aiRegistry.ts`           | 中     | ✅     |
+| 18  | 移除 `IdGenerator` fallback           | `id.ts`                   | 小     | ✅     |
+| 19  | 提取 `ModelTester` 硬编码常量         | `modelTester.ts`          | 小     | ✅     |
+| 20  | 提取多选处理辅助函数                  | `extension.ts`            | 小     | ✅     |
+| 21  | 提取排序策略到独立模块                | `providerView.ts`         | 小     | ✅     |
+| 22  | 类型化 `EditorViewManager._viewState` | `editorView.ts`           | 小     | ✅     |
+| 23  | 提取命令注册辅助函数                  | `extension.ts`            | 小     | ✅     |
 | 24  | UseCases 层接口化 (DIP)               | `application/`            | 中     | 未执行 |
 
 > **说明**: #16/#17 属大型架构重构，需额外设计讨论；#24 留作后续迭代。其余小项已全部完成。
@@ -871,39 +916,39 @@ extension.ts (Composition Root)
 
 ### 完成统计
 
-| 优先级 | 总项数 | 已完成 | 未执行 | 完成率 |
-|--------|--------|--------|--------|--------|
-| 🔴 P0  | 5      | 5      | 0      | 100%   |
-| 🟡 P1  | 10     | 9      | 1      | 90%    |
-| 🟢 P2  | 9      | 7      | 2      | 78%    |
-| **合计** | **24** | **18** | **6** | **75%** |
+| 优先级   | 总项数 | 已完成 | 未执行 | 完成率  |
+| -------- | ------ | ------ | ------ | ------- |
+| 🔴 P0    | 5      | 5      | 0      | 100%    |
+| 🟡 P1    | 10     | 9      | 1      | 90%     |
+| 🟢 P2    | 9      | 7      | 2      | 78%     |
+| **合计** | **24** | **18** | **6**  | **75%** |
 
 ### 未执行项目说明
 
-| #  | 项目                          | 原因                                   |
-|----|-------------------------------|----------------------------------------|
-| P1-15 | 添加核心模块单元测试           | 大工作量，建议单独规划                  |
-| P2-16 | 拆分 `ProviderModelManager` 上帝对象 | 架构级重构，需设计讨论                  |
-| P2-24 | UseCases 层接口化 (DIP)        | 需要较大重构，待评估必要性              |
+| #     | 项目                                 | 原因                       |
+| ----- | ------------------------------------ | -------------------------- |
+| P1-15 | 添加核心模块单元测试                 | 大工作量，建议单独规划     |
+| P2-16 | 拆分 `ProviderModelManager` 上帝对象 | 架构级重构，需设计讨论     |
+| P2-24 | UseCases 层接口化 (DIP)              | 需要较大重构，待评估必要性 |
 
 ### 已完成的主要改动
 
-| 改动                          | 影响文件数 | 说明                                    |
-|-------------------------------|-----------|----------------------------------------|
-| 消除 `as any` 类型断言         | 4         | ConfigUseCases, storageService, AddiChatProvider, toolOrchestrator |
-| 修复 Logger 资源泄漏           | 1         | `getChannel()` 改为抛异常而非自动创建    |
-| 移动 ModelTreeItem 到 presentation | 5         | 新建 treeItems.ts，更新 4 个文件 import  |
-| 扩展 ProviderRepository 接口  | 2         | 接口定义 + AddiChatProvider 实现         |
-| 删除 domain/events/ 死代码    | 3         | 删除 3 个文件，确认零外部引用            |
-| 移动 proposedApi/ 到 typings/ | 3+1       | 移动 3 个 .d.ts，更新 tsconfig          |
-| 统一 API Key 空字符串处理      | 1         | ApiKeyService.setApiKey("") 现在抛异常   |
-| 改善 InputValidator 语义       | 1         | 新增 getNameError/getVersionError/getTokensError |
-| 类型化 ToolParser.parse 输入   | 1         | 定义 ToolDefinitionInput/RawStep/ToolInput 接口 |
-| 移除 IdGenerator fallback      | 1         | 直接使用 randomUUID()                    |
-| 提取 ModelTester 硬编码常量    | 1         | VISION_TEST_IMAGE_BASE64 移至模块级      |
-| 类型化 EditorView prefillData  | 3         | `any` → `Record<string, unknown>`        |
-| 类型化 parseExtraBody 返回值   | 1         | `Record<string, any>` → `Record<string, unknown>` |
-| 提取命令注册 + 多选辅助函数    | 1         | extension.ts 新增 registerCmd + resolveModelItems |
+| 改动                               | 影响文件数 | 说明                                                               |
+| ---------------------------------- | ---------- | ------------------------------------------------------------------ |
+| 消除 `as any` 类型断言             | 4          | ConfigUseCases, storageService, AddiChatProvider, toolOrchestrator |
+| 修复 Logger 资源泄漏               | 1          | `getChannel()` 改为抛异常而非自动创建                              |
+| 移动 ModelTreeItem 到 presentation | 5          | 新建 treeItems.ts，更新 4 个文件 import                            |
+| 扩展 ProviderRepository 接口       | 2          | 接口定义 + AddiChatProvider 实现                                   |
+| 删除 domain/events/ 死代码         | 3          | 删除 3 个文件，确认零外部引用                                      |
+| 移动 proposedApi/ 到 typings/      | 3+1        | 移动 3 个 .d.ts，更新 tsconfig                                     |
+| 统一 API Key 空字符串处理          | 1          | ApiKeyService.setApiKey("") 现在抛异常                             |
+| 改善 InputValidator 语义           | 1          | 新增 getNameError/getVersionError/getTokensError                   |
+| 类型化 ToolParser.parse 输入       | 1          | 定义 ToolDefinitionInput/RawStep/ToolInput 接口                    |
+| 移除 IdGenerator fallback          | 1          | 直接使用 randomUUID()                                              |
+| 提取 ModelTester 硬编码常量        | 1          | VISION_TEST_IMAGE_BASE64 移至模块级                                |
+| 类型化 EditorView prefillData      | 3          | `any` → `Record<string, unknown>`                                  |
+| 类型化 parseExtraBody 返回值       | 1          | `Record<string, any>` → `Record<string, unknown>`                  |
+| 提取命令注册 + 多选辅助函数        | 1          | extension.ts 新增 registerCmd + resolveModelItems                  |
 
 ### 编译验证
 

@@ -5,10 +5,7 @@ import { UserFeedback } from "../utils/feedback";
 import { IdGenerator } from "../../common/utils";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
 import { logger } from "../../common/logger";
-import {
-  CryptoService,
-  type ProviderApiKeys,
-} from "../../infrastructure/crypto";
+import { CryptoService, type ProviderApiKeys } from "../../infrastructure/crypto";
 
 /**
  * Configuration-related command handler
@@ -28,8 +25,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       }
 
       // 1. Select providers
-      const selectedProviders =
-        await this.selectProvidersForExport(allProviders);
+      const selectedProviders = await this.selectProvidersForExport(allProviders);
       if (!selectedProviders || selectedProviders.length === 0) {
         logger.debug("exportConfig canceled at provider selection");
         return;
@@ -43,28 +39,21 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       }
 
       // 3. Selection Destination
-      const destination = await vscode.window.showQuickPick(
-        ["Save to File", "Copy to Clipboard"],
-        {
-          title: "Export Destination",
-          placeHolder: "Where do you want to save the configuration?",
-        },
-      );
+      const destination = await vscode.window.showQuickPick(["Save to File", "Copy to Clipboard"], {
+        title: "Export Destination",
+        placeHolder: "Where do you want to save the configuration?",
+      });
 
       if (!destination) {
         logger.debug("exportConfig canceled at destination selection");
         return;
       }
 
-      const encoded = await this.encodeProvidersForExport(
-        selectedProviders,
-        password,
-      );
+      const encoded = await this.encodeProvidersForExport(selectedProviders, password);
 
       if (destination === "Save to File") {
         const defaultFileName = "addi-config.json";
-        const firstWorkspaceFolder =
-          vscode.workspace.workspaceFolders?.[0]?.uri;
+        const firstWorkspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri;
         const defaultUri = firstWorkspaceFolder
           ? vscode.Uri.joinPath(firstWorkspaceFolder, defaultFileName)
           : undefined;
@@ -89,13 +78,8 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
         const targetUri = this.ensureJsonExtension(uri);
         await UserFeedback.showProgress("Saving to file...", async () => {
-          await vscode.workspace.fs.writeFile(
-            targetUri,
-            Buffer.from(encoded, "utf8"),
-          );
-          UserFeedback.showInfo(
-            `Configuration exported to ${targetUri.fsPath}`,
-          );
+          await vscode.workspace.fs.writeFile(targetUri, Buffer.from(encoded, "utf8"));
+          UserFeedback.showInfo(`Configuration exported to ${targetUri.fsPath}`);
         });
       } else {
         await vscode.env.clipboard.writeText(encoded);
@@ -189,15 +173,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
           if (parsed.encryptionApiKey) {
             const password = await this.promptForDecryptionPassword();
             if (password === undefined) {
-              logger.debug(
-                "importConfig canceled at decryption password prompt",
-              );
+              logger.debug("importConfig canceled at decryption password prompt");
               return;
             }
-            encryptedApiKeys = CryptoService.decryptApiKeys(
-              parsed.encryptionApiKey,
-              password,
-            );
+            encryptedApiKeys = CryptoService.decryptApiKeys(parsed.encryptionApiKey, password);
             if (!encryptedApiKeys) {
               UserFeedback.showWarning(
                 "Failed to decrypt API Keys from config (wrong password?), API Keys will be skipped",
@@ -216,6 +195,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       } catch (err) {
         throw new Error(
           `Failed to parse configuration: ${err instanceof Error ? err.message : "Invalid format"}`,
+          { cause: err },
         );
       }
 
@@ -231,8 +211,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       }
 
       // 4. Provider Selection
-      const selectedToImport =
-        await this.selectProvidersForImport(providersToImport);
+      const selectedToImport = await this.selectProvidersForImport(providersToImport);
       if (!selectedToImport || selectedToImport.length === 0) {
         logger.debug("importConfig canceled at provider selection");
         return;
@@ -251,62 +230,56 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       }
 
       // 5. Merge/Conflict Resolution
-      await UserFeedback.showProgress(
-        "Importing configuration...",
-        async () => {
-          const currentProviders = this.manager.getProviders();
-          const mergedProviders = [...currentProviders];
+      await UserFeedback.showProgress("Importing configuration...", async () => {
+        const currentProviders = this.manager.getProviders();
+        const mergedProviders = [...currentProviders];
 
-          for (const provider of selectedToImport) {
-            const existingIndex = mergedProviders.findIndex(
-              (p) => p.id === provider.id,
+        for (const provider of selectedToImport) {
+          const existingIndex = mergedProviders.findIndex((p) => p.id === provider.id);
+          if (existingIndex !== -1) {
+            const result = await vscode.window.showWarningMessage(
+              `Provider "${provider.name}" (ID: ${provider.id}) already exists.`,
+              { modal: false },
+              "Overwrite",
+              "Skip",
+              "Keep Both (Rename)",
             );
-            if (existingIndex !== -1) {
-              const result = await vscode.window.showWarningMessage(
-                `Provider "${provider.name}" (ID: ${provider.id}) already exists.`,
-                { modal: false },
-                "Overwrite",
-                "Skip",
-                "Keep Both (Rename)",
-              );
 
-              if (result === "Overwrite") {
-                mergedProviders[existingIndex] = provider;
-              } else if (result === "Keep Both (Rename)") {
-                const newProvider = {
-                  ...provider,
-                  id: IdGenerator.generate(),
-                  name: `${provider.name} (Imported)`,
-                };
-                mergedProviders.push(newProvider);
-              }
-            } else {
-              mergedProviders.push(provider);
+            if (result === "Overwrite") {
+              mergedProviders[existingIndex] = provider;
+            } else if (result === "Keep Both (Rename)") {
+              const newProvider = {
+                ...provider,
+                id: IdGenerator.generate(),
+                name: `${provider.name} (Imported)`,
+              };
+              mergedProviders.push(newProvider);
             }
+          } else {
+            mergedProviders.push(provider);
           }
+        }
 
-          // Strip apiKey from merged providers before save (apiKey handled separately below)
-          const mergedForSave = mergedProviders.map(({ apiKey: _ak, ...rest }) => rest as Provider);
-          await this.manager.saveProviders(mergedForSave);
+        // Strip apiKey from merged providers before save (apiKey handled separately below)
+        const mergedForSave = mergedProviders.map(({ apiKey: _ak, ...rest }) => rest as Provider);
+        await this.manager.saveProviders(mergedForSave);
 
-          // Import API Keys to SecretStorage using the FINAL provider IDs
-          for (const provider of mergedProviders) {
-            const apiKey = selectedToImport.find((p) => p.id === provider.id)?.apiKey
-              ?? selectedToImport.find((p) => p.name === provider.name)?.apiKey;
-            if (apiKey) {
-              await this.manager.setApiKey(provider.id, apiKey);
-            }
+        // Import API Keys to SecretStorage using the FINAL provider IDs
+        for (const provider of mergedProviders) {
+          const apiKey =
+            selectedToImport.find((p) => p.id === provider.id)?.apiKey ??
+            selectedToImport.find((p) => p.name === provider.name)?.apiKey;
+          if (apiKey) {
+            await this.manager.setApiKey(provider.id, apiKey);
           }
+        }
 
-          this.refreshTreeView();
-          UserFeedback.showInfo(
-            `${selectedToImport.length} provider(s) imported successfully`,
-          );
-          logger.info("Configuration imported successfully", {
-            providerCount: selectedToImport.length,
-          });
-        },
-      );
+        this.refreshTreeView();
+        UserFeedback.showInfo(`${selectedToImport.length} provider(s) imported successfully`);
+        logger.info("Configuration imported successfully", {
+          providerCount: selectedToImport.length,
+        });
+      });
     } catch (error) {
       UserFeedback.showError(
         `Failed to import configuration: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -332,9 +305,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     const currentProviders = this.manager.getProviders();
     if (currentProviders.length > 0) {
       try {
-        await this.manager.createBackup(
-          "Auto-backup before initialize extension",
-        );
+        await this.manager.createBackup("Auto-backup before initialize extension");
         logger.debug("Auto-backup created before initExtension");
       } catch (err) {
         logger.warn("Failed to create auto-backup before initExtension", err);
@@ -574,9 +545,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
   private validateProviders(providers: Provider[]): void {
     for (const provider of providers) {
       if (!provider.id || !provider.name || !Array.isArray(provider.models)) {
-        throw new Error(
-          `Provider "${provider.name || "unknown"}" is malformed`,
-        );
+        throw new Error(`Provider "${provider.name || "unknown"}" is malformed`);
       }
       for (const m of provider.models) {
         if ((!m.id || !m.name) && (!m.rid || !m.name)) {
@@ -624,8 +593,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
   private async promptForEncryptionPassword(): Promise<string | undefined> {
     const result = await vscode.window.showInputBox({
       title: "Export Configuration - API Key Security",
-      prompt:
-        "Enter a password to encrypt ApiKey (Leave empty to exclude ApiKey from export)",
+      prompt: "Enter a password to encrypt ApiKey (Leave empty to exclude ApiKey from export)",
       password: true,
       placeHolder: "Password (minimum 8 characters)",
       validateInput: (value) => {
@@ -646,8 +614,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
   private async promptForDecryptionPassword(): Promise<string | undefined> {
     const result = await vscode.window.showInputBox({
       title: "Import Configuration - Decrypt API Key",
-      prompt:
-        "This configuration contains encrypted API Keys. Enter password to decrypt:",
+      prompt: "This configuration contains encrypted API Keys. Enter password to decrypt:",
       password: true,
       placeHolder: "Password",
     });
@@ -677,19 +644,11 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         }
 
         // Strip unnecessary fields for clean export
-        const {
-          apiKey: _apiKey,
-          order: _order,
-          ...providerCore
-        } = p;
+        const { apiKey: _apiKey, order: _order, ...providerCore } = p;
 
         // Filter models: strip runtime stats and empty optional fields
         const cleanedModels = providerCore.models.map((m) => {
-          const {
-            speedHistory: _speedHistory,
-            averageSpeed: _averageSpeed,
-            ...modelCore
-          } = m;
+          const { speedHistory: _speedHistory, averageSpeed: _averageSpeed, ...modelCore } = m;
 
           // Remove empty extraBody/extraHeader
           const cleanedModel: Record<string, unknown> = { ...modelCore };
@@ -730,15 +689,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     // Add encrypted API Keys if password provided
     if (password && Object.keys(apiKeys).length > 0) {
       try {
-        exportMeta["encryptionApiKey"] = CryptoService.encryptApiKeys(
-          apiKeys,
-          password,
-        );
+        exportMeta["encryptionApiKey"] = CryptoService.encryptApiKeys(apiKeys, password);
       } catch (error) {
         logger.error("Failed to encrypt API keys during export", error);
-        UserFeedback.showError(
-          "Failed to encrypt API keys, exporting without API keys",
-        );
+        UserFeedback.showError("Failed to encrypt API keys, exporting without API keys");
       }
     }
 

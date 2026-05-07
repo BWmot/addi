@@ -6,11 +6,7 @@
  * and descending-by-tokens semantics.
  */
 import * as assert from "assert";
-import {
-  sortProviders,
-  sortModels,
-  type SortRule,
-} from "../src/presentation/utils/sortStrategy";
+import { sortProviders, sortModels, type SortRule } from "../src/presentation/utils/sortStrategy";
 import type { Provider, Model } from "../src/common/types";
 
 // ─── Test Fixtures ──────────────────────────────────────────────────────────
@@ -28,9 +24,7 @@ function makeModel(overrides: Partial<Model> & Pick<Model, "rid" | "name">): Mod
   };
 }
 
-function makeProvider(
-  overrides: Partial<Provider> & Pick<Provider, "name">,
-): Provider {
+function makeProvider(overrides: Partial<Provider> & Pick<Provider, "name">): Provider {
   return {
     id: overrides.id ?? `prov-${overrides.name}`,
     name: overrides.name,
@@ -44,19 +38,41 @@ function makeProvider(
 describe("sortProviders", () => {
   const alpha = makeProvider({
     name: "Alpha",
-    models: [makeModel({ rid: "a1", name: "A1", maxInputTokens: 1000, maxOutputTokens: 500 })],
+    models: [
+      makeModel({
+        rid: "a1",
+        name: "A1",
+        maxInputTokens: 1000,
+        maxOutputTokens: 500,
+      }),
+    ],
   });
   const beta = makeProvider({
     name: "Beta",
     models: [
-      makeModel({ rid: "b1", name: "B1", maxInputTokens: 5000, maxOutputTokens: 200 }),
-      makeModel({ rid: "b2", name: "B2", maxInputTokens: 3000, maxOutputTokens: 800 }),
+      makeModel({
+        rid: "b1",
+        name: "B1",
+        maxInputTokens: 5000,
+        maxOutputTokens: 200,
+      }),
+      makeModel({
+        rid: "b2",
+        name: "B2",
+        maxInputTokens: 3000,
+        maxOutputTokens: 800,
+      }),
     ],
   });
   const gamma = makeProvider({
     name: "Gamma",
     models: [
-      makeModel({ rid: "g1", name: "G1", maxInputTokens: 2000, maxOutputTokens: 1000 }),
+      makeModel({
+        rid: "g1",
+        name: "G1",
+        maxInputTokens: 2000,
+        maxOutputTokens: 1000,
+      }),
     ],
   });
 
@@ -65,14 +81,20 @@ describe("sortProviders", () => {
       const input = [beta, alpha, gamma];
       const result = sortProviders(input, "none");
       assert.strictEqual(result, input, "Should return the same array reference");
-      assert.deepStrictEqual(result.map((p) => p.name), ["Beta", "Alpha", "Gamma"]);
+      assert.deepStrictEqual(
+        result.map((p) => p.name),
+        ["Beta", "Alpha", "Gamma"],
+      );
     });
   });
 
   describe('rule: "alphabet"', () => {
     it("should sort providers by name case-insensitively", () => {
       const result = sortProviders([gamma, alpha, beta], "alphabet");
-      assert.deepStrictEqual(result.map((p) => p.name), ["Alpha", "Beta", "Gamma"]);
+      assert.deepStrictEqual(
+        result.map((p) => p.name),
+        ["Alpha", "Beta", "Gamma"],
+      );
     });
 
     it("should handle case differences (a < Z in locale-sensitive sort)", () => {
@@ -88,7 +110,10 @@ describe("sortProviders", () => {
     it("should sort descending by the maximum maxInputTokens across child models", () => {
       // beta has model with maxInputTokens=5000 (highest), gamma=2000, alpha=1000
       const result = sortProviders([alpha, gamma, beta], "input tokens");
-      assert.deepStrictEqual(result.map((p) => p.name), ["Beta", "Gamma", "Alpha"]);
+      assert.deepStrictEqual(
+        result.map((p) => p.name),
+        ["Beta", "Gamma", "Alpha"],
+      );
     });
 
     it("should consider the highest token model in each provider", () => {
@@ -96,12 +121,25 @@ describe("sortProviders", () => {
       const delta = makeProvider({
         name: "Delta",
         models: [
-          makeModel({ rid: "d1", name: "D1", maxInputTokens: 10, maxOutputTokens: 0 }),
-          makeModel({ rid: "d2", name: "D2", maxInputTokens: 9999, maxOutputTokens: 0 }),
+          makeModel({
+            rid: "d1",
+            name: "D1",
+            maxInputTokens: 10,
+            maxOutputTokens: 0,
+          }),
+          makeModel({
+            rid: "d2",
+            name: "D2",
+            maxInputTokens: 9999,
+            maxOutputTokens: 0,
+          }),
         ],
       });
       const result = sortProviders([alpha, delta], "input tokens");
-      assert.deepStrictEqual(result.map((p) => p.name), ["Delta", "Alpha"]);
+      assert.deepStrictEqual(
+        result.map((p) => p.name),
+        ["Delta", "Alpha"],
+      );
     });
   });
 
@@ -109,7 +147,10 @@ describe("sortProviders", () => {
     it("should sort descending by the maximum maxOutputTokens across child models", () => {
       // gamma has maxOutputTokens=1000 (highest), beta=800 (b2), alpha=500
       const result = sortProviders([alpha, beta, gamma], "output tokens");
-      assert.deepStrictEqual(result.map((p) => p.name), ["Gamma", "Beta", "Alpha"]);
+      assert.deepStrictEqual(
+        result.map((p) => p.name),
+        ["Gamma", "Beta", "Alpha"],
+      );
     });
   });
 
@@ -159,7 +200,10 @@ describe("sortProviders", () => {
         maxInputTokens: undefined as unknown as number,
         maxOutputTokens: undefined as unknown as number,
       });
-      const provider = makeProvider({ name: "UndefProvider", models: [modelWithUndefined] });
+      const provider = makeProvider({
+        name: "UndefProvider",
+        models: [modelWithUndefined],
+      });
       const result = sortProviders([provider, alpha], "input tokens");
       // alpha's model has 1000 > 0 → alpha first
       assert.strictEqual(result[0].name, "Alpha");
@@ -170,35 +214,69 @@ describe("sortProviders", () => {
 // ─── sortModels() ──────────────────────────────────────────────────────────
 
 describe("sortModels", () => {
-  const modelA = makeModel({ rid: "a", name: "Alpha", maxInputTokens: 1000, maxOutputTokens: 300 });
-  const modelB = makeModel({ rid: "b", name: "Beta", maxInputTokens: 5000, maxOutputTokens: 100 });
-  const modelC = makeModel({ rid: "c", name: "Gamma", maxInputTokens: 2000, maxOutputTokens: 800 });
+  const modelA = makeModel({
+    rid: "a",
+    name: "Alpha",
+    maxInputTokens: 1000,
+    maxOutputTokens: 300,
+  });
+  const modelB = makeModel({
+    rid: "b",
+    name: "Beta",
+    maxInputTokens: 5000,
+    maxOutputTokens: 100,
+  });
+  const modelC = makeModel({
+    rid: "c",
+    name: "Gamma",
+    maxInputTokens: 2000,
+    maxOutputTokens: 800,
+  });
 
   describe('rule: "none"', () => {
     it("should return the original array reference unchanged", () => {
       const input = [modelB, modelA, modelC];
       const result = sortModels(input, "none");
       assert.strictEqual(result, input, "Should return the same array reference");
-      assert.deepStrictEqual(result.map((m) => m.name), ["Beta", "Alpha", "Gamma"]);
+      assert.deepStrictEqual(
+        result.map((m) => m.name),
+        ["Beta", "Alpha", "Gamma"],
+      );
     });
   });
 
   describe('rule: "alphabet"', () => {
     it("should sort models by name case-insensitively", () => {
       const result = sortModels([modelC, modelA, modelB], "alphabet");
-      assert.deepStrictEqual(result.map((m) => m.name), ["Alpha", "Beta", "Gamma"]);
+      assert.deepStrictEqual(
+        result.map((m) => m.name),
+        ["Alpha", "Beta", "Gamma"],
+      );
     });
   });
 
   describe('rule: "input tokens"', () => {
     it("should sort models descending by maxInputTokens", () => {
       const result = sortModels([modelA, modelC, modelB], "input tokens");
-      assert.deepStrictEqual(result.map((m) => m.name), ["Beta", "Gamma", "Alpha"]);
+      assert.deepStrictEqual(
+        result.map((m) => m.name),
+        ["Beta", "Gamma", "Alpha"],
+      );
     });
 
     it("should handle equal token values (stable-ish ordering)", () => {
-      const m1 = makeModel({ rid: "x", name: "X", maxInputTokens: 5000, maxOutputTokens: 0 });
-      const m2 = makeModel({ rid: "y", name: "Y", maxInputTokens: 5000, maxOutputTokens: 0 });
+      const m1 = makeModel({
+        rid: "x",
+        name: "X",
+        maxInputTokens: 5000,
+        maxOutputTokens: 0,
+      });
+      const m2 = makeModel({
+        rid: "y",
+        name: "Y",
+        maxInputTokens: 5000,
+        maxOutputTokens: 0,
+      });
       const result = sortModels([m1, m2], "input tokens");
       assert.strictEqual(result.length, 2);
       // Both have same tokens, just verify no crash and both present
@@ -211,7 +289,10 @@ describe("sortModels", () => {
     it("should sort models descending by maxOutputTokens", () => {
       // modelC=800, modelA=300, modelB=100
       const result = sortModels([modelB, modelA, modelC], "output tokens");
-      assert.deepStrictEqual(result.map((m) => m.name), ["Gamma", "Alpha", "Beta"]);
+      assert.deepStrictEqual(
+        result.map((m) => m.name),
+        ["Gamma", "Alpha", "Beta"],
+      );
     });
   });
 
@@ -220,7 +301,10 @@ describe("sortModels", () => {
       const input = [modelC, modelA, modelB];
       const originalOrder = input.map((m) => m.name);
       sortModels(input, "alphabet");
-      assert.deepStrictEqual(input.map((m) => m.name), originalOrder);
+      assert.deepStrictEqual(
+        input.map((m) => m.name),
+        originalOrder,
+      );
     });
 
     it("should return a new array reference for non-none rules", () => {

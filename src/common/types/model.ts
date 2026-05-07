@@ -26,11 +26,7 @@ export interface ModelOptions {
   /** Output format: text or JSON */
   responseFormat?: { type: "text" } | { type: "json"; schema?: JSONSchema7 };
   /** Tool choice setting */
-  toolChoice?:
-    | "auto"
-    | "required"
-    | "none"
-    | { type: "tool"; toolName: string };
+  toolChoice?: "auto" | "required" | "none" | { type: "tool"; toolName: string };
   /** Maximum steps for tool calls (when tools are enabled) */
   maxSteps?: number;
 

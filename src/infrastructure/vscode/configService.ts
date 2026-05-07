@@ -9,17 +9,11 @@ export class ConfigManager {
   }
 
   static getDefaultMaxInputTokens(): number {
-    return ConfigManager.getConfiguration().get<number>(
-      "defaultMaxInputTokens",
-      80000,
-    );
+    return ConfigManager.getConfiguration().get<number>("defaultMaxInputTokens", 80000);
   }
 
   static getDefaultMaxOutputTokens(): number {
-    return ConfigManager.getConfiguration().get<number>(
-      "defaultMaxOutputTokens",
-      4096,
-    );
+    return ConfigManager.getConfiguration().get<number>("defaultMaxOutputTokens", 4096);
   }
 
   static getDefaultModelFamily(): string {

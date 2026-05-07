@@ -12,9 +12,7 @@ export class ToolOrchestrator {
     const tools: Record<string, Tool> = {};
 
     // VS Code Host Tools (definition only, as VS Code handles execution)
-    const providedTools = options?.tools as
-      | vscode.LanguageModelChatTool[]
-      | undefined;
+    const providedTools = options?.tools as vscode.LanguageModelChatTool[] | undefined;
     if (providedTools) {
       for (const tool of providedTools) {
         try {

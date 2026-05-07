@@ -1,10 +1,5 @@
 import * as vscode from "vscode";
-import type {
-  ModelMessage,
-  UserContent,
-  ToolContent,
-  AssistantContent,
-} from "ai";
+import type { ModelMessage, UserContent, ToolContent, AssistantContent } from "ai";
 import { logger } from "../../common/logger";
 import type { ModelCapabilities } from "../../common/types";
 
@@ -38,10 +33,7 @@ export class MessageConverter {
           } else if (part instanceof vscode.LanguageModelDataPart) {
             // @ts-expect-error: vscode.LanguageModelDataPart.value might be missing in types
             const data = part.value || (part as any).data;
-            const mime =
-              part.mimeType ||
-              (part as any).mediaType ||
-              "application/octet-stream";
+            const mime = part.mimeType || (part as any).mediaType || "application/octet-stream";
 
             if (mime.startsWith("image/")) {
               if (capabilities?.vision === false) {
@@ -81,9 +73,7 @@ export class MessageConverter {
             }
 
             // Check for images or mixed content
-            const hasImage = tr.content.some(
-              (c) => c instanceof vscode.LanguageModelDataPart,
-            );
+            const hasImage = tr.content.some((c) => c instanceof vscode.LanguageModelDataPart);
 
             let output: any;
 
@@ -93,7 +83,7 @@ export class MessageConverter {
                   if (c instanceof vscode.LanguageModelTextPart) {
                     return { type: "text", text: c.value };
                   } else if (c instanceof vscode.LanguageModelDataPart) {
-                    // @ts-expect-error
+                    // @ts-expect-error -- VS Code proposed API may not expose .data in stable typings
                     const data = c.value || (c as any).data;
                     const base64 =
                       data instanceof Uint8Array
@@ -123,10 +113,7 @@ export class MessageConverter {
               output = { type: "text", value: resultText || "Success" };
               // Try to parse as JSON if it looks like JSON (starts with { or [)
               const trimmed = resultText.trim();
-              if (
-                (trimmed.startsWith("{") || trimmed.startsWith("[")) &&
-                trimmed.length < 100000
-              ) {
+              if ((trimmed.startsWith("{") || trimmed.startsWith("[")) && trimmed.length < 100000) {
                 try {
                   const json = JSON.parse(resultText);
                   if (typeof json === "object" && json !== null) {
@@ -171,10 +158,7 @@ export class MessageConverter {
               toolName: part.name,
               input: part.input,
             } as any);
-          } else if (
-            hasThinkingSupport &&
-            part instanceof vscode.LanguageModelThinkingPart
-          ) {
+          } else if (hasThinkingSupport && part instanceof vscode.LanguageModelThinkingPart) {
             // 处理 Reasoning/Thinking part
             const thinkingValue = part.value;
             const reasoning = Array.isArray(thinkingValue)
@@ -253,9 +237,7 @@ export class MessageConverter {
   }
 
   static mapChatRole(role: vscode.LanguageModelChatMessageRole): string {
-    return role === vscode.LanguageModelChatMessageRole.User
-      ? "user"
-      : "assistant";
+    return role === vscode.LanguageModelChatMessageRole.User ? "user" : "assistant";
   }
 
   static uint8ArrayToBase64(array: Uint8Array): string {
@@ -277,8 +259,7 @@ export class MessageConverter {
         continue;
       }
       const candidate = part as Record<string, unknown>;
-      const name =
-        typeof candidate["name"] === "string" ? candidate["name"] : undefined;
+      const name = typeof candidate["name"] === "string" ? candidate["name"] : undefined;
       const argsRaw = candidate["arguments"] ?? candidate["input"];
       if (!name) {
         continue;
@@ -292,8 +273,7 @@ export class MessageConverter {
           : typeof candidate["id"] === "string"
             ? candidate["id"]
             : undefined;
-      const args =
-        typeof argsRaw === "string" ? argsRaw : JSON.stringify(argsRaw ?? {});
+      const args = typeof argsRaw === "string" ? argsRaw : JSON.stringify(argsRaw ?? {});
       const result: { name: string; arguments: string; id?: string } = {
         name,
         arguments: args,
@@ -336,18 +316,14 @@ export class MessageConverter {
       if (!id) {
         continue;
       }
-      const payload =
-        candidate["result"] ?? candidate["output"] ?? candidate["content"];
-      const content =
-        typeof payload === "string" ? payload : JSON.stringify(payload ?? {});
+      const payload = candidate["result"] ?? candidate["output"] ?? candidate["content"];
+      const content = typeof payload === "string" ? payload : JSON.stringify(payload ?? {});
       return { id, content };
     }
     return undefined;
   }
 
-  static extractSystemMessage(
-    messages: readonly vscode.LanguageModelChatRequestMessage[],
-  ): string {
+  static extractSystemMessage(messages: readonly vscode.LanguageModelChatRequestMessage[]): string {
     for (const msg of messages) {
       if (msg.name === "system") {
         if (typeof msg.content === "string") {
@@ -356,8 +332,7 @@ export class MessageConverter {
         if (Array.isArray(msg.content)) {
           return (msg.content as Array<unknown>)
             .filter(
-              (p): p is vscode.LanguageModelTextPart =>
-                p instanceof vscode.LanguageModelTextPart,
+              (p): p is vscode.LanguageModelTextPart => p instanceof vscode.LanguageModelTextPart,
             )
             .map((p) => p.value)
             .join("");
@@ -368,9 +343,7 @@ export class MessageConverter {
     return "";
   }
 
-  static summarizeMessages(
-    messages: readonly vscode.LanguageModelChatRequestMessage[],
-  ): {
+  static summarizeMessages(messages: readonly vscode.LanguageModelChatRequestMessage[]): {
     total: number;
     byRole: Record<string, number>;
     toolCallMessages: number;
@@ -412,15 +385,11 @@ export class MessageConverter {
         }
         if (part && typeof part === "object") {
           const candidate = part as Record<string, unknown>;
-          const text =
-            candidate["text"] ?? candidate["value"] ?? candidate["content"];
+          const text = candidate["text"] ?? candidate["value"] ?? candidate["content"];
           if (typeof text === "string") {
             summary.textCharacters += text.length;
           }
-          if (
-            typeof candidate["mimeType"] === "string" ||
-            typeof candidate["type"] === "string"
-          ) {
+          if (typeof candidate["mimeType"] === "string" || typeof candidate["type"] === "string") {
             summary.attachmentParts += 1;
           }
         }

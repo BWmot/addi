@@ -79,19 +79,13 @@ export async function fetchProviderModelsFromApi(
             continue;
           }
           const record = entry as Record<string, unknown>;
-          const id =
-            typeof record["id"] === "string" ? record["id"] : undefined;
+          const id = typeof record["id"] === "string" ? record["id"] : undefined;
           if (!id) {
             continue;
           }
           const displayName =
-            typeof record["display_name"] === "string"
-              ? record["display_name"]
-              : undefined;
-          const ownedBy =
-            typeof record["owned_by"] === "string"
-              ? record["owned_by"]
-              : undefined;
+            typeof record["display_name"] === "string" ? record["display_name"] : undefined;
+          const ownedBy = typeof record["owned_by"] === "string" ? record["owned_by"] : undefined;
           const description =
             typeof record["description"] === "string"
               ? record["description"]
@@ -152,17 +146,11 @@ export async function fetchProviderModelsFromApi(
             continue;
           }
           const displayName =
-            typeof record["display_name"] === "string"
-              ? record["display_name"]
-              : undefined;
+            typeof record["display_name"] === "string" ? record["display_name"] : undefined;
           const description =
-            typeof record["description"] === "string"
-              ? record["description"]
-              : undefined;
+            typeof record["description"] === "string" ? record["description"] : undefined;
           const maxInputTokens = coercePositiveInteger(
-            record["input_token_limit"] ??
-              record["context_length"] ??
-              record["context_limit"],
+            record["input_token_limit"] ?? record["context_length"] ?? record["context_limit"],
           );
           const maxOutputTokens = coercePositiveInteger(
             record["output_token_limit"] ?? record["max_output_tokens"],
@@ -202,9 +190,7 @@ export async function fetchProviderModelsFromApi(
         }
 
         const payload = (await response.json()) as Record<string, unknown>;
-        const entries = Array.isArray(payload["models"])
-          ? payload["models"]
-          : [];
+        const entries = Array.isArray(payload["models"]) ? payload["models"] : [];
         const models: RemoteModelInfo[] = [];
 
         for (const entry of entries) {
@@ -212,25 +198,16 @@ export async function fetchProviderModelsFromApi(
             continue;
           }
           const record = entry as Record<string, unknown>;
-          const name =
-            typeof record["name"] === "string" ? record["name"] : undefined;
+          const name = typeof record["name"] === "string" ? record["name"] : undefined;
           if (!name) {
             continue;
           }
           const displayName =
-            typeof record["displayName"] === "string"
-              ? record["displayName"]
-              : undefined;
+            typeof record["displayName"] === "string" ? record["displayName"] : undefined;
           const description =
-            typeof record["description"] === "string"
-              ? record["description"]
-              : undefined;
-          const maxInputTokens = coercePositiveInteger(
-            record["inputTokenLimit"],
-          );
-          const maxOutputTokens = coercePositiveInteger(
-            record["outputTokenLimit"],
-          );
+            typeof record["description"] === "string" ? record["description"] : undefined;
+          const maxInputTokens = coercePositiveInteger(record["inputTokenLimit"]);
+          const maxOutputTokens = coercePositiveInteger(record["outputTokenLimit"]);
 
           let capabilities: Model["capabilities"] | undefined;
           const modalitiesSource = (record["inputModalities"] ??
@@ -239,9 +216,7 @@ export async function fetchProviderModelsFromApi(
             record["supportedModalities"]) as unknown;
           if (Array.isArray(modalitiesSource)) {
             const hasImage = modalitiesSource.some(
-              (value) =>
-                typeof value === "string" &&
-                value.toUpperCase().includes("IMAGE"),
+              (value) => typeof value === "string" && value.toUpperCase().includes("IMAGE"),
             );
             if (hasImage) {
               capabilities = { vision: true };
@@ -278,7 +253,7 @@ export async function fetchProviderModelsFromApi(
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     logger.error("Error fetching provider models", { error: msg });
-    throw new Error(`Failed to fetch models: ${msg}`);
+    throw new Error(`Failed to fetch models: ${msg}`, { cause: e });
   }
 }
 

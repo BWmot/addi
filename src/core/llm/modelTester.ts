@@ -66,12 +66,7 @@ export class ModelTester {
         payload.maxOutputTokens = testMaxTokens;
       }
 
-      const response = await ModelTester.performRequest(
-        provider,
-        modelDraft,
-        payload,
-        token,
-      );
+      const response = await ModelTester.performRequest(provider, modelDraft, payload, token);
 
       if (!response || !response.includes(connectToken)) {
         throw new Error(
@@ -112,12 +107,7 @@ export class ModelTester {
       if (options.checkVision) {
         onProgress?.("Verifying vision capabilities...");
         try {
-          await ModelTester.performRequest(
-            provider,
-            modelDraft,
-            { type: "vision" },
-            token,
-          );
+          await ModelTester.performRequest(provider, modelDraft, { type: "vision" }, token);
           result.visionSupported = true;
         } catch (e) {
           result.visionSupported = false;
@@ -128,12 +118,7 @@ export class ModelTester {
       if (options.checkTools) {
         onProgress?.("Verifying tool calling capabilities...");
         try {
-          await ModelTester.performRequest(
-            provider,
-            modelDraft,
-            { type: "tools" },
-            token,
-          );
+          await ModelTester.performRequest(provider, modelDraft, { type: "tools" }, token);
           result.toolCallingSupported = true;
         } catch (e) {
           result.toolCallingSupported = false;
@@ -144,11 +129,7 @@ export class ModelTester {
       if (options.checkSpeed) {
         onProgress?.("Measuring response speed...");
         try {
-          result.speed = await ModelTester.measureSpeed(
-            provider,
-            modelDraft,
-            token,
-          );
+          result.speed = await ModelTester.measureSpeed(provider, modelDraft, token);
         } catch (speedError) {
           logger.warn("Speed test failed", speedError);
           // Don't fail the whole test, just leave speed undefined
@@ -177,7 +158,7 @@ export class ModelTester {
       ModelTester.resolveModelIdentifierFromDraft(modelDraft),
     );
 
-    let messages: ModelMessage[] = [];
+    let messages: ModelMessage[];
     let tools: Record<string, Tool> | undefined;
 
     if (payload.type === "vision") {
@@ -236,9 +217,7 @@ export class ModelTester {
     // Use LLMService to measure speed
     const llmService = new LLMService();
     const model: Model = { ...modelDraft, id: "temp" };
-    const messages = [
-      new vscode.LanguageModelTextPart("Count from 1 to 50. e.g. 1, 2, 3..."),
-    ];
+    const messages = [new vscode.LanguageModelTextPart("Count from 1 to 50. e.g. 1, 2, 3...")];
 
     // Mock VS Code message
     const vsMessages: vscode.LanguageModelChatRequestMessage[] = [
@@ -253,12 +232,11 @@ export class ModelTester {
     let endTime = 0;
     let tokenCount = 0;
 
-    const progressReporter: vscode.Progress<vscode.LanguageModelResponsePart> =
-      {
-        report: () => {
-          // no-op
-        },
-      };
+    const progressReporter: vscode.Progress<vscode.LanguageModelResponsePart> = {
+      report: () => {
+        // no-op
+      },
+    };
 
     const cancellationToken: vscode.CancellationToken = {
       isCancellationRequested: token.aborted,
@@ -299,16 +277,12 @@ export class ModelTester {
     return 0;
   }
 
-  private static resolveModelIdentifierFromDraft(
-    modelDraft: ModelDraft,
-  ): string {
+  private static resolveModelIdentifierFromDraft(modelDraft: ModelDraft): string {
     const trimmedId = modelDraft.id?.trim();
     if (trimmedId) {
       return trimmedId;
     }
-    const trimmedFamily = (
-      modelDraft.family ?? ConfigManager.getDefaultModelFamily()
-    ).trim();
+    const trimmedFamily = (modelDraft.family ?? ConfigManager.getDefaultModelFamily()).trim();
     if (trimmedFamily) {
       return trimmedFamily;
     }
@@ -328,12 +302,7 @@ export class ModelTester {
   ): Promise<number | undefined> {
     // 1. Try to probe via error message first (Zero-cost)
     // This is the most accurate way if the API supports it
-    const probed = await ModelTester.probeLimitFromError(
-      provider,
-      modelDraft,
-      token,
-      onProgress,
-    );
+    const probed = await ModelTester.probeLimitFromError(provider, modelDraft, token, onProgress);
     if (probed > 0) {
       onProgress?.(`Probed limit from API error: ${probed}`);
       return probed;
@@ -350,9 +319,7 @@ export class ModelTester {
 
     // Coarse search (Reverse)
     // 512k, 256k, 128k, 64k, 32k, 16k, 8k, 4k
-    const coarsePoints = [
-      512000, 256000, 128000, 64000, 32000, 16000, 8000, 4000,
-    ];
+    const coarsePoints = [512000, 256000, 128000, 64000, 32000, 16000, 8000, 4000];
     let high = 0;
     let low = 0;
 
@@ -361,15 +328,8 @@ export class ModelTester {
         return 0;
       }
       onProgress?.(`Probing ${testMode} limit: ${point} tokens...`);
-      const success = await ModelTester.verifyLimit(
-        provider,
-        modelDraft,
-        point,
-        testMode,
-        token,
-      );
+      const success = await ModelTester.verifyLimit(provider, modelDraft, point, testMode, token);
       if (success) {
-        high = point;
         if (point === coarsePoints[0]) {
           // If the highest point (128000) succeeds, it's possible the API ignores max_tokens.
           // In this case, returning 128000 is safer than 512000.
@@ -388,15 +348,7 @@ export class ModelTester {
       // Even the lowest point failed? Try a very small fallback
       const fallback = 1024;
       onProgress?.(`Probing fallback limit: ${fallback}...`);
-      if (
-        await ModelTester.verifyLimit(
-          provider,
-          modelDraft,
-          fallback,
-          testMode,
-          token,
-        )
-      ) {
+      if (await ModelTester.verifyLimit(provider, modelDraft, fallback, testMode, token)) {
         return fallback;
       }
       return 0;
@@ -414,13 +366,7 @@ export class ModelTester {
       }
       const mid = Math.floor((l + r) / 2);
       onProgress?.(`Probing ${testMode} limit: ${mid} tokens...`);
-      const success = await ModelTester.verifyLimit(
-        provider,
-        modelDraft,
-        mid,
-        testMode,
-        token,
-      );
+      const success = await ModelTester.verifyLimit(provider, modelDraft, mid, testMode, token);
       if (success) {
         best = mid;
         l = mid;
@@ -448,12 +394,7 @@ export class ModelTester {
       };
 
       // We expect this to fail and throw an error string
-      await ModelTester.performRequest(
-        provider,
-        modelDraft,
-        payload as any,
-        token,
-      );
+      await ModelTester.performRequest(provider, modelDraft, payload as any, token);
       return 0; // Surprisingly succeeded?
     } catch (e: any) {
       let errorMsg = (e.message || String(e)).toLowerCase();
@@ -523,12 +464,7 @@ export class ModelTester {
         payload.prompt = "Reply 'OK'.";
       }
 
-      const responseText = await ModelTester.performRequest(
-        provider,
-        modelDraft,
-        payload,
-        token,
-      );
+      const responseText = await ModelTester.performRequest(provider, modelDraft, payload, token);
       return responseText !== undefined;
     } catch (e) {
       return false;

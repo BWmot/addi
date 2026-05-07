@@ -10,10 +10,12 @@
 ### LanguageModelChatProvider (Proposed: chatProvider)
 
 ```typescript
-interface LanguageModelChatProvider<T extends LanguageModelChatInformation = LanguageModelChatInformation> {
+interface LanguageModelChatProvider<
+  T extends LanguageModelChatInformation = LanguageModelChatInformation,
+> {
   provideLanguageModelChatInformation(
     options: PrepareLanguageModelChatModelOptions,
-    token: CancellationToken
+    token: CancellationToken,
   ): ProviderResult<T[]>;
 
   provideLanguageModelChatResponse(
@@ -21,7 +23,7 @@ interface LanguageModelChatProvider<T extends LanguageModelChatInformation = Lan
     messages: readonly LanguageModelChatRequestMessage[],
     options: ProvideLanguageModelChatResponseOptions,
     progress: Progress<LanguageModelResponsePart>,
-    token: CancellationToken
+    token: CancellationToken,
   ): Thenable<void>;
 }
 ```
@@ -50,9 +52,9 @@ interface LanguageModelChatInformation {
 
 ```typescript
 enum LanguageModelChatMessageRole {
-  User = 'user',
-  Assistant = 'assistant',
-  System = 'system',
+  User = "user",
+  Assistant = "assistant",
+  System = "system",
 }
 
 class LanguageModelChatMessage {
@@ -78,10 +80,10 @@ class LanguageModelChatMessage {
 ### 构造方式
 
 ```typescript
-new LanguageModelTextPart('text');
-new LanguageModelThinkingPart('thinking', 'id', metadata);
-new LanguageModelToolCallPart('callId', 'toolName', args);
-new LanguageModelToolResultPart('callId', [new LanguageModelTextPart('result')]);
+new LanguageModelTextPart("text");
+new LanguageModelThinkingPart("thinking", "id", metadata);
+new LanguageModelToolCallPart("callId", "toolName", args);
+new LanguageModelToolResultPart("callId", [new LanguageModelTextPart("result")]);
 ```
 
 ---
@@ -155,8 +157,12 @@ new LanguageModelThinkingPart(value, id?, metadata?)
 
 ```typescript
 class LanguageModelChatMessage2 {
-  static User(content: string | Array<TextPart | ToolResultPart | DataPart>): LanguageModelChatMessage2;
-  static Assistant(content: string | Array<TextPart | ToolCallPart | DataPart>): LanguageModelChatMessage2;
+  static User(
+    content: string | Array<TextPart | ToolResultPart | DataPart>,
+  ): LanguageModelChatMessage2;
+  static Assistant(
+    content: string | Array<TextPart | ToolCallPart | DataPart>,
+  ): LanguageModelChatMessage2;
 
   content: Array<TextPart | ToolResultPart | ToolCallPart | DataPart | LanguageModelThinkingPart>;
 }
@@ -169,8 +175,8 @@ class LanguageModelChatMessage2 {
 ```typescript
 interface LanguageModelToolConfirmationMessages {
   approveCombination?: {
-    message: string | MarkdownString;  // 批准按钮的标签
-    arguments?: string;                // 参数的可读表示
+    message: string | MarkdownString; // 批准按钮的标签
+    arguments?: string; // 参数的可读表示
   };
 }
 ```
@@ -181,19 +187,19 @@ interface LanguageModelToolConfirmationMessages {
 
 ```typescript
 interface ChatRequest {
-  subAgentInvocationId?: string;    // 子代理调用 ID
-  subAgentName?: string;             // 子代理显示名
-  parentRequestId?: string;          // 父请求 ID
-  permissionLevel?: string;          // 'autoApprove' | 'autopilot'
+  subAgentInvocationId?: string; // 子代理调用 ID
+  subAgentName?: string; // 子代理显示名
+  parentRequestId?: string; // 父请求 ID
+  permissionLevel?: string; // 'autoApprove' | 'autopilot'
   hasHooksEnabled: boolean;
-  isSystemInitiated?: boolean;       // 系统发起请求
-  chatSessionResource: Uri;           // 注意：已从 sessionId 改为 Uri
+  isSystemInitiated?: boolean; // 系统发起请求
+  chatSessionResource: Uri; // 注意：已从 sessionId 改为 Uri
 }
 
 interface LanguageModelToolInvocationOptions<T> {
   subAgentInvocationId?: string;
   preToolUseResult?: {
-    permissionDecision?: 'allow' | 'deny' | 'ask';
+    permissionDecision?: "allow" | "deny" | "ask";
     permissionDecisionReason?: string;
     updatedInput?: object;
   };
@@ -210,7 +216,7 @@ class ExtendedLanguageModelToolResult extends LanguageModelToolResult {
 ### Error Types
 
 ```typescript
-LanguageModelError.NotFound(message)
-LanguageModelError.NoPermissions(message)
-LanguageModelError.Blocked(message)
+LanguageModelError.NotFound(message);
+LanguageModelError.NoPermissions(message);
+LanguageModelError.Blocked(message);
 ```

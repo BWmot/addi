@@ -258,9 +258,7 @@ describe("remoteModelFetcher", () => {
       globalThis.fetch = createMockFetch({
         ok: true,
         body: {
-          data: [
-            { id: "o1", display_name: "o1", owned_by: "openai" },
-          ],
+          data: [{ id: "o1", display_name: "o1", owned_by: "openai" }],
         },
       });
 
@@ -412,9 +410,7 @@ describe("remoteModelFetcher", () => {
       globalThis.fetch = createMockFetch({
         ok: true,
         body: {
-          models: [
-            { name: "claude-3-haiku-20240307" },
-          ],
+          models: [{ name: "claude-3-haiku-20240307" }],
         },
       });
 
@@ -450,11 +446,7 @@ describe("remoteModelFetcher", () => {
       globalThis.fetch = createMockFetch({
         ok: true,
         body: {
-          models: [
-            { id: "claude-3-opus" },
-            { description: "no-id-or-name" },
-            null,
-          ],
+          models: [{ id: "claude-3-opus" }, { description: "no-id-or-name" }, null],
         },
       });
 
@@ -521,9 +513,7 @@ describe("remoteModelFetcher", () => {
       globalThis.fetch = createMockFetch({
         ok: true,
         body: {
-          models: [
-            { name: "models/gemini-2.0-flash" },
-          ],
+          models: [{ name: "models/gemini-2.0-flash" }],
         },
       });
 
