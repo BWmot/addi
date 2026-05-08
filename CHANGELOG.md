@@ -2,7 +2,7 @@
 
 All notable changes to the "addi" extension will be documented in this file.
 
-## [1.0.5] - 2026-05-07
+## v1.0.5 - 2026-05-07
 
 ### Added
 
@@ -33,7 +33,7 @@ All notable changes to the "addi" extension will be documented in this file.
 - **Speed Calculation**: Fixed inaccurate speed metrics for streaming responses that relied on character-based estimation instead of actual token counts
 - **Non-streaming Stats**: Fixed missing speed/stats reporting for non-streaming (batch) requests by adding `onFinish` callback in `buildAiOptions()`
 
-## [1.0.4] - 2026-04-29
+## v1.0.4 - 2026-04-29
 
 ### Change
 
@@ -43,7 +43,7 @@ All notable changes to the "addi" extension will be documented in this file.
 
 - **update deps & add some documents** for next minor version dev and refactor do some documents and vibe coding plan.
 
-## [1.0.3] - 2026-04-22
+## v1.0.3 - 2026-04-22
 
 ### Added
 
@@ -64,7 +64,7 @@ All notable changes to the "addi" extension will be documented in this file.
 
 - **Deprecated Sync Commands**: Removed deprecated sync commands and related tests
 
-## [1.0.2] - 2026-04-04
+## v1.0.2 - 2026-04-04
 
 ### Added
 
@@ -84,7 +84,7 @@ All notable changes to the "addi" extension will be documented in this file.
 - **API Key Handling**: API key field only saves when explicitly modified
 - **Token Input Validation**: Applied LIMIT to numeric token input and fixed version regex
 
-## [1.0.1] - 2026-03-15
+## v1.0.1 - 2026-03-15
 
 ### Changed
 
@@ -94,7 +94,7 @@ All notable changes to the "addi" extension will be documented in this file.
 
 - **Model Add/Copy**: Fixed `family` and `version` fields missing when adding or copying models
 
-## [1.0.0] - 2026-03-01
+## v1.0.0 - 2026-03-01
 
 ### Added
 

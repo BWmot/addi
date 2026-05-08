@@ -7,12 +7,5 @@
   "tabWidth": 2,
   "endOfLine": "lf",
   "sortPackageJson": false,
-  "ignorePatterns": [
-    "dist/",
-    "out/",
-    "node_modules/",
-    "typings/",
-    "*.vsix",
-    "bun.lock"
-  ]
+  "ignorePatterns": ["dist/", "out/", "node_modules/", "typings/", "*.vsix", "bun.lock"]
 }

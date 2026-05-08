@@ -39,12 +39,14 @@ Addi bridges GitHub Copilot with your preferred AI providers. Instead of being l
 
 ## Documentation
 
-| Document                                           | Description                                             |
-| -------------------------------------------------- | ------------------------------------------------------- |
-| [User Guide](./docs/DOCUMENTATION.md)              | Installation, configuration, usage, and troubleshooting |
-| [Changelog](./CHANGELOG.md)                        | Version history and release notes                       |
-| [Architecture](./docs/project-document.md)         | Technical architecture overview                         |
-| [Code Quality Audit](./docs/code-quality-audit.md) | Codebase quality analysis                               |
+| Document                                            | Description                                             |
+| --------------------------------------------------- | ------------------------------------------------------- |
+| [User Guide](./docs/DOCUMENTATION.md)               | Installation, configuration, usage, and troubleshooting |
+| [Changelog](./CHANGELOG.md)                         | Version history and release notes                       |
+| [Architecture Spec](./docs/architecture-spec.md)    | Layered architecture, data flow, core design constraints |
+| [Coding Standards](./docs/coding-standards.md)      | Type safety, logging, error handling, naming conventions |
+| [AI SDK Reference](./docs/ai-sdk-reference.md)      | AI SDK v6 API types and mapping                         |
+| [VS Code API Reference](./docs/vscode-reference.md) | VS Code Copilot API and Proposed API reference          |
 
 ## Contributing
 

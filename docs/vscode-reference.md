@@ -138,7 +138,7 @@ interface LanguageModelToolDefinition {
 
 ## Proposed API
 
-类型定义位于 `src/proposedApi/`。
+类型定义位于 `typings/proposedApi/`。
 
 ### languageModelThinkingPart
 
