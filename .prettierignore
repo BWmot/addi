@@ -1,6 +1,0 @@
-dist/
-out/
-node_modules/
-typings/
-*.vsix
-bun.lock
