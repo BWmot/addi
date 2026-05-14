@@ -35,11 +35,14 @@ export class ModelTreeItem extends vscode.TreeItem {
     }
 
     const capabilityHints: string[] = [];
+    if (model.capabilities?.toolCalling) {
+      capabilityHints.push("tool");
+    }
+    if (model.capabilities?.reasoning) {
+      capabilityHints.push("think");
+    }
     if (model.capabilities?.vision) {
       capabilityHints.push("vision");
-    }
-    if (supportsTools) {
-      capabilityHints.push(`tools`);
     }
     const inputTokensDetail = TokenFormatter.formatDetailed(model.maxInputTokens);
     const outputTokensDetail = TokenFormatter.formatDetailed(model.maxOutputTokens);

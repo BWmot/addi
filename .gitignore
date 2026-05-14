@@ -12,3 +12,8 @@ addi-config.encrypt.txt
 .addi/private
 bin/
 release/
+
+/resources/webview/
+/webview-ui/node_modules/
+/webview-ui/dist/
+/webview-ui/build/

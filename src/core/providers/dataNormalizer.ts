@@ -43,8 +43,12 @@ export function normalizeCapabilities(
     normalized.toolCalling = typeof toolSource === "number" ? toolSource : Boolean(toolSource);
   }
 
-  return normalized;
-}
+    if (candidate.reasoning !== undefined || base.reasoning !== undefined) {
+      normalized.reasoning = Boolean(candidate.reasoning ?? base.reasoning);
+    }
+
+    return normalized;
+  }
 
 /**
  * Normalize all providers in-place. Mutates the array directly.
@@ -108,7 +112,6 @@ export function normalizeProvidersInPlace(
     if (provider.providerType) {
       const legacyMapping: Record<string, ProviderType> = {
         openai: "openai-completions",
-        deepseek: "openai-completions",
         "zhipu-ai": "openai-completions",
         minimax: "openai-completions",
         generic: "openai-completions",

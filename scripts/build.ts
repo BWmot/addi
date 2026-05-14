@@ -236,8 +236,45 @@ async function needsCompile(): Promise<boolean> {
   return false;
 }
 
+// 构建 Webview UI
+async function buildWebviewUI(): Promise<boolean> {
+  logStep("构建 Webview UI");
+
+  const webviewPath = join(PROJECT_ROOT, "webview-ui");
+  
+  if (!existsSync(webviewPath)) {
+    logWarn("Webview UI 目录不存在，跳过");
+    return true;
+  }
+
+  // Check if webview-ui needs install
+  const webviewNodeModules = join(webviewPath, "node_modules");
+  if (!existsSync(webviewNodeModules)) {
+    log("   安装 Webview UI 依赖...", "gray");
+    const installResult = await execCommand("bun", ["install"], { cwd: webviewPath });
+    if (installResult.code !== 0) {
+      logError("Webview UI 依赖安装失败");
+      return false;
+    }
+  }
+
+  const result = await execCommand("bun", ["run", "build"], { cwd: webviewPath });
+
+  if (result.code !== 0) {
+    logError("Webview UI 构建失败");
+    return false;
+  }
+
+  logSuccess("Webview UI 构建完成");
+  return true;
+}
+
 // 编译
 async function compile(): Promise<boolean> {
+  // 先构建 Webview UI
+  const webviewBuilt = await buildWebviewUI();
+  if (!webviewBuilt) return false;
+
   logStep("编译 TypeScript");
 
   const result = await execCommand("bun", ["run", "compile"]);

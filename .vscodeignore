@@ -30,3 +30,8 @@ addi-config.json
 *.lock
 *.vsix
 *.test.*
+webview-ui/**
+!resources/webview/**
+
+.oxlintrc.json
+.oxfmtrc.json

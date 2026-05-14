@@ -25,6 +25,7 @@ export class EditorViewManager {
     isBatch?: boolean; // Flag for batch edit mode
     batchCount?: number; // Number of items in batch
   } = { mode: "edit", type: "provider" };
+  private _lastUpdateMessage: any | undefined;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -73,6 +74,11 @@ export class EditorViewManager {
             break;
           case "verifyModel":
             await this._verifyModel(data.payload);
+            break;
+          case "ready":
+            if (this._lastUpdateMessage) {
+              this._panel?.webview.postMessage(this._lastUpdateMessage);
+            }
             break;
           case "log":
             logger.debug("Webview log", data.payload, "EditorView");
@@ -218,7 +224,7 @@ export class EditorViewManager {
 
     if (this._panel) {
       this._panel.title = title;
-      this._panel.webview.postMessage({
+      this._lastUpdateMessage = {
         type: "update",
         mode: mode,
         item: {
@@ -230,7 +236,8 @@ export class EditorViewManager {
             parentId ||
             (item instanceof ModelTreeItem ? this._getParentProviderId(item) : undefined),
         },
-      });
+      };
+      this._panel.webview.postMessage(this._lastUpdateMessage);
     }
   }
 
@@ -578,19 +585,30 @@ export class EditorViewManager {
 
   private async _getHtmlForWebview(webview: vscode.Webview): Promise<string> {
     const nonce = getNonce();
-    try {
-      const fileUri = vscode.Uri.joinPath(this._extensionUri, "resources", "editor.html");
-      const bytes = await vscode.workspace.fs.readFile(fileUri);
-      let html = new TextDecoder().decode(bytes);
 
-      html = html.replace(/{{cspSource}}/g, webview.cspSource);
-      html = html.replace(/{{nonce}}/g, nonce);
+    // 构建 Vite 输出的代码路径
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, "resources", "webview", "assets", "index.js")
+    );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this._extensionUri, "resources", "webview", "assets", "index.css")
+    );
 
-      return html;
-    } catch (e) {
-      logger.error("Failed to load editor HTML", e);
-      return `<!DOCTYPE html><html><body><p>Error loading editor. Check logs.</p></body></html>`;
-    }
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- CSP configuration to ensure vs code security constraints -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Details</title>
+  <link rel="stylesheet" href="${styleUri}">
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
+</body>
+</html>`;
   }
 }
 

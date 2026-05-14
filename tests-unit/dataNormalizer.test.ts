@@ -109,17 +109,16 @@ describe("normalizeCapabilities", () => {
   });
 
   describe("ignoring other capability fields", () => {
-    it("should not include reasoning in result", () => {
+    it("should include reasoning in result", () => {
       const source: ModelCapabilities = {
         vision: false,
         toolCalling: false,
         reasoning: true,
       };
       const result = normalizeCapabilities(source, undefined);
-      // Only vision and toolCalling are in the result
       assert.strictEqual(result.vision, false);
       assert.strictEqual(result.toolCalling, false);
-      assert.strictEqual(result.reasoning, undefined);
+      assert.strictEqual(result.reasoning, true);
     });
   });
 });
@@ -308,6 +307,12 @@ describe("normalizeProvidersInPlace", () => {
       const provider = makeRawProvider({ providerType: "google" as any });
       normalizeProvidersInPlace([provider as any]);
       assert.strictEqual(provider.providerType, "google-generateContent");
+    });
+
+    it("should pass through 'deepseek' provider type", () => {
+      const provider = makeRawProvider({ providerType: "deepseek" as any });
+      normalizeProvidersInPlace([provider as any]);
+      assert.strictEqual(provider.providerType, "deepseek");
     });
 
     it("should infer type from anthropic.com endpoint when type missing", () => {

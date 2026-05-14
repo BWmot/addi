@@ -472,7 +472,7 @@
   },
   "scripts": {
     "test": "bun run compile:test && bun run compile && vscode-test",
-    "test:unit": "bun pm test",
+    "test:unit": "bun test",
     "compile:test": "tsc -p tsconfig.test.json",
     "package": "bun build ./src/presentation/extension.ts --outdir ./dist --target node --format cjs --external vscode --minify",
     "watch": "bun build ./src/presentation/extension.ts --outdir ./dist --target node --format cjs --external vscode --watch",
@@ -483,6 +483,8 @@
     "build": "bun scripts/build.ts",
     "build:install": "bun scripts/build.ts --install",
     "build:release": "bun scripts/build.ts --release",
+    "dev:webview": "cd webview-ui && bun run dev",
+    "build:webview": "cd webview-ui && bun run build",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint src/",
