@@ -68,3 +68,17 @@ export interface ProviderConfig {
   maskedApiKey?: string;
   apiKeyTouched?: boolean;
 }
+
+/** Message received from the extension (VS Code -> Webview) */
+export interface WebviewUpdateMessage {
+  type: 'update';
+  locale: string;           // vscode.env.language
+  mode: 'edit' | 'create';
+  item: {
+    type: 'provider' | 'model';
+    isBatchMode?: boolean;
+    batchCount?: number;
+    data: ProviderConfig | ModelConfig & { parentProviderType?: string };
+    parentId?: string;
+  };
+}

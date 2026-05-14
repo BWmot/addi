@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { ModelConfig } from '../types';
 import { postMessage } from '../hooks/useVscode';
+import { useLocale } from '../i18n';
 
 interface ModelFormProps {
   data: ModelConfig;
@@ -12,6 +13,7 @@ interface ModelFormProps {
 }
 
 export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBatchMode, batchCount, parentProviderType }) => {
+  const { t, tRaw } = useLocale();
   const [formData, setFormData] = useState<ModelConfig>(data);
 
   useEffect(() => {
@@ -23,16 +25,13 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
   const isGoogle = parentProviderType === 'google-generateContent';
 
   // --- Provider-specific thinking labels & hints ---
-  const thinkingLabel = isAnthropic || isGoogle ? 'Thinking Level' : 'Reasoning Effort';
-  const thinkingHintMap: Record<string, string> = {
-    'openai-responses': 'OpenAI (Responses API): maps to reasoningEffort parameter.',
-    'openai-completions': 'OpenAI-compatible (DeepSeek, MiMo, etc.): passed as reasoning effort for thinking-enabled models.',
-    'anthropic-messages': 'Anthropic: Low→1024, Medium→4096, High→8192 budget tokens. Maps to extended thinking budget.',
-    'google-generateContent': 'Google: maps to thinkingConfig.thinkingLevel parameter for Gemini models.',
-  };
+  const thinkingLabel = isAnthropic || isGoogle
+    ? t('model.thinkingLabel.anthropicGoogle')
+    : t('model.thinkingLabel.default');
+  const thinkingHintMap = tRaw('model.thinkingHintMap') as Record<string, string>;
   const thinkingHint = parentProviderType
-    ? thinkingHintMap[parentProviderType] || 'Controls the thinking/reasoning effort level.'
-    : 'Controls the thinking/reasoning effort level.';
+    ? thinkingHintMap[parentProviderType] || t('model.thinkingHint')
+    : t('model.thinkingHint');
 
   const handleChange = (field: keyof ModelConfig, value: unknown) => {
     if (mode === 'read') return;
@@ -80,31 +79,34 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
   return (
     <div id="model-form">
       <div className="header">
-        <h2>{isBatchMode ? `Edit Multiple Models (${batchCount})` : 'Model Details'}</h2>
+        <h2>{isBatchMode ? t('model.titleBatch', { count: batchCount ?? 0 }) : t('model.title')}</h2>
       </div>
 
       <div className={`form-group${isBatchMode ? ' batch-disabled' : ''}`}>
-        <label>Display Name</label>
+        <label>{t('model.displayName')}</label>
         <input 
           type="text" 
           value={formData.name || ''} 
           onChange={e => handleChange('name', e.target.value)} 
           disabled={mode === 'read' || isBatchMode}
         />
+        {isBatchMode && <div className="field-hint">{t('model.batchDisabled')}</div>}
       </div>
 
       <div className={`form-group${isBatchMode ? ' batch-disabled' : ''}`}>
-        <label>Remote/API Model ID (e.g. gpt-4)</label>
+        <label>{t('model.remoteModelId')}</label>
         <input 
           type="text" 
           value={formData.rid || ''} 
           onChange={e => handleChange('rid', e.target.value)}
-          disabled={mode === 'read' || isBatchMode} 
+          disabled={mode === 'read' || isBatchMode}
+          placeholder={t('model.remoteModelIdPlaceholder')}
         />
+        {isBatchMode && <div className="field-hint">{t('model.batchDisabled')}</div>}
       </div>
 
       <div className="form-group">
-        <label>Max Input Tokens</label>
+        <label>{t('model.maxInputTokens')}</label>
         <input 
           type="number" 
           value={formData.maxInputTokens || 0} 
@@ -114,7 +116,7 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
       </div>
 
       <div className="form-group">
-        <label>Max Output Tokens</label>
+        <label>{t('model.maxOutputTokens')}</label>
         <input 
           type="number" 
           value={formData.maxOutputTokens || 0} 
@@ -124,7 +126,7 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
       </div>
 
       <div className="form-group">
-        <label>Capabilities</label>
+        <label>{t('model.capabilities')}</label>
         <div className="checkbox-group">
           <label className="checkbox-item">
             <input 
@@ -132,7 +134,7 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
               checked={!!formData.capabilities?.toolCalling} 
               onChange={e => handleCapabilityChange('toolCalling', e.target.checked)}
               disabled={mode === 'read'}
-            /> Tool
+            /> {t('model.toolCalling')}
           </label>
           <label className="checkbox-item">
             <input 
@@ -140,7 +142,7 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
               checked={!!formData.capabilities?.reasoning} 
               onChange={e => handleCapabilityChange('reasoning', e.target.checked)}
               disabled={mode === 'read'}
-            /> Think
+            /> {t('model.thinking')}
           </label>
           <label className="checkbox-item">
             <input 
@@ -148,22 +150,23 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
               checked={!!formData.capabilities?.vision} 
               onChange={e => handleCapabilityChange('vision', e.target.checked)}
               disabled={mode === 'read'}
-            /> Vision
+            /> {t('model.vision')}
           </label>
         </div>
       </div>
 
       <div className="form-group section">
-        <div className="section-title">Settings & Overrides</div>
+        <div className="section-title">{t('model.settingsOverrides')}</div>
+        <div className="section-desc">{t('model.settingsOverridesDesc')}</div>
         <div className="form-group">
-          <label>Temperature</label>
+          <label>{t('model.temperature')}</label>
           <input 
             type="number"
             step="0.1" 
             value={formData.options?.temperature ?? ''} 
             onChange={e => handleOptionChange('temperature', parseFloat(e.target.value))}
             disabled={mode === 'read'} 
-            placeholder="Default"
+            placeholder={t('common.default')}
           />
         </div>
 
@@ -175,10 +178,10 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
             onChange={e => handleOptionChange('reasoningEffort', e.target.value || undefined)}
             disabled={mode === 'read'}
           >
-            <option value="">Default / Not Applicable</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
+            <option value="">{t('feedback.defaultNotApplicable')}</option>
+            <option value="low">{t('feedback.low')}</option>
+            <option value="medium">{t('feedback.medium')}</option>
+            <option value="high">{t('feedback.high')}</option>
           </select>
           <div className="field-hint">{thinkingHint}</div>
         </div>
@@ -186,35 +189,33 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
         {/* Anthropic-specific: budget tokens override */}
         {isAnthropic && (
           <div className="form-group">
-            <label>Thinking Budget (Tokens) Override</label>
+            <label>{t('model.budgetTokensLabel')}</label>
             <input 
               type="number" 
               value={formData.options?.budgetTokens ?? ''} 
               onChange={e => handleOptionChange('budgetTokens', parseInt(e.target.value) || undefined)}
               disabled={mode === 'read'} 
-              placeholder="e.g. 4096 — overrides the level-based mapping"
+              placeholder={t('model.budgetTokensPlaceholder')}
             />
-            <div className="field-hint">
-              Anthropic: set a specific budgetTokens value (e.g. 1024, 4096, 8192).
-              Leave empty to use the level-based mapping from <strong>Thinking Level</strong> above.
-            </div>
+            <div className="field-hint">{t('model.budgetTokensHint')}</div>
           </div>
         )}
 
         <div className="form-group">
-          <label>Model Extra Body (JSON Override)</label>
+          <label>{t('model.extraBody')}</label>
           <textarea 
             value={formData.extraBody || ''} 
             onChange={e => handleChange('extraBody', e.target.value)}
             disabled={mode === 'read'}
-            placeholder='{"key": "value"}'
+            placeholder={t('model.extraBodyPlaceholder')}
             rows={4}
           />
         </div>
       </div>
 
       <div className="form-group section">
-        <div className="section-title">🧪 Experimental Features</div>
+        <div className="section-title">{t('model.experimental')}</div>
+        <div className="section-desc">{t('model.experimentalDesc')}</div>
         <div className="checkbox-group experimental-features">
           <div className="experimental-option">
             <label className="checkbox-item">
@@ -223,12 +224,9 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
                 checked={!!formData.options?.reasoningContentInject}
                 onChange={e => handleOptionChange('reasoningContentInject', e.target.checked || undefined)}
                 disabled={mode === 'read'}
-              /> Inject reasoning_content field (multi-turn backfill)
+              /> {t('model.reasoningContentInject')}
             </label>
-            <div className="field-hint">
-              For models using the reasoning_content API field (MiMo, etc.).
-              Enables proper handling of multi-turn thinking context.
-            </div>
+            <div className="field-hint">{t('model.reasoningContentInjectHint')}</div>
           </div>
           <div className="experimental-option">
             <label className="checkbox-item">
@@ -237,21 +235,18 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
                 checked={!!formData.options?.extractReasoningContent}
                 onChange={e => handleOptionChange('extractReasoningContent', e.target.checked || undefined)}
                 disabled={mode === 'read'}
-              /> Extract reasoning from &lt;think&gt; tags
+              /> {t('model.extractReasoningContent')}
             </label>
-            <div className="field-hint">
-              Some models return thinking content inside &lt;think&gt; XML tags.
-              Enables automatic extraction and display of thinking content.
-            </div>
+            <div className="field-hint">{t('model.extractReasoningContentHint')}</div>
           </div>
         </div>
       </div>
 
       {mode !== 'read' && (
         <div className="button-row">
-          <button type="button" onClick={handleVerify} className="secondary-btn">Verify Connection</button>
-          {!isBatchMode && <button type="button" onClick={handleDelete} className="secondary-btn" style={{color: 'var(--vscode-errorForeground)'}}>Delete</button>}
-          <button type="button" onClick={handleSave}>Save</button>
+          <button type="button" onClick={handleVerify} className="secondary-btn">{t('common.verifyConnection')}</button>
+          {!isBatchMode && <button type="button" onClick={handleDelete} className="secondary-btn" style={{color: 'var(--vscode-errorForeground)'}}>{t('common.delete')}</button>}
+          <button type="button" onClick={handleSave}>{t('common.save')}</button>
         </div>
       )}
     </div>

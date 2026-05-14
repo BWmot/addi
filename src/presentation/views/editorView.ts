@@ -230,6 +230,7 @@ export class EditorViewManager {
       this._panel.title = title;
       this._lastUpdateMessage = {
         type: "update",
+        locale: vscode.env.language,
         mode: mode,
         item: {
           type: type,

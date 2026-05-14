@@ -228,6 +228,12 @@
       .header-row h2 {
         margin: 0;
       }
+      .section-desc {
+        font-size: 0.85em;
+        color: var(--vscode-descriptionForeground);
+        margin-bottom: 12px;
+        line-height: 1.4;
+      }
       /* Section styles */
       .section {
         margin-top: 12px;
