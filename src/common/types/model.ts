@@ -31,6 +31,15 @@ export interface ModelOptions {
   maxSteps?: number;
 
   /**
+   * Reasoning effort level for thinking-enabled models.
+   * - OpenAI: maps directly to reasoningEffort (low/medium/high)
+   * - Anthropic: low→1024, medium→4096, high→8192 budgetTokens
+   * - Google: maps to thinkingConfig thinkingLevel (low/medium/high)
+   * - openai-completions (DeepSeek/MiMo): passed via extra_body thinking config
+   */
+  reasoningEffort?: "low" | "medium" | "high";
+
+  /**
    * Provider-specific options passed directly to the AI SDK provider.
    *
    * This is the correct way to pass thinking/reasoning configuration

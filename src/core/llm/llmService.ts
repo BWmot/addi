@@ -275,9 +275,60 @@ export class LLMService {
     // 但仍需传递思考开关（enabled/disabled）给底层 provider
     const hasReasoningMiddleware = modelOptions.reasoningContentInject === true;
 
-    // Build default thinking/reasoning config when the model has the
-    // `reasoning` capability and the user hasn't explicitly set providerOptions.
-    if (model.capabilities?.reasoning) {
+    // ──────────────────────────────────────────────────────────────────────
+    // 推理层级 (reasoningEffort) 统一处理
+    //
+    // 用户可以在模型编辑页面的设置中配置 reasoningEffort (low/medium/high)，
+    // 该配置会被映射为各 provider 的特定参数：
+    //
+    //   OpenAI (openai-responses):     { reasoningEffort: "low|medium|high" }
+    //   OpenAI (openai-completions):   同 OpenAI (仅当 !hasReasoningMiddleware)
+    //   Anthropic:                     { thinking: { budgetTokens: N } }
+    //   Google:                        { thinkingConfig: { thinkingBudget: N } }
+    //   openai-completions + 中间件:   通过 extraBody 传递 thinking.type
+    //
+    // 如果用户未配置 reasoningEffort，则使用各 provider 的默认值。
+    // ──────────────────────────────────────────────────────────────────────
+
+    // 将用户配置的 reasoningEffort 映射为各 provider 的参数
+    if (modelOptions.reasoningEffort) {
+      const effort = modelOptions.reasoningEffort;
+      const providerType = provider.providerType;
+
+      // OpenAI — direct mapping
+      if (providerType === "openai-responses" && !providerOptions["openai"]) {
+        providerOptions["openai"] = { reasoningEffort: effort };
+      }
+
+      // openai-completions — pass reasoningEffort (unless middleware handles it)
+      if (providerType === "openai-completions" && !providerOptions["openai"]) {
+        if (!hasReasoningMiddleware) {
+          providerOptions["openai"] = { reasoningEffort: effort };
+        }
+      }
+
+      // Anthropic — map effort to budgetTokens
+      if (providerType === "anthropic-messages" && !providerOptions["anthropic"]) {
+        const budgetMap: Record<string, number> = { low: 1024, medium: 4096, high: 8192 };
+        providerOptions["anthropic"] = {
+          thinking: { type: "enabled", budgetTokens: budgetMap[effort] ?? 4096 },
+        };
+      }
+
+      // Google — map effort to thinkingConfig
+      if (providerType === "google-generateContent" && !providerOptions["google"]) {
+        const budgetMap: Record<string, number> = { low: 1024, medium: 4096, high: 8192 };
+        providerOptions["google"] = {
+          thinkingConfig: {
+            thinkingBudget: budgetMap[effort] ?? 4096,
+            includeThoughts: true,
+          },
+        };
+      }
+    }
+
+    // Fallback: when no reasoningEffort is configured, use provider defaults
+    if (!modelOptions.reasoningEffort && model.capabilities?.reasoning) {
       const providerType = provider.providerType;
 
       // Anthropic — thinking (budget-based by default)
@@ -288,7 +339,7 @@ export class LLMService {
         };
       }
 
-      // OpenAI — reasoningEffort
+      // OpenAI — reasoningEffort (default: medium)
       if (
         (providerType === "openai-responses" || providerType === "openai-completions") &&
         !providerOptions["openai"]
@@ -308,8 +359,10 @@ export class LLMService {
           },
         };
       }
-    } else {
-      // When reasoning is NOT enabled, explicitly disable thinking/reasoning
+    }
+
+    // When reasoning capability is NOT enabled, explicitly disable
+    if (!model.capabilities?.reasoning) {
       const providerType = provider.providerType;
 
       if (

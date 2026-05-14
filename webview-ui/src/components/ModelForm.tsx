@@ -19,11 +19,20 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
   }, [data]);
 
   // Determine provider type for conditional rendering
-  const isOpenAI = parentProviderType === 'openai-completions' || parentProviderType === 'openai-responses';
-  const isAnthropicOrGoogle = parentProviderType === 'anthropic-messages' || parentProviderType === 'google-generateContent';
-  // Default to showing all fields when parentProviderType is unknown (edge case)
-  const showReasoningEffort = !parentProviderType || isOpenAI;
-  const showBudgetTokens = !parentProviderType || isAnthropicOrGoogle;
+  const isAnthropic = parentProviderType === 'anthropic-messages';
+  const isGoogle = parentProviderType === 'google-generateContent';
+
+  // --- Provider-specific thinking labels & hints ---
+  const thinkingLabel = isAnthropic || isGoogle ? 'Thinking Level' : 'Reasoning Effort';
+  const thinkingHintMap: Record<string, string> = {
+    'openai-responses': 'OpenAI (Responses API): maps to reasoningEffort parameter.',
+    'openai-completions': 'OpenAI-compatible (DeepSeek, MiMo, etc.): passed as reasoning effort for thinking-enabled models.',
+    'anthropic-messages': 'Anthropic: Low→1024, Medium→4096, High→8192 budget tokens. Maps to extended thinking budget.',
+    'google-generateContent': 'Google: maps to thinkingConfig.thinkingLevel parameter for Gemini models.',
+  };
+  const thinkingHint = parentProviderType
+    ? thinkingHintMap[parentProviderType] || 'Controls the thinking/reasoning effort level.'
+    : 'Controls the thinking/reasoning effort level.';
 
   const handleChange = (field: keyof ModelConfig, value: any) => {
     if (mode === 'read') return;
@@ -158,32 +167,37 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
           />
         </div>
 
-        {showReasoningEffort && (
-          <div className="form-group">
-            <label>OpenAI Reasoning Effort</label>
-            <select
-              value={formData.options?.reasoningEffort || ''}
-              onChange={e => handleOptionChange('reasoningEffort', e.target.value || undefined)}
-              disabled={mode === 'read'}
-            >
-              <option value="">Default/Not Applicable</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-        )}
+        {/* Unified thinking/reasoning dropdown - label adapts to provider */}
+        <div className="form-group">
+          <label>{thinkingLabel}</label>
+          <select
+            value={formData.options?.reasoningEffort || ''}
+            onChange={e => handleOptionChange('reasoningEffort', e.target.value || undefined)}
+            disabled={mode === 'read'}
+          >
+            <option value="">Default / Not Applicable</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <div className="field-hint">{thinkingHint}</div>
+        </div>
 
-        {showBudgetTokens && (
+        {/* Anthropic-specific: budget tokens override */}
+        {isAnthropic && (
           <div className="form-group">
-            <label>Thinking Budget (Tokens)</label>
+            <label>Thinking Budget (Tokens) Override</label>
             <input 
               type="number" 
               value={formData.options?.budgetTokens ?? ''} 
               onChange={e => handleOptionChange('budgetTokens', parseInt(e.target.value) || undefined)}
               disabled={mode === 'read'} 
-              placeholder="e.g. 1024"
+              placeholder="e.g. 4096 — overrides the level-based mapping"
             />
+            <div className="field-hint">
+              Anthropic: set a specific budgetTokens value (e.g. 1024, 4096, 8192).
+              Leave empty to use the level-based mapping from <strong>Thinking Level</strong> above.
+            </div>
           </div>
         )}
 
