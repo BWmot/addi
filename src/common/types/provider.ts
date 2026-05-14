@@ -9,7 +9,7 @@ export type ProviderType =
   | "openai-responses" // OpenAI (/responses) - Newer API with built-in tool support
   | "anthropic-messages" // Anthropic (/messages)
   | "google-generateContent" // Google (/name:generateContent)
-  | "deepseek"; // DeepSeek/MiMo (Native ai-sdk/deepseek supporting reasoning_content)
+  | "deepseek"; // DeepSeek (Native ai-sdk/deepseek supporting reasoning_content)
 
 /**
  * Persisted configuration for a provider (Synced).

@@ -28,11 +28,11 @@ export const App: React.FC = () => {
   return (
     <div className="container" style={{ display: 'flex', gap: '20px' }}>
       <div className="left-col" style={{ flex: 1, minWidth: '300px' }}>
-        {item.type === 'provider' && (
-          <ProviderForm data={item.data} mode={mode} isBatchMode={item.isBatchMode} batchCount={item.batchCount} />
+        {item.type === 'provider' && !item.isBatchMode && (
+          <ProviderForm data={item.data} mode={mode} />
         )}
         {item.type === 'model' && (
-          <ModelForm data={item.data} mode={mode} parentId={item.parentId} isBatchMode={item.isBatchMode} batchCount={item.batchCount} />
+          <ModelForm data={item.data} mode={mode} parentId={item.parentId} isBatchMode={item.isBatchMode} batchCount={item.batchCount} parentProviderType={item.data.parentProviderType} />
         )}
       </div>
     </div>

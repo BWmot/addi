@@ -58,6 +58,20 @@ export interface ModelOptions {
    * ```
    */
   providerOptions?: Record<string, Record<string, unknown>>;
+
+  /**
+   * [实验性] 启用 reasoning_content 字段注入中间件。
+   * 适用：DeepSeek V4/R1、MiMo 等使用 reasoning_content API 字段的模型。
+   * 启用后自动处理多轮 reasoning 内容的回传与 backfill。
+   */
+  reasoningContentInject?: boolean;
+
+  /**
+   * [实验性] 从 <think> 标签提取 reasoning 内容。
+   * 适用：某些将思考过程放在 <think> 标签中返回的模型。
+   * 启用后自动从 text 中提取 <think>...</think> 内容作为 reasoning part。
+   */
+  extractReasoningContent?: boolean;
 }
 
 export interface RemoteModelInfo {

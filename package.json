@@ -472,7 +472,7 @@
   },
   "scripts": {
     "test": "bun run compile:test && bun run compile && vscode-test",
-    "test:unit": "bun test",
+    "test:unit": "bun test tests-unit/",
     "compile:test": "tsc -p tsconfig.test.json",
     "package": "bun build ./src/presentation/extension.ts --outdir ./dist --target node --format cjs --external vscode --minify",
     "watch": "bun build ./src/presentation/extension.ts --outdir ./dist --target node --format cjs --external vscode --watch",
@@ -480,7 +480,7 @@
     "debug": "code --extensionDevelopmentPath=.",
     "clean": "bun scripts/clean.ts",
     "clean:all": "bun scripts/clean.ts --all",
-    "build": "bun scripts/build.ts",
+    "build": "bun build:webview && bun scripts/build.ts",
     "build:install": "bun scripts/build.ts --install",
     "build:release": "bun scripts/build.ts --release",
     "dev:webview": "cd webview-ui && bun run dev",

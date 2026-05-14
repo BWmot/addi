@@ -3,6 +3,7 @@ import { streamText, generateText, type ModelMessage, type Tool } from "ai";
 import type { Provider, Model, ModelOptions } from "../../common/types";
 import { AIProviderRegistry } from "./aiRegistry";
 import { MessageConverter } from "./messageConverter";
+import { extractReasoningContentFromStep, hasStreamPartVisibleContent } from "./reasoningUtils";
 import { ToolOrchestrator } from "./toolOrchestrator";
 import { logger } from "../../common/logger";
 
@@ -257,6 +258,10 @@ export class LLMService {
     // reasoningEffort, thinkingConfig, etc.) MUST be passed via
     // `providerOptions` on the streamText / generateText call, NOT at
     // model creation time.
+    //
+    // 注意：当启用 reasoningContentInject 实验性功能时，中间件会自动处理
+    // reasoning_content 字段的注入/提取，providerOptions 主要用于原生
+    // thinking/reasoning 开关（如 Anthropic thinking、OpenAI reasoningEffort）。
     // ──────────────────────────────────────────────────────────────────────
 
     // Start with any user-configured providerOptions from model/provider settings
@@ -265,6 +270,10 @@ export class LLMService {
     if (modelOptions.providerOptions) {
       Object.assign(providerOptions, modelOptions.providerOptions);
     }
+
+    // 当 reasoningContentInject 启用时，中间件自动处理 reasoning_content 字段，
+    // 但仍需传递思考开关（enabled/disabled）给底层 provider
+    const hasReasoningMiddleware = modelOptions.reasoningContentInject === true;
 
     // Build default thinking/reasoning config when the model has the
     // `reasoning` capability and the user hasn't explicitly set providerOptions.
@@ -284,7 +293,15 @@ export class LLMService {
         (providerType === "openai-responses" || providerType === "openai-completions") &&
         !providerOptions["openai"]
       ) {
-        providerOptions["openai"] = { reasoningEffort: "medium" };
+        // 当 reasoningContentInject 启用时，模型通过 openai-completions 访问
+        // DeepSeek/MiMo 等，OpenAI 的 reasoningEffort 不适用，
+        // 改用 extra_body 传递 thinking 开关
+        if (hasReasoningMiddleware) {
+          // DeepSeek/MiMo 通过 extra_body 控制思考
+          // 此时不需要设置 openai.reasoningEffort
+        } else {
+          providerOptions["openai"] = { reasoningEffort: "medium" };
+        }
       }
 
       // Google — thinkingConfig
@@ -302,6 +319,24 @@ export class LLMService {
       if (providerType === "deepseek" && !providerOptions["deepseek"]) {
         providerOptions["deepseek"] = {
           thinking: { type: "enabled" },
+        };
+      }
+    } else {
+      // When reasoning is NOT enabled, explicitly disable thinking/reasoning
+      // to prevent some providers (e.g. DeepSeek) from auto-enabling it.
+      const providerType = provider.providerType;
+
+      if (
+        (providerType === "openai-responses" || providerType === "openai-completions") &&
+        !providerOptions["openai"] &&
+        !hasReasoningMiddleware
+      ) {
+        providerOptions["openai"] = { reasoningEffort: "none" };
+      }
+
+      if (providerType === "deepseek" && !providerOptions["deepseek"]) {
+        providerOptions["deepseek"] = {
+          thinking: { type: "disabled" },
         };
       }
     }
@@ -391,7 +426,7 @@ export class LLMService {
 
         this.processResponsePart(part, progress, executionOptions);
 
-        if (part.type === "text-delta" && part.text) {
+        if (hasStreamPartVisibleContent(part)) {
           hasReportedContent = true;
         }
       }
@@ -508,19 +543,26 @@ export class LLMService {
         progress.report(new vscode.LanguageModelTextPart(p.text));
       },
 
-      // Thinking/Reasoning内容 - AI SDK已提取
+      // Thinking/Reasoning内容 - AI SDK fullStream uses type 'reasoning-delta' with 'delta' property
       "reasoning-delta": (p) => {
         this.handleThinkingDelta(p, progress, options);
       },
 
-      // Thinking签名 - 加密内容，通常不需要直接显示
-      "reasoning-signature": (p) => {
-        this.handleThinkingSignature(p);
+      // AI SDK v6 fullStream may also expose explicit reasoning lifecycle markers.
+      // reasoning-start/end do not contain displayable text and can be ignored.
+      "reasoning-start": () => {},
+      "reasoning-end": () => {},
+
+      // AI SDK v7 may emit 'reasoning' type directly
+      "reasoning": (p) => {
+        if (p.text) {
+          this.reportReasoning(p.text, p, progress, options);
+        }
       },
 
-      // Thinking流结束标记
-      "reasoning-complete": (p) => {
-        this.handleThinkingComplete(p);
+      // Thinking签名 - 加密内容，通常不需要直接显示
+      "reasoning-part-finish": () => {
+        // Part finished silently
       },
 
       // 工具调用
@@ -564,48 +606,49 @@ export class LLMService {
 
   /**
    * 处理thinking delta内容
-   * AI SDK已提取reasoning内容，我们只需要正确转换
+   * AI SDK fullStream reasoning-delta parts have:
+   *   - part.delta (string): the reasoning text delta
+   *   - part.id (string): reasoning sequence ID
+   *   - part.providerMetadata (optional)
    */
   private handleThinkingDelta(
     part: any,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     options: ExecutionOptions,
   ): void {
-    const reasoningDelta = part.reasoningDelta;
+    // CRITICAL: AI SDK fullStream uses 'delta' property, NOT 'reasoningDelta' or 'text'
+    const text = part.delta;
 
-    if (!reasoningDelta) {
+    if (!text) {
       return;
     }
 
+    this.reportReasoning(text, part, progress, options);
+  }
+
+  /**
+   * Shared helper to report reasoning text to VS Code UI.
+   */
+  private reportReasoning(
+    text: string,
+    part: any,
+    progress: vscode.Progress<vscode.LanguageModelResponsePart>,
+    options: ExecutionOptions,
+  ): void {
     // 创建VSCode格式的thinking part
     const thinkingPart = new vscode.LanguageModelThinkingPart(
-      reasoningDelta,
+      text,
       part.id,
-      part.metadata,
+      part.providerMetadata,
     );
 
     // 通知回调（如果有）
     if (options.onReasoning) {
-      options.onReasoning(reasoningDelta);
+      options.onReasoning(text);
     }
 
     // 报告给UI
     progress.report(thinkingPart as any);
-  }
-
-  /**
-   * 处理thinking签名
-   * 通常用于验证，不需要直接显示给用户
-   */
-  private handleThinkingSignature(_part: any): void {
-    // Signature validation happens silently, no logging needed
-  }
-
-  /**
-   * 处理thinking流结束
-   */
-  private handleThinkingComplete(_part: any): void {
-    // Stream completed silently
   }
 
   /**
@@ -615,35 +658,7 @@ export class LLMService {
    * 这个方法简化了提取逻辑，直接从标准字段获取。
    */
   private extractReasoningContent(step: any): string {
-    // AI SDK的steps中，reasoning内容通常在以下字段：
-    const reasoning = step.reasoning || step.thinking || step.reasoning_details;
-
-    if (!reasoning) {
-      return "";
-    }
-
-    // 处理字符串格式
-    if (typeof reasoning === "string") {
-      return reasoning;
-    }
-
-    // 处理数组格式
-    if (Array.isArray(reasoning)) {
-      return reasoning
-        .map((item) => {
-          if (typeof item === "string") {
-            return item;
-          }
-          if (typeof item === "object") {
-            return item.text || item.content || item.value || "";
-          }
-          return String(item);
-        })
-        .filter(Boolean)
-        .join("\n");
-    }
-
-    return "";
+    return extractReasoningContentFromStep(step);
   }
 
   /**
@@ -661,13 +676,13 @@ export class LLMService {
       return;
     }
 
-    // 简化处理，直接创建thinking part
+    // Always report to VS Code UI
     const thinkingPart = new vscode.LanguageModelThinkingPart(reasoning);
+    progress.report(thinkingPart as any);
 
+    // Also invoke callback if present
     if (options.onReasoning) {
       options.onReasoning(reasoning);
-    } else {
-      progress.report(thinkingPart as any);
     }
   }
 

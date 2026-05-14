@@ -1,5 +1,5 @@
 /**
- * Unit Tests for remoteModelFetcher
+ * E2E Tests for remoteModelFetcher
  *
  * Tests the fetchProviderModelsFromApi() function with a mocked global fetch
  * to verify model parsing logic for OpenAI, Anthropic, and Google provider types.

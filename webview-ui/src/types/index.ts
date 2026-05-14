@@ -28,6 +28,14 @@ export interface ModelOptions {
    * Anthropic/Google Native Thinking Budget (Tokens)
    */
   budgetTokens?: number;
+  /**
+   * [实验性] 启用 reasoning_content 字段注入中间件
+   */
+  reasoningContentInject?: boolean;
+  /**
+   * [实验性] 从 <think> 标签提取 reasoning 内容
+   */
+  extractReasoningContent?: boolean;
 }
 
 export interface ModelConfig {

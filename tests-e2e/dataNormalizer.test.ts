@@ -1,7 +1,7 @@
 /**
- * Unit Tests for dataNormalizer
+ * E2E Tests for dataNormalizer
  *
- * Tests the pure normalization functions extracted from ProviderModelManager:
+ * Tests the normalization functions extracted from ProviderModelManager:
  * - normalizeCapabilities() — merge/coerce capability objects
  * - normalizeProvidersInPlace() — migrate and fix provider/model data
  *

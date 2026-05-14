@@ -16,6 +16,10 @@ import * as vscode from "vscode";
 import * as assert from "assert";
 import type { Provider, Model } from "../src/common/types";
 import { ProviderModelManager } from "../src/core/providers/ProviderModelManager";
+import {
+  hasStreamPartVisibleContent,
+  extractReasoningContentFromStep,
+} from "../src/core/llm/reasoningUtils";
 
 // Test configuration
 const TEST_PROVIDER_ID = "test-provider-" + Date.now();
@@ -350,5 +354,124 @@ describe("Edge Cases", () => {
 
     const providers = manager.getProviders();
     assert.strictEqual(providers[0]?.name.length, 1000, "Long name should be preserved");
+  });
+});
+
+// ==================== Suite: Reasoning Utils (AI SDK v6) ====================
+
+describe("Reasoning Utils (AI SDK v6)", () => {
+  describe("hasStreamPartVisibleContent", () => {
+    it("should treat reasoning-delta as visible stream content", () => {
+      assert.strictEqual(
+        hasStreamPartVisibleContent({
+          type: "reasoning-delta",
+          id: "reasoning-1",
+          delta: "step by step",
+        }),
+        true,
+      );
+    });
+
+    it("should treat text-delta as visible content", () => {
+      assert.strictEqual(
+        hasStreamPartVisibleContent({
+          type: "text-delta",
+          text: "hello",
+        }),
+        true,
+      );
+    });
+
+    it("should treat tool-call as visible content when no text is emitted", () => {
+      assert.strictEqual(
+        hasStreamPartVisibleContent({
+          type: "tool-call",
+          toolCallId: "tool-1",
+          toolName: "search",
+        }),
+        true,
+      );
+    });
+
+    it("should treat tool-result as visible content", () => {
+      assert.strictEqual(
+        hasStreamPartVisibleContent({
+          type: "tool-result",
+          toolCallId: "tool-1",
+          toolName: "search",
+          result: "ok",
+        }),
+        true,
+      );
+    });
+
+    it("should return false for non-object or null", () => {
+      assert.strictEqual(hasStreamPartVisibleContent(null), false);
+      assert.strictEqual(hasStreamPartVisibleContent(undefined), false);
+      assert.strictEqual(hasStreamPartVisibleContent("string"), false);
+    });
+
+    it("should return false for unknown types", () => {
+      assert.strictEqual(
+        hasStreamPartVisibleContent({ type: "unknown-type", data: "test" }),
+        false,
+      );
+    });
+  });
+
+  describe("extractReasoningContentFromStep", () => {
+    it("should extract reasoning text from generateText step.reasoning array", () => {
+      assert.strictEqual(
+        extractReasoningContentFromStep({
+          reasoning: [
+            { type: "reasoning", text: "first line" },
+            { type: "reasoning", text: "second line" },
+          ],
+        }),
+        "first line\nsecond line",
+      );
+    });
+
+    it("should extract reasoningText before falling back to reasoning array", () => {
+      assert.strictEqual(
+        extractReasoningContentFromStep({
+          reasoningText: "joined reasoning",
+          reasoning: [{ type: "reasoning", text: "ignored" }],
+        }),
+        "joined reasoning",
+      );
+    });
+
+    it("should handle reasoning as a plain string", () => {
+      assert.strictEqual(
+        extractReasoningContentFromStep({
+          reasoning: "plain string reasoning",
+        }),
+        "plain string reasoning",
+      );
+    });
+
+    it("should return empty string for null or undefined step", () => {
+      assert.strictEqual(extractReasoningContentFromStep(null), "");
+      assert.strictEqual(extractReasoningContentFromStep(undefined), "");
+    });
+
+    it("should return empty string for empty reasoning array", () => {
+      assert.strictEqual(
+        extractReasoningContentFromStep({ reasoning: [] }),
+        "",
+      );
+    });
+
+    it("should handle reasoning parts using content field as fallback", () => {
+      assert.strictEqual(
+        extractReasoningContentFromStep({
+          reasoning: [
+            { type: "reasoning", content: "fallback content" },
+          ],
+        }),
+        "fallback content",
+      );
+    });
   });
 });

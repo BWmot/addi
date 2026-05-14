@@ -19,7 +19,7 @@ export interface TextPart {
 
 export interface ReasoningPart {
   type: "reasoning";
-  reasoning: string;
+  text: string;
 }
 
 export interface ImagePart {
@@ -86,7 +86,7 @@ export interface ChatMessage {
  */
 export type VsCodeMessageContent =
   | { type: "text"; text: string }
-  | { type: "reasoning"; reasoning: string }
+  | { type: "reasoning"; text: string }
   | { type: "tool-call"; toolCallId: string; toolName: string; args: any }
   | { type: "tool-result"; toolCallId: string; toolName: string; result: any };
 

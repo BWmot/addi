@@ -1,4 +1,6 @@
-import type { LanguageModel } from "ai";
+import type { LanguageModel, LanguageModelMiddleware } from "ai";
+import { wrapLanguageModel } from "ai";
+import { extractReasoningMiddleware } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
@@ -7,6 +9,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import type { Provider, Model } from "../../common/types";
 import { logger } from "../../common/logger";
+import { createReasoningContentInjectMiddleware } from "./reasoningContentInjectMiddleware";
 
 // AI SDK 的 Provider 实例通常是一个函数，接受 modelId 返回 LanguageModelV1
 // 我们定义一个通用的类型别名
@@ -200,10 +203,10 @@ export class AIProviderRegistry {
       },
     });
 
-    // DeepSeek & MiMo (DeepSeek API compatible with reasoning_content)
+    // DeepSeek (Native ai-sdk/deepseek supporting reasoning_content)
     this.register({
       id: "deepseek",
-      label: "DeepSeek / MiMo (supports reasoning_content)",
+      label: "DeepSeek (supports reasoning_content)",
       create: (p) => {
         const baseURL = p.apiEndpoint ? p.apiEndpoint.replace(/\/chat\/completions\/?$/, "") : "";
         return createDeepSeek(buildBaseSettings(p, baseURL));
@@ -226,7 +229,6 @@ export class AIProviderRegistry {
     // - id 是本地生成的 UUID，用于在 addi 扩展内部唯一标识模型
     // - rid 是远程 API 接受的模型 ID（如 "gpt-4o", "claude-3-5-sonnet"）
     let modelId: string;
-    let model: Model | undefined;
 
     if (typeof modelOrId === "string") {
       // 如果直接传入的是字符串，当作 rid 处理
@@ -234,7 +236,6 @@ export class AIProviderRegistry {
     } else {
       // 如果传入的是 Model 对象，使用 rid
       modelId = modelOrId.rid;
-      model = modelOrId as Model;
     }
 
     // 尝试获取对应的工厂，如果找不到则默认使用 openai (兼容模式)
@@ -257,11 +258,57 @@ export class AIProviderRegistry {
     }
 
     const aiProviderInstance = factory.create(provider);
+    let modelInstance = aiProviderInstance(modelId);
 
-    // Model instance is created without thinking/reasoning settings.
-    // Per AI SDK official docs, thinking must be passed via providerOptions
-    // at the streamText/generateText call site, not at model creation.
-    // See: buildAiOptions() in llmService.ts
-    return aiProviderInstance(modelId);
+    // ──────────────────────────────────────────────────────────────────────
+    // 中间件链 — 基于模型 options 中的实验性功能开关
+    //
+    // 使用 wrapLanguageModel 的中间件链机制，从右向左执行。
+    // extractReasoningMiddleware 先执行（处理 <think> 标签内容层），
+    // reasoningContentInjectMiddleware 后执行（包裹外层，处理 protocol 层）。
+    //
+    // 启用方式：由用户在模型编辑页面的"实验性功能"区手动勾选，
+    // 而非自动检测。详见 docs/reasoning-support-plan.md §3.2。
+    // ──────────────────────────────────────────────────────────────────────
+
+    // 获取模型 options（用户手动配置的实验性功能开关）
+    const modelOptions = (typeof modelOrId === "object" ? modelOrId.options : undefined)
+      ?? provider.models?.find(m => m.rid === modelId || m.id === modelId)?.options;
+
+    const middlewares: LanguageModelMiddleware[] = [];
+
+    // [实验性] <think> 标签提取 — 从 text 中提取 <think>...</think> 内容
+    // 先用 extractReasoningMiddleware 处理内容层（在链中靠右，先执行）
+    if (modelOptions?.extractReasoningContent) {
+      middlewares.push(
+        extractReasoningMiddleware({
+          tagName: "think",
+          startWithReasoning: true,
+        }),
+      );
+    }
+
+    // [实验性] reasoning_content 字段注入 — 处理多轮回传
+    // 对缺少 type: "reasoning" part 的 assistant 消息注入占位 part，
+    // 确保 provider 的 convertTo*ChatMessages() 输出 reasoning_content 字段。
+    // 适用 DeepSeek V4/R1、MiMo v2 等使用 reasoning_content API 字段的模型。
+    if (modelOptions?.reasoningContentInject) {
+      middlewares.push(createReasoningContentInjectMiddleware());
+    }
+
+    // 应用中间件链
+    if (middlewares.length > 0) {
+      modelInstance = wrapLanguageModel({
+        model: modelInstance as any,
+        // wrapLanguageModel 从右到左执行中间件数组，
+        // extractReasoningMiddleware 先执行（内层），
+        // reasoningContentInjectMiddleware 后执行（外层）
+        middleware: middlewares,
+        modelId,
+        providerId: provider.providerType,
+      });
+    }
+
+    return modelInstance;
   }
 }

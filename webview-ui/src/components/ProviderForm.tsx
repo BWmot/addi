@@ -5,11 +5,9 @@ import { postMessage } from '../hooks/useVscode';
 interface ProviderFormProps {
   data: ProviderConfig;
   mode: 'edit' | 'read';
-  isBatchMode?: boolean;
-  batchCount?: number;
 }
 
-export const ProviderForm: React.FC<ProviderFormProps> = ({ data, mode, isBatchMode, batchCount }) => {
+export const ProviderForm: React.FC<ProviderFormProps> = ({ data, mode }) => {
   const [formData, setFormData] = useState<ProviderConfig>(data);
 
   // Sync when parent pushes new data
@@ -23,10 +21,7 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({ data, mode, isBatchM
   };
 
   const handleSave = () => {
-    postMessage('saveProvider', {
-      ...formData,
-      isBatchMode
-    });
+    postMessage('saveProvider', formData);
   };
 
   const handleVerify = () => {
@@ -42,7 +37,7 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({ data, mode, isBatchM
   return (
     <div id="provider-form">
       <div className="header">
-        <h2>{isBatchMode ? `Edit Multiple Providers (${batchCount})` : 'Provider Details'}</h2>
+        <h2>Provider Details</h2>
       </div>
 
       <div className="form-group">
@@ -66,7 +61,7 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({ data, mode, isBatchM
           <option value="openai-responses">OpenAI (/responses)</option>
           <option value="anthropic-messages">Anthropic (/messages)</option>
           <option value="google-generateContent">Google (/name:generateContent)</option>
-          <option value="deepseek">DeepSeek / MiMo (Supports Reasoning)</option>
+          <option value="deepseek">DeepSeek (Supports Reasoning)</option>
         </select>
       </div>
 
@@ -83,10 +78,10 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({ data, mode, isBatchM
       <div className="form-group">
         <label>API Key (Saved Securely)</label>
         <input 
-          type="text" 
-          value={formData.apiKeyTouched ? (formData.apiKey || '') : (data.maskedApiKey || '')} 
+          type="password" 
+          value={formData.apiKeyTouched ? (formData.apiKey || '') : ''}
           onChange={e => setFormData(prev => ({ ...prev, apiKey: e.target.value, apiKeyTouched: true }))}
-          placeholder="Enter API key"
+          placeholder={data.maskedApiKey || 'Enter API key'}
           disabled={mode === 'read'} 
         />
       </div>
@@ -125,7 +120,7 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({ data, mode, isBatchM
       {mode !== 'read' && (
         <div className="button-row">
           <button type="button" onClick={handleVerify} className="secondary-btn">Verify Connection</button>
-          {!isBatchMode && <button type="button" onClick={handleDelete} className="secondary-btn" style={{color: 'var(--vscode-errorForeground)'}}>Delete</button>}
+          <button type="button" onClick={handleDelete} className="secondary-btn" style={{color: 'var(--vscode-errorForeground)'}}>Delete</button>
           <button type="button" onClick={handleSave}>Save</button>
         </div>
       )}

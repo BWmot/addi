@@ -91,6 +91,22 @@
         margin: 0;
         font-weight: normal;
       }
+      .experimental-features {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      .experimental-option {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .experimental-option .field-hint {
+        font-size: 0.85em;
+        color: var(--vscode-descriptionForeground);
+        padding-left: 24px;
+        line-height: 1.4;
+      }
       .info-text {
         font-size: 0.85em;
         color: var(--vscode-descriptionForeground);
@@ -212,44 +228,17 @@
       .header-row h2 {
         margin: 0;
       }
-      /* Collapsible section styles */
-      .collapsible-section {
-        margin-top: 10px;
-        border: 1px solid var(--vscode-widget-border);
-        border-radius: 4px;
-        overflow: hidden;
+      /* Section styles */
+      .section {
+        margin-top: 12px;
+        padding-top: 8px;
+        border-top: 1px solid var(--vscode-widget-border);
       }
-      .collapsible-toggle {
-        width: 100%;
-        text-align: left;
-        background: var(--vscode-button-secondaryBackground);
-        color: var(--vscode-foreground);
-        padding: 10px 12px;
+      .section-title {
         font-size: 0.9em;
         font-weight: bold;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .collapsible-toggle:hover {
-        background: var(--vscode-button-secondaryHoverBackground);
-      }
-      .collapse-icon {
-        transition: transform 0.2s;
-        font-size: 0.8em;
-      }
-      .collapsible-toggle.active .collapse-icon {
-        transform: rotate(90deg);
-      }
-      .collapsible-content {
-        padding: 12px;
-        background: var(--vscode-input-background);
-      }
-      .collapsible-content .form-group {
-        margin-bottom: 12px;
-      }
-      .collapsible-content .form-group:last-child {
-        margin-bottom: 0;
+        margin-bottom: 10px;
+        color: var(--vscode-foreground);
       }
 
       /* JSON Editor Styles - Simple approach */

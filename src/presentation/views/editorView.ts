@@ -7,7 +7,6 @@ import type { Provider, Model } from "../../common/types";
 import { TokenFormatter } from "../../common/utils";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
 import { ModelTester } from "../../core/llm/modelTester";
-import { TextDecoder } from "util";
 
 export class EditorViewManager {
   public static readonly viewType = "addiEditor";
@@ -183,6 +182,11 @@ export class EditorViewManager {
           version: ConfigManager.getDefaultModelVersion(),
           maxInputTokens: ConfigManager.getDefaultMaxInputTokens(),
           maxOutputTokens: ConfigManager.getDefaultMaxOutputTokens(),
+          capabilities: {
+            toolCalling: true,
+            reasoning: true,
+            vision: false,
+          },
         };
       }
     } else if (isBatchMode) {
@@ -247,6 +251,12 @@ export class EditorViewManager {
   }
 
   private async _saveProvider(data: any) {
+    // Defensive: batch editing providers is not supported
+    if (this._viewState.isBatch) {
+      vscode.window.showErrorMessage("Batch editing providers is not supported.");
+      return;
+    }
+
     if (this._viewState.mode === "create") {
       const providerData: Omit<Provider, "id" | "models"> = {
         name: data.name,
@@ -341,12 +351,13 @@ export class EditorViewManager {
       version: data.version,
       maxInputTokens: maxInputTokens,
       maxOutputTokens: maxOutputTokens,
-      capabilities: {
+      capabilities: data.capabilities || {
         vision: data.vision,
         reasoning: data.reasoning,
         toolCalling: data.toolCalling,
       },
     };
+    const caps = modelDraft.capabilities;
 
     await vscode.window.withProgress(
       {
@@ -408,7 +419,7 @@ export class EditorViewManager {
               hasUpdates = true;
             }
 
-            if (result.visionSupported !== undefined && result.visionSupported !== data.vision) {
+            if (result.visionSupported !== undefined && result.visionSupported !== caps.vision) {
               updates.vision = result.visionSupported;
               msg += result.visionSupported ? " (Vision detected)" : " (Vision removed)";
               hasUpdates = true;
@@ -416,7 +427,7 @@ export class EditorViewManager {
 
             if (
               result.toolCallingSupported !== undefined &&
-              result.toolCallingSupported !== data.toolCalling
+              result.toolCallingSupported !== caps.toolCalling
             ) {
               updates.toolCalling = result.toolCallingSupported;
               msg += result.toolCallingSupported ? " (Tools detected)" : " (Tools removed)";
@@ -473,6 +484,8 @@ export class EditorViewManager {
       // Data changed since last verification
     }
 
+    // Extract capabilities from nested structure (frontend sends capabilities object)
+    const caps = data.capabilities || {};
     // Build model data - in batch mode with empty tokens, don't include those fields to preserve existing values
     const modelData: Partial<Model> = {
       id: data.id,
@@ -484,21 +497,17 @@ export class EditorViewManager {
       ...(maxOutputTokens !== undefined ? { maxOutputTokens } : {}),
       extraBody: data.extraBody !== undefined ? data.extraBody : undefined,
       extraHeader: data.extraHeader !== undefined ? data.extraHeader : undefined,
+      options: data.options,
       capabilities: {
-        vision: data.vision,
-        reasoning: data.reasoning,
-        toolCalling: data.toolCalling,
+        toolCalling: caps.toolCalling === undefined ? true : Boolean(caps.toolCalling),
+        reasoning: caps.reasoning === undefined ? true : Boolean(caps.reasoning),
+        vision: Boolean(caps.vision),
       },
     };
 
     if (this._detectedSpeed) {
       (modelData as any).averageSpeed = this._detectedSpeed;
       (modelData as any).speedHistory = [this._detectedSpeed];
-    }
-
-    // Default toolCalling to true for new models
-    if (modelData.capabilities && modelData.capabilities.toolCalling === undefined) {
-      modelData.capabilities.toolCalling = true;
     }
 
     if (this._viewState.mode === "create") {

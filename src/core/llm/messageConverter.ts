@@ -160,12 +160,13 @@ export class MessageConverter {
             } as any);
           } else if (hasThinkingSupport && part instanceof vscode.LanguageModelThinkingPart) {
             // 处理 Reasoning/Thinking part
+            // AI SDK v4 CoreAssistantMessage 中 reasoning part 的字段名为 text
             const thinkingValue = part.value;
             const reasoning = Array.isArray(thinkingValue)
               ? thinkingValue.join("")
               : thinkingValue || "";
             if (reasoning) {
-              content.push({ type: "reasoning", reasoning } as any);
+              content.push({ type: "reasoning", text: reasoning });
             }
           }
         }
