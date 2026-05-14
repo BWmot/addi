@@ -212,7 +212,7 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
               /> Inject reasoning_content field (multi-turn backfill)
             </label>
             <div className="field-hint">
-              For models using the reasoning_content API field (DeepSeek V4/R1, MiMo, etc.).
+              For models using the reasoning_content API field (MiMo, etc.).
               Enables proper handling of multi-turn thinking context.
             </div>
           </div>

@@ -63,6 +63,7 @@ export async function fetchProviderModelsFromApi(
           method: "GET",
           headers: {
             Authorization: `Bearer ${apiKey}`,
+            "User-Agent": "Vscode Extension: Addi (https://github.com/deepwn/addi)",
           },
         });
 
@@ -116,6 +117,7 @@ export async function fetchProviderModelsFromApi(
           headers: {
             "x-api-key": apiKey,
             "anthropic-version": "2023-06-01",
+            "User-Agent": "Vscode Extension: Addi (https://github.com/deepwn/addi)",
           },
         });
 
@@ -183,6 +185,9 @@ export async function fetchProviderModelsFromApi(
         const url = `${buildUrl(baseUrl, "/models")}?key=${encodeURIComponent(apiKey)}`;
         const response = await fetch(url, {
           method: "GET",
+          headers: {
+            "User-Agent": "Vscode Extension: Addi (https://github.com/deepwn/addi)",
+          },
         });
 
         if (!response.ok) {

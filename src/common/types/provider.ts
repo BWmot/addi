@@ -8,8 +8,7 @@ export type ProviderType =
   | "openai-completions" // OpenAI (/completions) - Most common, used by OpenAI, DeepSeek, local models, etc.
   | "openai-responses" // OpenAI (/responses) - Newer API with built-in tool support
   | "anthropic-messages" // Anthropic (/messages)
-  | "google-generateContent" // Google (/name:generateContent)
-  | "deepseek"; // DeepSeek (Native ai-sdk/deepseek supporting reasoning_content)
+  | "google-generateContent"; // Google (/name:generateContent)
 
 /**
  * Persisted configuration for a provider (Synced).

@@ -61,7 +61,6 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({ data, mode }) => {
           <option value="openai-responses">OpenAI (/responses)</option>
           <option value="anthropic-messages">Anthropic (/messages)</option>
           <option value="google-generateContent">Google (/name:generateContent)</option>
-          <option value="deepseek">DeepSeek (Supports Reasoning)</option>
         </select>
       </div>
 

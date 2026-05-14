@@ -68,10 +68,6 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
 
-  // Register Addi Tool Provider (Bridge for global tools)
-  // const addiToolProvider = new AddiToolProvider(toolManager, context);
-  // addiToolProvider.register(context);
-
   // Debug command to list registered tools
   context.subscriptions.push(
     vscode.commands.registerCommand("addi.debug.listTools", () => {

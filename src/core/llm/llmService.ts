@@ -293,13 +293,7 @@ export class LLMService {
         (providerType === "openai-responses" || providerType === "openai-completions") &&
         !providerOptions["openai"]
       ) {
-        // 当 reasoningContentInject 启用时，模型通过 openai-completions 访问
-        // DeepSeek/MiMo 等，OpenAI 的 reasoningEffort 不适用，
-        // 改用 extra_body 传递 thinking 开关
-        if (hasReasoningMiddleware) {
-          // DeepSeek/MiMo 通过 extra_body 控制思考
-          // 此时不需要设置 openai.reasoningEffort
-        } else {
+        if (!hasReasoningMiddleware) {
           providerOptions["openai"] = { reasoningEffort: "medium" };
         }
       }
@@ -314,16 +308,8 @@ export class LLMService {
           },
         };
       }
-
-      // DeepSeek — thinking
-      if (providerType === "deepseek" && !providerOptions["deepseek"]) {
-        providerOptions["deepseek"] = {
-          thinking: { type: "enabled" },
-        };
-      }
     } else {
       // When reasoning is NOT enabled, explicitly disable thinking/reasoning
-      // to prevent some providers (e.g. DeepSeek) from auto-enabling it.
       const providerType = provider.providerType;
 
       if (
@@ -332,12 +318,6 @@ export class LLMService {
         !hasReasoningMiddleware
       ) {
         providerOptions["openai"] = { reasoningEffort: "none" };
-      }
-
-      if (providerType === "deepseek" && !providerOptions["deepseek"]) {
-        providerOptions["deepseek"] = {
-          thinking: { type: "disabled" },
-        };
       }
     }
 

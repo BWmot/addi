@@ -6,7 +6,6 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createDeepSeek } from "@ai-sdk/deepseek";
 import type { Provider, Model } from "../../common/types";
 import { logger } from "../../common/logger";
 import { createReasoningContentInjectMiddleware } from "./reasoningContentInjectMiddleware";
@@ -99,19 +98,19 @@ export class AIProviderRegistry {
           // Handle headers as Headers object or plain object
           if (finalOptions.headers instanceof Headers) {
             if (!finalOptions.headers.has("User-Agent")) {
-              finalOptions.headers.set("User-Agent", "VSCode-Addi-Extension");
+              finalOptions.headers.set("User-Agent", "Vscode Extension: Addi (https://github.com/deepwn/addi)");
             }
           } else if (Array.isArray(finalOptions.headers)) {
             // [string, string][] format — add if missing
             const headersArray = finalOptions.headers as [string, string][];
             if (!headersArray.some(([k]) => k.toLowerCase() === "user-agent")) {
-              headersArray.push(["User-Agent", "VSCode-Addi-Extension"]);
+              headersArray.push(["User-Agent", "Vscode Extension: Addi (https://github.com/deepwn/addi)"]);
             }
           } else {
             const headersRecord: Record<string, string> =
               (finalOptions.headers as Record<string, string>) || {};
             if (!headersRecord["User-Agent"] && !headersRecord["user-agent"]) {
-              headersRecord["User-Agent"] = "VSCode-Addi-Extension";
+              headersRecord["User-Agent"] = "Vscode Extension: Addi (https://github.com/deepwn/addi)";
             }
             finalOptions.headers = headersRecord;
           }
@@ -203,16 +202,6 @@ export class AIProviderRegistry {
       },
     });
 
-    // DeepSeek (Native ai-sdk/deepseek supporting reasoning_content)
-    this.register({
-      id: "deepseek",
-      label: "DeepSeek (supports reasoning_content)",
-      create: (p) => {
-        const baseURL = p.apiEndpoint ? p.apiEndpoint.replace(/\/chat\/completions\/?$/, "") : "";
-        return createDeepSeek(buildBaseSettings(p, baseURL));
-      },
-    });
-
     this.initialized = true;
   }
 
@@ -278,7 +267,6 @@ export class AIProviderRegistry {
     const middlewares: LanguageModelMiddleware[] = [];
 
     // [实验性] <think> 标签提取 — 从 text 中提取 <think>...</think> 内容
-    // 先用 extractReasoningMiddleware 处理内容层（在链中靠右，先执行）
     if (modelOptions?.extractReasoningContent) {
       middlewares.push(
         extractReasoningMiddleware({
@@ -300,9 +288,6 @@ export class AIProviderRegistry {
     if (middlewares.length > 0) {
       modelInstance = wrapLanguageModel({
         model: modelInstance as any,
-        // wrapLanguageModel 从右到左执行中间件数组，
-        // extractReasoningMiddleware 先执行（内层），
-        // reasoningContentInjectMiddleware 后执行（外层）
         middleware: middlewares,
         modelId,
         providerId: provider.providerType,

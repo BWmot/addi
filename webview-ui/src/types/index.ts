@@ -2,8 +2,7 @@ export type ProviderType =
   | "openai-completions"
   | "openai-responses"
   | "anthropic-messages"
-  | "google-generateContent"
-  | "deepseek";
+  | "google-generateContent";
 
 export interface ModelCapabilities {
   vision?: boolean;
