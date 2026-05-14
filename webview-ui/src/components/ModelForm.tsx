@@ -34,12 +34,12 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
     ? thinkingHintMap[parentProviderType] || 'Controls the thinking/reasoning effort level.'
     : 'Controls the thinking/reasoning effort level.';
 
-  const handleChange = (field: keyof ModelConfig, value: any) => {
+  const handleChange = (field: keyof ModelConfig, value: unknown) => {
     if (mode === 'read') return;
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleCapabilityChange = (field: keyof ModelConfig['capabilities'], value: any) => {
+  const handleCapabilityChange = (field: keyof ModelConfig['capabilities'], value: unknown) => {
     if (mode === 'read') return;
     setFormData(prev => ({
       ...prev,
@@ -47,7 +47,7 @@ export const ModelForm: React.FC<ModelFormProps> = ({ data, mode, parentId, isBa
     }));
   };
 
-  const handleOptionChange = (field: keyof NonNullable<ModelConfig['options']>, value: any) => {
+  const handleOptionChange = (field: keyof NonNullable<ModelConfig['options']>, value: unknown) => {
     if (mode === 'read') return;
     setFormData(prev => ({
       ...prev,
