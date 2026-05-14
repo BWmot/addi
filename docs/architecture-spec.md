@@ -10,16 +10,17 @@
 VS Code (Copilot) → Addi → AI SDK → Providers
 ```
 
-| 层级           | 目录                  | 职责                        | 禁止依赖               |
-| -------------- | --------------------- | --------------------------- | ---------------------- |
-| Presentation   | `src/presentation/`   | UI、命令、视图、用户交互    | —                      |
-| Application    | `src/application/`    | 业务用例（UseCases）        | vscode.*               |
-| Core           | `src/core/`           | LLM 编排、Provider 工厂注册 | vscode.*（除类型声明） |
-| Infrastructure | `src/infrastructure/` | 存储、加密、VS Code 配置    | —                      |
-| Domain         | `src/domain/`         | 接口定义                    | —                      |
-| Common         | `src/common/`         | 纯类型、工具函数、日志      | vscode.*（除日志封装） |
+| 层级           | 目录                  | 职责                        | 禁止依赖                |
+| -------------- | --------------------- | --------------------------- | ----------------------- |
+| Presentation   | `src/presentation/`   | UI、命令、视图、用户交互    | —                       |
+| Application    | `src/application/`    | 业务用例（UseCases）        | vscode.\*               |
+| Core           | `src/core/`           | LLM 编排、Provider 工厂注册 | vscode.\*（除类型声明） |
+| Infrastructure | `src/infrastructure/` | 存储、加密、VS Code 配置    | —                       |
+| Domain         | `src/domain/`         | 接口定义                    | —                       |
+| Common         | `src/common/`         | 纯类型、工具函数、日志      | vscode.\*（除日志封装） |
 
 **规则**：
+
 - `core/` 层不得包含 UI 组件（如 `TreeItem` 子类）——UI 类必须放在 `presentation/`
 - `common/` 中的工具函数不得依赖 VS Code API——依赖 vscode 的工具放在 `infrastructure/` 或 `presentation/`
 - Application 层 UseCases 通过接口注入依赖，不直接引用具体实现类
@@ -65,15 +66,15 @@ VS Code (Copilot) → Addi → AI SDK → Providers
 ```typescript
 // src/common/types/model.ts
 export type ModelDraft = {
-  rid: string;    // 远程模型 ID（必填）
+  rid: string; // 远程模型 ID（必填）
   name: string;
-  id?: string;    // 本地 UUID（创建时自动生成）
+  id?: string; // 本地 UUID（创建时自动生成）
   // ... 其他字段
 };
 
 export interface ModelConfig {
-  id: string;     // 本地 UUID
-  rid: string;    // 远程模型 ID
+  id: string; // 本地 UUID
+  rid: string; // 远程模型 ID
   // ... 其他字段
 }
 
@@ -106,13 +107,14 @@ const modelId = typeof modelOrId === "string" ? modelOrId : modelOrId.rid;
 
 | 键                        | 存储          | 同步 | 说明                |
 | ------------------------- | ------------- | ---- | ------------------- |
-| `addi.config`             | Memento       | ✅    | Provider/Model 配置 |
-| `addi.config.modifiedAt`  | Memento       | ✅    | 配置修改时间        |
-| `addi.local.apikeys.{id}` | SecretStorage | ❌    | API Keys（不同步）  |
-| `addi.local.deviceId`     | SecretStorage | ❌    | 设备标识            |
-| `addi.local.backups`      | Memento       | ❌    | 本地备份记录        |
+| `addi.config`             | Memento       | ✅   | Provider/Model 配置 |
+| `addi.config.modifiedAt`  | Memento       | ✅   | 配置修改时间        |
+| `addi.local.apikeys.{id}` | SecretStorage | ❌   | API Keys（不同步）  |
+| `addi.local.deviceId`     | SecretStorage | ❌   | 设备标识            |
+| `addi.local.backups`      | Memento       | ❌   | 本地备份记录        |
 
 **规则**：
+
 - API Key 只存 `SecretStorage`，永不落盘明文，永不导出/同步
 - 新增存储键必须使用 `addi.` 前缀 + `local.` 标记本地数据
 
@@ -135,6 +137,7 @@ VS Code Settings (Sync)
 ### 4.3 数据规范化
 
 每次加载数据时，`ProviderModelManager` 自动执行规范化：
+
 - 若 `rid` 缺失，使用 `id` 作为 fallback
 - 若 `id` 缺失，自动生成 UUID
 

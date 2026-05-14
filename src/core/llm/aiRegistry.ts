@@ -4,6 +4,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createDeepSeek } from "@ai-sdk/deepseek";
 import type { Provider, Model } from "../../common/types";
 import { logger } from "../../common/logger";
 
@@ -196,6 +197,16 @@ export class AIProviderRegistry {
       label: "Google (/name:generateContent)",
       create: (p) => {
         return createGoogleGenerativeAI(buildBaseSettings(p));
+      },
+    });
+
+    // DeepSeek & MiMo (DeepSeek API compatible with reasoning_content)
+    this.register({
+      id: "deepseek",
+      label: "DeepSeek / MiMo (supports reasoning_content)",
+      create: (p) => {
+        const baseURL = p.apiEndpoint ? p.apiEndpoint.replace(/\/chat\/completions\/?$/, "") : "";
+        return createDeepSeek(buildBaseSettings(p, baseURL));
       },
     });
 
