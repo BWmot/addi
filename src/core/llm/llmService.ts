@@ -275,7 +275,7 @@ export class LLMService {
       if (providerType === "anthropic-messages" && !providerOptions["anthropic"]) {
         const budget = model.maxOutputTokens ? Math.floor(model.maxOutputTokens / 2) : 4096;
         providerOptions["anthropic"] = {
-          thinking: { type: "enabled", budgetTokens: budget },
+          thinking: { type: "enabled", budgetTokens: Math.max(1024, budget) },
         };
       }
 
@@ -292,9 +292,16 @@ export class LLMService {
         const budget = model.maxOutputTokens ? Math.floor(model.maxOutputTokens / 2) : 8192;
         providerOptions["google"] = {
           thinkingConfig: {
-            thinkingBudget: budget,
+            thinkingBudget: Math.max(1024, budget),
             includeThoughts: true,
           },
+        };
+      }
+
+      // DeepSeek — thinking
+      if (providerType === "deepseek" && !providerOptions["deepseek"]) {
+        providerOptions["deepseek"] = {
+          thinking: { type: "enabled" },
         };
       }
     }

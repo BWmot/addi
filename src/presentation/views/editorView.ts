@@ -209,6 +209,7 @@ export class EditorViewManager {
         dataToSend = {
           ...modelData,
           parentProviderOptions: parentProvider?.options,
+          parentProviderType: parentProvider?.providerType,
           parentExtraBody: parentProvider?.extraBody,
           parentExtraHeader: parentProvider?.extraHeader,
         };

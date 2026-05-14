@@ -647,6 +647,57 @@
             </div>
           </div>
 
+          <div
+            class="form-group"
+            id="m-reasoning-openai-group"
+            style="
+              display: none;
+              margin-top: 10px;
+              background: var(--vscode-editorUnnecessaryCode-opacity);
+              padding: 8px;
+              border-radius: 4px;
+            "
+          >
+            <div class="label-with-info">
+              <label>Reasoning Effort (OpenAI)</label>
+            </div>
+            <select id="m-reasoning-effort">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+
+          <div
+            class="form-group"
+            id="m-reasoning-budget-group"
+            style="
+              display: none;
+              margin-top: 10px;
+              background: var(--vscode-editorUnnecessaryCode-opacity);
+              padding: 8px;
+              border-radius: 4px;
+            "
+          >
+            <div class="label-with-info">
+              <label>Thinking Budget Tokens</label>
+              <span class="tooltip">
+                <span class="info-icon">ⓘ</span>
+                <span class="tooltip-text"
+                  >For Anthropic/Google. Minimum 1024. Defaults to max output tokens / 2 if
+                  empty.</span
+                >
+              </span>
+            </div>
+            <input
+              type="number"
+              id="m-thinking-budget"
+              min="1024"
+              step="1"
+              placeholder="e.g. 4096"
+            />
+          </div>
+
           <div class="form-group">
             <div class="label-with-info">
               <label>Extra Body (JSON)</label>
@@ -867,6 +918,8 @@
     <script nonce="{{nonce}}">
       const vscode = acquireVsCodeApi();
 
+      let currentModelProviderType = null;
+
       const contentContainer = document.getElementById("content-container");
       const providerForm = document.getElementById("provider-form");
       const modelForm = document.getElementById("model-form");
@@ -915,6 +968,7 @@
       if (pTypeTooltip) {
         pTypeTooltip.textContent = typeTooltipText;
       }
+
       function updateHints() {
         const type = pType.value;
         let hint = "";
@@ -942,6 +996,10 @@
       const mTools = document.getElementById("m-tools");
       const mThink = document.getElementById("m-think");
       const mVision = document.getElementById("m-vision");
+      const mReasoningOpenAiGroup = document.getElementById("m-reasoning-openai-group");
+      const mReasoningBudgetGroup = document.getElementById("m-reasoning-budget-group");
+      const mReasoningEffort = document.getElementById("m-reasoning-effort");
+      const mThinkingBudget = document.getElementById("m-thinking-budget");
       const mExtraBody = document.getElementById("m-extra-body");
       const mExtraHeader = document.getElementById("m-extra-header");
       const mOptionsToggle = document.getElementById("m-options-toggle");
@@ -953,6 +1011,30 @@
       const mPresencePenalty = document.getElementById("m-presence-penalty");
       const mFrequencyPenalty = document.getElementById("m-frequency-penalty");
       const mSeed = document.getElementById("m-seed");
+
+      function updateReasoningUI() {
+        if (mThink.checked) {
+          if (currentModelProviderType && currentModelProviderType.startsWith("openai")) {
+            show(mReasoningOpenAiGroup);
+            hide(mReasoningBudgetGroup);
+          } else if (
+            currentModelProviderType &&
+            (currentModelProviderType === "anthropic-messages" ||
+              currentModelProviderType === "google-generateContent")
+          ) {
+            hide(mReasoningOpenAiGroup);
+            show(mReasoningBudgetGroup);
+          } else {
+            hide(mReasoningOpenAiGroup);
+            hide(mReasoningBudgetGroup);
+          }
+        } else {
+          hide(mReasoningOpenAiGroup);
+          hide(mReasoningBudgetGroup);
+        }
+      }
+
+      mThink.addEventListener("change", updateReasoningUI);
 
       // Collapsible toggle functionality
       if (mOptionsToggle) {
@@ -1253,6 +1335,25 @@
           mThink.checked = !!(data.capabilities && data.capabilities.reasoning);
           mVision.checked = !!(data.capabilities && data.capabilities.vision);
 
+          // Update current provider type for reasoning UI
+          currentModelProviderType = data.parentProviderType || null;
+
+          // Load reasoning options if they exist
+          if (data.options && data.options.providerOptions) {
+            const po = data.options.providerOptions;
+            if (po.openai && po.openai.reasoningEffort) {
+              mReasoningEffort.value = po.openai.reasoningEffort;
+            }
+            if (po.anthropic && po.anthropic.thinking && po.anthropic.thinking.budgetTokens) {
+              mThinkingBudget.value = po.anthropic.thinking.budgetTokens;
+            }
+            if (po.google && po.google.thinkingConfig && po.google.thinkingConfig.thinkingBudget) {
+              mThinkingBudget.value = po.google.thinkingConfig.thinkingBudget;
+            }
+          }
+
+          updateReasoningUI();
+
           mExtraBody.value = data.extraBody || "";
           mExtraHeader.value = data.extraHeader || "";
 
@@ -1397,6 +1498,32 @@
                   ? parseFloat(mFrequencyPenalty.value)
                   : undefined,
                 seed: mSeed.value ? parseInt(mSeed.value) : undefined,
+                providerOptions: (function () {
+                  if (!mThink.checked || !currentModelProviderType) return undefined;
+                  const po = {};
+                  if (currentModelProviderType.startsWith("openai")) {
+                    po.openai = { reasoningEffort: mReasoningEffort.value || "medium" };
+                  } else if (currentModelProviderType === "anthropic-messages") {
+                    po.anthropic = {
+                      thinking: {
+                        type: "enabled",
+                        budgetTokens: mThinkingBudget.value
+                          ? parseInt(mThinkingBudget.value)
+                          : undefined,
+                      },
+                    };
+                  } else if (currentModelProviderType === "google-generateContent") {
+                    po.google = {
+                      thinkingConfig: {
+                        includeThoughts: true,
+                        thinkingBudget: mThinkingBudget.value
+                          ? parseInt(mThinkingBudget.value)
+                          : undefined,
+                      },
+                    };
+                  }
+                  return Object.keys(po).length > 0 ? po : undefined;
+                })(),
               },
             },
           });
