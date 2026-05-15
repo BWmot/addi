@@ -351,6 +351,7 @@ export class MessageConverter {
     toolResultMessages: number;
     textCharacters: number;
     attachmentParts: number;
+    thinkingParts: number;
   } {
     const summary = {
       total: messages.length,
@@ -359,7 +360,10 @@ export class MessageConverter {
       toolResultMessages: 0,
       textCharacters: 0,
       attachmentParts: 0,
+      thinkingParts: 0,
     };
+
+    const hasThinkingSupport = "LanguageModelThinkingPart" in vscode;
 
     for (const message of messages) {
       const role = MessageConverter.mapChatRole(message.role);
@@ -384,6 +388,17 @@ export class MessageConverter {
           summary.textCharacters += part.value?.length ?? 0;
           continue;
         }
+        if (hasThinkingSupport && part instanceof vscode.LanguageModelThinkingPart) {
+          const thinkingValue = part.value;
+          const reasoning = Array.isArray(thinkingValue)
+            ? thinkingValue.join("")
+            : thinkingValue || "";
+          // Only count non-empty/meaningful thinking content
+          if (reasoning.trim().length > 0) {
+            summary.thinkingParts += 1;
+          }
+          continue;
+        }
         if (part && typeof part === "object") {
           const candidate = part as Record<string, unknown>;
           const text = candidate["text"] ?? candidate["value"] ?? candidate["content"];
@@ -393,6 +408,67 @@ export class MessageConverter {
           if (typeof candidate["mimeType"] === "string" || typeof candidate["type"] === "string") {
             summary.attachmentParts += 1;
           }
+        }
+      }
+    }
+
+    return summary;
+  }
+
+  /**
+   * 统计 AI SDK ModelMessage[] 的详细类型分布。
+   * 专用于 "AI SDK options built" 日志，展示各 part 类型的数量。
+   *
+   * 对于 reasoning part，排除空/空白占位内容（如 " " 占位符），
+   * 确保只有有实际思考内容的 reasoning part 才被计入。
+   */
+  static summarizeCoreMessages(messages: ModelMessage[]): {
+    total: number;
+    byRole: Record<string, number>;
+    textParts: number;
+    reasoningPartsActual: number;
+    reasoningPlaceholders: number;
+    toolCallParts: number;
+    toolResultParts: number;
+  } {
+    const summary = {
+      total: messages.length,
+      byRole: {} as Record<string, number>,
+      textParts: 0,
+      reasoningPartsActual: 0,
+      reasoningPlaceholders: 0,
+      toolCallParts: 0,
+      toolResultParts: 0,
+    };
+
+    for (const message of messages) {
+      summary.byRole[message.role] = (summary.byRole[message.role] ?? 0) + 1;
+
+      if (typeof message.content === "string") {
+        summary.textParts += 1;
+        continue;
+      }
+
+      for (const part of message.content) {
+        switch (part.type) {
+          case "text":
+            summary.textParts += 1;
+            break;
+          case "reasoning": {
+            const text = part.text ?? "";
+            if (text.trim().length > 0) {
+              summary.reasoningPartsActual += 1;
+            } else {
+              summary.reasoningPlaceholders += 1;
+            }
+            break;
+          }
+          case "tool-call":
+            summary.toolCallParts += 1;
+            break;
+          case "tool-result":
+            summary.toolResultParts += 1;
+            break;
         }
       }
     }

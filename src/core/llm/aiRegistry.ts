@@ -323,7 +323,16 @@ export class AIProviderRegistry {
         modelRid: modelId,
         providerName: provider.name,
         middlewareCount: middlewares.length,
-        middlewareTypes: middlewares.map((m) => m.constructor?.name || "anonymous"),
+        middlewareTypes: middlewares.map((m) => {
+          const obj = m as unknown as { [key: string]: unknown };
+          return (
+            (obj["middlewareName"] as string) ||
+            (typeof obj["wrapGenerate"] === "function" ? "extractReasoning" : undefined) ||
+            (typeof obj["wrapStream"] === "function" ? "extractReasoning-stream" : undefined) ||
+            m.constructor?.name ||
+            "anonymous"
+          );
+        }),
       },
       LogScope.AI_REGISTRY,
     );

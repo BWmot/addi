@@ -64,13 +64,15 @@ export class LLMService {
   ): Promise<void> {
     const execTraceId = traceId ?? generateTraceId();
 
+    const msgSummary = MessageConverter.summarizeMessages(messages);
+
     logger.info(
       `[${execTraceId}] Chat started`,
       {
         providerName: provider.name,
         modelRid: model.rid,
         modelName: model.name,
-        messageCount: messages.length,
+        messages: msgSummary,
         traceId: execTraceId,
       },
       LogScope.LLM_SERVICE,
@@ -431,6 +433,8 @@ export class LLMService {
     // ──────────────────────────────────────────────────────────────────────
     // Debug log: capture what options are actually being sent to AI SDK
     // ──────────────────────────────────────────────────────────────────────
+    const coreMsgSummary = MessageConverter.summarizeCoreMessages(messages);
+
     logger.debug(
       `[${options.traceId ?? "?"}] AI SDK options built`,
       {
@@ -438,7 +442,7 @@ export class LLMService {
         providerType: provider.providerType,
         endpoint: provider.apiEndpoint,
         systemLength: system?.length ?? 0,
-        messageCount: messages.length,
+        messages: coreMsgSummary,
         temperature: baseOptions.temperature,
         maxTokens: baseOptions.maxOutputTokens,
         hasTools: Object.keys(tools).length > 0,

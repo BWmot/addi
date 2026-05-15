@@ -50,6 +50,7 @@ import type { LanguageModelMiddleware } from "ai";
 export function createReasoningContentInjectMiddleware(): LanguageModelMiddleware {
   return {
     specificationVersion: "v3",
+    middlewareName: "reasoningContentInject",
 
     // ======================================================================
     // 请求侧 — 参数转换
