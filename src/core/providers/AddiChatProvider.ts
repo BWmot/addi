@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import type { Provider, ProviderRepository } from "../../common/types";
 import { TokenFormatter } from "../../common/utils";
-import { logger, LogScope } from "../../common/logger";
+import { logger, LogScope, generateTraceId } from "../../common/logger";
 import { ToolRegistry } from "../llm/toolRegistry";
 import type { LLMService } from "../llm/llmService";
 import { MessageConverter } from "../llm/messageConverter";
@@ -92,16 +92,18 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
   ): Promise<void> {
+    const traceId = generateTraceId();
     const modelId =
       typeof model.id === "string" && model.id.startsWith("addi-model:")
         ? model.id.replace("addi-model:", "")
         : model.id;
     logger.info(
-      "Chat response requested",
+      `[${traceId}] Chat response requested`,
       {
         requestedModelId: modelId,
         messageCount: messages.length,
         hasOptions: Boolean(options),
+        traceId,
       },
       LogScope.CHAT_PROVIDER,
     );
@@ -109,7 +111,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     const toolDefinitions = this.resolveToolDefinitions(options);
     const toolNames = toolDefinitions?.map((t) => t.name) ?? [];
     logger.debug(
-      "Chat request summary",
+      `[${traceId}] Chat request summary`,
       {
         requestedModelId: modelId,
         messages: messageSummary,
@@ -121,15 +123,25 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
               ? "host"
               : "fallback"
             : "none",
+        traceId,
       },
       LogScope.CHAT_PROVIDER,
     );
     const result = this.repository.findModel(modelId);
     if (!result) {
+      const allModels = this.repository.getProviders().flatMap((p) =>
+        p.models.map((m) => ({
+          providerName: p.name,
+          modelRid: m.rid,
+          modelName: m.name,
+        })),
+      );
       logger.warn(
-        "Chat response requested for unknown model",
+        `[${traceId}] Chat response requested for unknown model`,
         {
           requestedModelId: modelId,
+          availableModels: allModels,
+          traceId,
         },
         LogScope.CHAT_PROVIDER,
       );
@@ -138,11 +150,12 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
 
     const { provider, model: storedModel } = result;
     logger.debug(
-      "Resolved model for chat response",
+      `[${traceId}] Resolved model for chat response`,
       {
         provider: logger.sanitizeProvider(provider),
         model: logger.sanitizeModel(storedModel),
         messages: messageSummary,
+        traceId,
       },
       LogScope.CHAT_PROVIDER,
     );
@@ -152,8 +165,8 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
 
     if (!apiKey || apiKey.trim() === "") {
       logger.warn(
-        "Provider missing API key",
-        logger.sanitizeProvider(provider),
+        `[${traceId}] Provider missing API key`,
+        { ...logger.sanitizeProvider(provider), traceId },
         LogScope.CHAT_PROVIDER,
       );
       throw new Error(`API key for provider '${provider.name}' is not configured.`);
@@ -161,8 +174,8 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
 
     if (!provider.apiEndpoint || provider.apiEndpoint.trim() === "") {
       logger.warn(
-        "Provider missing API endpoint",
-        logger.sanitizeProvider(provider),
+        `[${traceId}] Provider missing API endpoint`,
+        { ...logger.sanitizeProvider(provider), traceId },
         LogScope.CHAT_PROVIDER,
       );
       throw new Error(`API endpoint for provider '${provider.name}' is not configured.`);
@@ -172,7 +185,11 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
 
     const startTime = Date.now();
     const onStats = (stats: { firstTokenTime: number; endTime: number; tokenCount: number }) => {
-      logger.debug("onStats called", stats, LogScope.CHAT_PROVIDER);
+      logger.debug(
+        `[${traceId}] onStats called`,
+        { ...stats, traceId },
+        LogScope.CHAT_PROVIDER,
+      );
       // Validate the timing data before calculating speed
       if (
         stats.tokenCount > 0 &&
@@ -188,11 +205,12 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
           // Sanity check: reject unrealistic speeds (>10000 t/s is physically impossible)
           if (speed <= 10000) {
             logger.info(
-              "Calculated speed",
+              `[${traceId}] Calculated speed`,
               {
                 speed,
                 duration,
                 tokenCount: stats.tokenCount,
+                traceId,
               },
               LogScope.CHAT_PROVIDER,
             );
@@ -207,17 +225,25 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
               );
             }
           } else {
-            logger.warn("Speed rejected: unrealistic value", { speed }, LogScope.CHAT_PROVIDER);
+            logger.warn(
+              `[${traceId}] Speed rejected: unrealistic value`,
+              { speed, traceId },
+              LogScope.CHAT_PROVIDER,
+            );
           }
         } else {
-          logger.warn("Speed rejected: unrealistic duration", { duration }, LogScope.CHAT_PROVIDER);
+          logger.warn(
+            `[${traceId}] Speed rejected: unrealistic duration`,
+            { duration, traceId },
+            LogScope.CHAT_PROVIDER,
+          );
         }
       }
     };
 
     try {
       logger.debug(
-        "Dispatching request via LLMService",
+        `[${traceId}] Dispatching request via LLMService`,
         logger.sanitizeProvider(providerWithKey),
         LogScope.CHAT_PROVIDER,
       );
@@ -229,12 +255,14 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
         progress,
         token,
         onStats,
+        traceId,
       );
     } catch (error) {
       logger.error(
-        "Model query error",
+        `[${traceId}] Model query error`,
         {
           error: error instanceof Error ? error.message : String(error),
+          traceId,
           provider: logger.sanitizeProvider(providerWithKey),
           model: logger.sanitizeModel(storedModel),
         },
@@ -246,10 +274,11 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     } finally {
       const duration = Date.now() - startTime;
       logger.info(
-        "Chat response completed",
+        `[${traceId}] Chat response completed`,
         {
           requestedModelId: modelId,
           durationMs: duration,
+          traceId,
         },
         LogScope.CHAT_PROVIDER,
       );

@@ -85,9 +85,14 @@ export class AIProviderRegistry {
     }
 
     // Helper to create a fetch wrapper for error handling
-    const createFetchWithErrorHandling = (baseFetch?: typeof globalThis.fetch) => {
+    // Accepts an optional provider label to enrich error logs
+    const createFetchWithErrorHandling = (
+      baseFetch?: typeof globalThis.fetch,
+      providerLabel?: string,
+    ) => {
       return async (url: string | Request | URL, options?: RequestInit) => {
         const urlStr = url.toString();
+        const providerCtx = providerLabel ? `[${providerLabel}] ` : "";
         try {
           const fetchFn = baseFetch || fetch;
           // Add default User-Agent if not present (helps with some strict firewalls/providers like Minimax)
@@ -124,22 +129,30 @@ export class AIProviderRegistry {
 
           const response = await fetchFn(url, finalOptions);
           if (!response.ok) {
-            const errorMsg = `[AI-SDK Fetch] Error ${response.status} from ${urlStr}`;
+            const errorMsg = `${providerCtx}[AI-SDK Fetch] Error ${response.status} from ${urlStr}`;
             try {
               const clone = response.clone();
               const text = await clone.text();
               logger.error(
                 errorMsg,
-                { status: response.status, body: text.substring(0, 500) },
+                {
+                  status: response.status,
+                  body: text.substring(0, 500),
+                  provider: providerLabel,
+                },
                 LogScope.AI_REGISTRY,
               );
             } catch (e) {
-              logger.error(errorMsg, e, LogScope.AI_REGISTRY);
+              logger.error(errorMsg, { provider: providerLabel, error: e }, LogScope.AI_REGISTRY);
             }
           }
           return response;
         } catch (e) {
-          logger.error(`[AI-SDK Fetch] Network Error: ${urlStr}`, e, LogScope.AI_REGISTRY);
+          logger.error(
+            `${providerCtx}[AI-SDK Fetch] Network Error: ${urlStr}`,
+            { provider: providerLabel, error: e },
+            LogScope.AI_REGISTRY,
+          );
           throw e;
         }
       };
@@ -152,7 +165,7 @@ export class AIProviderRegistry {
     const buildBaseSettings = (p: Provider, overrideBaseURL?: string): BaseProviderSettings => ({
       baseURL: overrideBaseURL ?? p.apiEndpoint ?? "",
       apiKey: p.apiKey ?? "",
-      fetch: createFetchWithErrorHandling(),
+      fetch: createFetchWithErrorHandling(undefined, p.name),
     });
 
     // OpenAI (/completions) - Most common, used by OpenAI, DeepSeek, local models, etc.
@@ -169,7 +182,7 @@ export class AIProviderRegistry {
             baseURL,
             apiKey: p.apiKey ?? "",
             name: "openai-proxy",
-            fetch: createFetchWithErrorHandling(),
+            fetch: createFetchWithErrorHandling(undefined, p.name),
           });
         }
 
@@ -301,6 +314,19 @@ export class AIProviderRegistry {
         providerId: provider.providerType,
       });
     }
+
+    // Debug log for model creation
+    logger.debug(
+      "AI SDK model created",
+      {
+        factoryType: provider.providerType,
+        modelRid: modelId,
+        providerName: provider.name,
+        middlewareCount: middlewares.length,
+        middlewareTypes: middlewares.map((m) => m.constructor?.name || "anonymous"),
+      },
+      LogScope.AI_REGISTRY,
+    );
 
     return modelInstance;
   }

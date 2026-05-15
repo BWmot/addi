@@ -5,7 +5,7 @@ import { AIProviderRegistry } from "./aiRegistry";
 import { MessageConverter } from "./messageConverter";
 import { extractReasoningContentFromStep, hasStreamPartVisibleContent } from "./reasoningUtils";
 import { ToolOrchestrator } from "./toolOrchestrator";
-import { logger, LogScope } from "../../common/logger";
+import { logger, LogScope, generateTraceId } from "../../common/logger";
 
 // ============================================================================
 // Types & Interfaces
@@ -20,6 +20,8 @@ interface ExecutionOptions {
   _streamingReported?: boolean;
   // Timestamp when the request was initiated (for accurate TTFT)
   requestStartTime?: number;
+  // Trace ID for correlating logs across the entire request chain
+  traceId?: string;
 }
 
 // ============================================================================
@@ -58,7 +60,22 @@ export class LLMService {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
     onStats?: (stats: { firstTokenTime: number; endTime: number; tokenCount: number }) => void,
+    traceId?: string,
   ): Promise<void> {
+    const execTraceId = traceId ?? generateTraceId();
+
+    logger.info(
+      `[${execTraceId}] Chat started`,
+      {
+        providerName: provider.name,
+        modelRid: model.rid,
+        modelName: model.name,
+        messageCount: messages.length,
+        traceId: execTraceId,
+      },
+      LogScope.LLM_SERVICE,
+    );
+
     // Convert VS Code messages to AI SDK format
     const coreMessages = await MessageConverter.toAiCoreMessages(messages, model.capabilities);
     const systemMessage = MessageConverter.extractSystemMessage(messages);
@@ -70,8 +87,8 @@ export class LLMService {
     } else if (model.capabilities?.toolCalling === false && options?.tools) {
       // If tools are requested but model doesn't support them, log a brief info
       logger.info(
-        `Model ${model.id} does not support tool calling, tools will be filtered`,
-        undefined,
+        `[${execTraceId}] Model ${model.rid} does not support tool calling, tools will be filtered`,
+        { traceId: execTraceId },
         LogScope.LLM_SERVICE,
       );
     }
@@ -85,7 +102,7 @@ export class LLMService {
       tools,
       progress,
       token,
-      { onStats },
+      { onStats, traceId: execTraceId },
     );
   }
 
@@ -106,6 +123,17 @@ export class LLMService {
     token: vscode.CancellationToken,
     options: ExecutionOptions,
   ): Promise<void> {
+    // Execute based on streaming preference from extraBody
+    let useStreaming = true;
+    if (model.extraBody) {
+      try {
+        const parsed = JSON.parse(model.extraBody);
+        useStreaming = parsed["stream"] !== false;
+      } catch {
+        useStreaming = true;
+      }
+    }
+
     try {
       // Record request start time for accurate speed measurement
       options.requestStartTime = Date.now();
@@ -120,24 +148,13 @@ export class LLMService {
         options,
       );
 
-      // Execute based on streaming preference from extraBody
-      let useStreaming = true;
-      if (model.extraBody) {
-        try {
-          const parsed = JSON.parse(model.extraBody);
-          useStreaming = parsed["stream"] !== false;
-        } catch {
-          useStreaming = true;
-        }
-      }
-
       if (useStreaming) {
         await this.executeStreaming(aiOptions, progress, token, options);
       } else {
         await this.executeNonStreaming(aiOptions, progress, options);
       }
     } catch (error) {
-      this.handleError(error);
+      this.handleError(error, provider, model, options.traceId, useStreaming);
       throw error;
     }
   }
@@ -225,6 +242,12 @@ export class LLMService {
     const extraHeaders = this.parseExtraHeaders(model, provider);
     const modelOptions = this.getModelOptions(model, provider);
 
+    // Merge traceId into headers if present
+    const mergedHeaders = { ...extraHeaders };
+    if (options.traceId) {
+      mergedHeaders["X-Addi-Trace-Id"] = options.traceId;
+    }
+
     const baseOptions: any = {
       model: aiModel,
       system,
@@ -238,7 +261,7 @@ export class LLMService {
       frequencyPenalty: modelOptions.frequencyPenalty,
       seed: modelOptions.seed,
       responseFormat: modelOptions.responseFormat,
-      headers: Object.keys(extraHeaders).length > 0 ? extraHeaders : undefined,
+      headers: Object.keys(mergedHeaders).length > 0 ? mergedHeaders : undefined,
       extraBody: Object.keys(extraBody).length > 0 ? extraBody : undefined,
       // onFinish fallback for non-streaming: streaming mode reports via fullStream
       onFinish: ({ usage }: any) => {
@@ -405,6 +428,28 @@ export class LLMService {
       }
     }
 
+    // ──────────────────────────────────────────────────────────────────────
+    // Debug log: capture what options are actually being sent to AI SDK
+    // ──────────────────────────────────────────────────────────────────────
+    logger.debug(
+      `[${options.traceId ?? "?"}] AI SDK options built`,
+      {
+        modelRid: model.rid,
+        providerType: provider.providerType,
+        endpoint: provider.apiEndpoint,
+        systemLength: system?.length ?? 0,
+        messageCount: messages.length,
+        temperature: baseOptions.temperature,
+        maxTokens: baseOptions.maxOutputTokens,
+        hasTools: Object.keys(tools).length > 0,
+        hasProviderOptions: Object.keys(providerOptions).length > 0,
+        streamMode: baseOptions.stream !== false ? "streaming" : "non-streaming",
+        hasHeaders: !!baseOptions.headers,
+        traceId: options.traceId,
+      },
+      LogScope.LLM_SERVICE,
+    );
+
     return baseOptions;
   }
 
@@ -451,6 +496,16 @@ export class LLMService {
         if (part.type === "finish") {
           hasFinished = true;
           finishReason = part.finishReason;
+          logger.debug(
+            `[${executionOptions.traceId ?? "?"}] Stream finished`,
+            {
+              finishReason: part.finishReason,
+              usage: part.usage,
+              hasReportedContent,
+              traceId: executionOptions.traceId,
+            },
+            LogScope.LLM_SERVICE,
+          );
           if (part.finishReason === "content-filter") {
             progress.report(new vscode.LanguageModelTextPart("[Content filtered]"));
             hasReportedContent = true;
@@ -461,7 +516,11 @@ export class LLMService {
         if (part.type === "error") {
           const error = part.error as any;
           const errorMsg = error?.message || String(part.error);
-          logger.error("Stream error part received", { error: errorMsg }, LogScope.LLM_SERVICE);
+          logger.error(
+            `[${executionOptions.traceId ?? "?"}] Stream error part received`,
+            { error: errorMsg, traceId: executionOptions.traceId },
+            LogScope.LLM_SERVICE,
+          );
           throw error;
         }
 
@@ -480,8 +539,8 @@ export class LLMService {
         }
         if (!hasFinished) {
           logger.warn(
-            "Stream completed without any content reported",
-            undefined,
+            `[${executionOptions.traceId ?? "?"}] Stream completed without any content reported`,
+            { traceId: executionOptions.traceId },
             LogScope.LLM_SERVICE,
           );
         }
@@ -490,9 +549,11 @@ export class LLMService {
       if (!hasReportedContent) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error(
-          "Streaming error before any content reported",
+          `[${executionOptions.traceId ?? "?"}] Streaming error before any content reported`,
           {
             error: errorMessage,
+            finishReason,
+            traceId: executionOptions.traceId,
           },
           LogScope.LLM_SERVICE,
         );
@@ -511,7 +572,11 @@ export class LLMService {
           accurateTokenCount = usage.outputTokens || 0;
         } catch {
           // Usage unavailable (e.g. stream cancelled early), use estimate
-          logger.debug("Could not get usage from stream result", undefined, LogScope.LLM_SERVICE);
+          logger.debug(
+            `[${executionOptions.traceId ?? "?"}] Could not get usage from stream result`,
+            { traceId: executionOptions.traceId },
+            LogScope.LLM_SERVICE,
+          );
         }
         executionOptions.onStats({
           firstTokenTime,
@@ -556,8 +621,8 @@ export class LLMService {
 
       if (!hasReportedContent && result.finishReason === "stop") {
         logger.warn(
-          "Non-streaming response completed but no content was generated",
-          undefined,
+          `[${executionOptions.traceId ?? "?"}] Non-streaming response completed but no content was generated`,
+          { finishReason: result.finishReason, traceId: executionOptions.traceId },
           LogScope.LLM_SERVICE,
         );
         progress.report(new vscode.LanguageModelTextPart("[No response generated]"));
@@ -566,9 +631,10 @@ export class LLMService {
       if (!hasReportedContent) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error(
-          "Non-streaming error before any content reported",
+          `[${executionOptions.traceId ?? "?"}] Non-streaming error before any content reported`,
           {
             error: errorMessage,
+            traceId: executionOptions.traceId,
           },
           LogScope.LLM_SERVICE,
         );
@@ -766,13 +832,47 @@ export class LLMService {
   /**
    * Handle errors during execution.
    */
-  private handleError(error: any): void {
+  private handleError(
+    error: any,
+    provider?: Provider,
+    model?: Model,
+    traceId?: string,
+    isStreaming?: boolean,
+  ): void {
     if (error.name === "AbortError" || error.message?.includes("The operation was aborted")) {
       return;
     }
 
-    // ALWAYS log the full error for developers to see in the logs
-    logger.error("LLMService execution error", error, LogScope.LLM_SERVICE);
+    // ALWAYS log the full error with rich context for developers
+    const errorContext: Record<string, unknown> = {
+      traceId,
+      isStreaming,
+    };
+
+    if (provider) {
+      errorContext["providerId"] = provider.id;
+      errorContext["providerName"] = provider.name;
+      errorContext["providerType"] = provider.providerType;
+      errorContext["providerEndpoint"] = provider.apiEndpoint;
+    }
+
+    if (model) {
+      errorContext["modelRid"] = model.rid;
+      errorContext["modelName"] = model.name;
+      errorContext["modelFamily"] = model.family;
+    }
+
+    if (error instanceof Error) {
+      errorContext["errorName"] = error.name;
+      errorContext["errorMessage"] = error.message;
+      errorContext["errorStack"] = error.stack;
+    }
+
+    logger.error(
+      `[${traceId ?? "?"}] LLMService execution error`,
+      errorContext,
+      LogScope.LLM_SERVICE,
+    );
 
     // Throw the original error directly as requested
     throw error;
