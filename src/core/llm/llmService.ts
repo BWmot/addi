@@ -565,28 +565,38 @@ export class LLMService {
       }
       throw error;
     } finally {
-      if (executionOptions.onStats && firstTokenTime) {
-        const endTime = Date.now();
-        executionOptions._streamingReported = true;
-        // Use AI SDK usage for accurate token count (await result.usage)
-        // Falls back to estimation if usage unavailable
-        let accurateTokenCount = 0;
-        try {
-          const usage = await result.usage;
-          accurateTokenCount = usage.outputTokens || 0;
-        } catch {
-          // Usage unavailable (e.g. stream cancelled early), use estimate
-          logger.debug(
-            `[${executionOptions.traceId ?? "?"}] Could not get usage from stream result`,
-            { traceId: executionOptions.traceId },
-            LogScope.LLM_SERVICE,
-          );
+      // Report usage data to VS Code (even if onStats callback is not set)
+      try {
+        const usage = await result.usage;
+        this.reportUsageData(usage, progress, executionOptions.traceId);
+
+        // Report onStats with accurate token count
+        if (executionOptions.onStats && firstTokenTime) {
+          const endTime = Date.now();
+          executionOptions._streamingReported = true;
+          executionOptions.onStats({
+            firstTokenTime,
+            endTime,
+            tokenCount: usage.outputTokens || 0,
+          });
         }
-        executionOptions.onStats({
-          firstTokenTime,
-          endTime,
-          tokenCount: accurateTokenCount,
-        });
+      } catch {
+        // Usage unavailable (e.g. stream cancelled early)
+        logger.debug(
+          `[${executionOptions.traceId ?? "?"}] Could not get usage from stream result`,
+          { traceId: executionOptions.traceId },
+          LogScope.LLM_SERVICE,
+        );
+
+        if (executionOptions.onStats && firstTokenTime) {
+          const endTime = Date.now();
+          executionOptions._streamingReported = true;
+          executionOptions.onStats({
+            firstTokenTime,
+            endTime,
+            tokenCount: 0,
+          });
+        }
       }
     }
   }
@@ -617,6 +627,11 @@ export class LLMService {
       if (result.text) {
         progress.report(new vscode.LanguageModelTextPart(result.text));
         hasReportedContent = true;
+      }
+
+      // Report usage data to VS Code
+      if (result.usage) {
+        this.reportUsageData(result.usage, progress, executionOptions.traceId);
       }
 
       if (result.finishReason === "content-filter") {
@@ -651,6 +666,30 @@ export class LLMService {
   // ========================================================================
   // Response Processing Helpers
   // ========================================================================
+
+  /**
+   * Report token usage data to VS Code as a LanguageModelDataPart.
+   * This allows VS Code and Copilot to track usage statistics for third-party providers.
+   */
+  private reportUsageData(
+    usage: { inputTokens: number | undefined; outputTokens: number | undefined; totalTokens: number | undefined },
+    progress: vscode.Progress<vscode.LanguageModelResponsePart>,
+    traceId?: string,
+  ): void {
+    const usageData = {
+      prompt_tokens: usage.inputTokens ?? 0,
+      completion_tokens: usage.outputTokens ?? 0,
+      total_tokens: usage.totalTokens ?? 0,
+    };
+
+    logger.debug(
+      `[${traceId ?? "?"}] Reporting usage data to VS Code`,
+      usageData,
+      LogScope.LLM_SERVICE,
+    );
+
+    progress.report(vscode.LanguageModelDataPart.json(usageData, "usage"));
+  }
 
   /**
    * Process and report a response part to VS Code UI.
