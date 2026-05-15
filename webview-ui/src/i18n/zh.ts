@@ -43,9 +43,9 @@ const zh: I18nMessages = {
     globalExtraBody: "全局额外请求（应用于所有模型）",
     experimental: "🧪 实验性功能",
     experimentalDesc: "实验性功能，生产环境使用前请充分测试。",
-    reasoningContentInject: "注入 reasoning_content 字段（多轮回填）",
-    reasoningContentInjectHint:
-      "适用于 Deepseek / MiMo 等使用 reasoning_content API 的模型。启用后可正确处理多轮思考上下文。",
+    reasoningContentAdapt: "适配 reasoning_content 思考模式",
+    reasoningContentAdaptHint:
+      "适用于 Deepseek / MiMo 等使用 reasoning_content API 的模型。自动转换和处理思考响应内容以及对思考回传的特定格式要求。",
     extractReasoningContent: "从 <think> 标签提取推理内容",
     extractReasoningContentHint:
       "部分模型在 <think> XML 标签内返回思考内容。启用后可自动提取并显示。",
@@ -92,9 +92,9 @@ const zh: I18nMessages = {
     extraBodyPlaceholder: '{"key": "value"}',
     experimental: "🧪 实验性",
     experimentalDesc: "实验性功能，生产环境使用前请充分测试。",
-    reasoningContentInject: "注入 reasoning_content 字段（多轮回填）",
-    reasoningContentInjectHint:
-      "适用于 Deepseek / MiMo 等使用 reasoning_content API 的模型。启用后可正确处理多轮思考上下文。",
+    reasoningContentAdapt: "适配 reasoning_content 思考模式",
+    reasoningContentAdaptHint:
+      "适用于 Deepseek / MiMo 等使用 reasoning_content API 的模型。自动转换和处理思考响应内容以及对思考回传的特定格式要求。",
     extractReasoningContent: "从 <think> 标签提取推理内容",
     extractReasoningContentHint:
       "部分模型在 <think> XML 标签内返回思考内容。启用后可自动提取并显示。",

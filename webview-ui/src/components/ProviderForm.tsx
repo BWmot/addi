@@ -192,15 +192,15 @@ export const ProviderForm: React.FC<ProviderFormProps> = ({ data, mode }) => {
             <label className="checkbox-item">
               <input
                 type="checkbox"
-                checked={!!formData.options?.reasoningContentInject}
+                checked={!!formData.options?.reasoningContentAdapt}
                 onChange={(e) =>
-                  handleOptionChange("reasoningContentInject", e.target.checked || undefined)
+                  handleOptionChange("reasoningContentAdapt", e.target.checked || undefined)
                 }
                 disabled={mode === "read"}
               />{" "}
-              {t("provider.reasoningContentInject")}
+              {t("provider.reasoningContentAdapt")}
             </label>
-            <div className="field-hint">{t("provider.reasoningContentInjectHint")}</div>
+            <div className="field-hint">{t("provider.reasoningContentAdaptHint")}</div>
           </div>
           <div className="experimental-option">
             <label className="checkbox-item">

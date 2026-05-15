@@ -69,11 +69,12 @@ export interface ModelOptions {
   providerOptions?: Record<string, Record<string, unknown>>;
 
   /**
-   * [实验性] 启用 reasoning_content 字段注入中间件。
+   * [实验性] 启用 reasoning_content 字段双向适配中间件。
    * 适用：DeepSeek V4/R1、MiMo 等使用 reasoning_content API 字段的模型。
-   * 启用后自动处理多轮 reasoning 内容的回传与 backfill。
+   * 启用后自动处理多轮 reasoning 内容的回传（请求侧 backfill）
+   * 与响应侧格式适配，确保 VS Code Copilot 正确识别思考数据。
    */
-  reasoningContentInject?: boolean;
+  reasoningContentAdapt?: boolean;
 
   /**
    * [实验性] 从 <think> 标签提取 reasoning 内容。

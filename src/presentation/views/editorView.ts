@@ -3,7 +3,7 @@ import type { ProviderModelManager } from "../../core/providers/ProviderModelMan
 import { ProviderTreeItem } from "./providerView";
 import { ModelTreeItem } from "./treeItems";
 import { logger, maskSecret, LogScope } from "../../common/logger";
-import type { Provider, Model } from "../../common/types";
+import type { Provider, Model, ModelOptions } from "../../common/types";
 import { TokenFormatter } from "../../common/utils";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
 import { ModelTester } from "../../core/llm/modelTester";
@@ -180,6 +180,24 @@ export class EditorViewManager {
       if (prefillData) {
         dataToSend = prefillData;
       } else if (type === "model") {
+        // Inherit provider-level experimental options so they show
+        // as checked by default in the new model form.
+        const inheritedOptions: Partial<ModelOptions> = {};
+        if (this._currentProvider?.options) {
+          const provOpts = this._currentProvider.options;
+          if (provOpts.reasoningContentAdapt) {
+            inheritedOptions.reasoningContentAdapt = true;
+          }
+          if (provOpts.extractReasoningContent) {
+            inheritedOptions.extractReasoningContent = true;
+          }
+          if (provOpts.temperature !== undefined) {
+            inheritedOptions.temperature = provOpts.temperature;
+          }
+          if (provOpts.reasoningEffort) {
+            inheritedOptions.reasoningEffort = provOpts.reasoningEffort;
+          }
+        }
         dataToSend = {
           family: ConfigManager.getDefaultModelFamily(),
           version: ConfigManager.getDefaultModelVersion(),
@@ -190,6 +208,10 @@ export class EditorViewManager {
             reasoning: true,
             vision: false,
           },
+          options:
+            Object.keys(inheritedOptions).length > 0
+              ? (inheritedOptions as ModelOptions)
+              : undefined,
         };
       }
     } else if (isBatchMode) {

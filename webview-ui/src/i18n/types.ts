@@ -42,8 +42,8 @@ export interface I18nMessages {
     globalExtraBody: string;
     experimental: string;
     experimentalDesc: string;
-    reasoningContentInject: string;
-    reasoningContentInjectHint: string;
+    reasoningContentAdapt: string;
+    reasoningContentAdaptHint: string;
     extractReasoningContent: string;
     extractReasoningContentHint: string;
     apiTypeOptions: Record<string, string>;
@@ -79,8 +79,8 @@ export interface I18nMessages {
     extraBodyPlaceholder: string;
     experimental: string;
     experimentalDesc: string;
-    reasoningContentInject: string;
-    reasoningContentInjectHint: string;
+    reasoningContentAdapt: string;
+    reasoningContentAdaptHint: string;
     extractReasoningContent: string;
     extractReasoningContentHint: string;
     batchDisabled: string;

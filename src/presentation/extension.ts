@@ -73,7 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("addi.debug.listTools", () => {
       const tools = vscode.lm.tools;
       const names = tools.map((t) => t.name).join(", ");
-      vscode.window.showInformationMessage(`Registered LM Tools: ${names}`);
+      vscode.window.showInformationMessage(vscode.l10n.t("Registered LM Tools: {0}", names));
       logger.info(
         "Registered LM Tools",
         {
@@ -122,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
         try {
           await handler(...args);
         } catch (error) {
-          UserFeedback.showError(`Command ${id} failed: ${error}`);
+          UserFeedback.showError(vscode.l10n.t("Command {0} failed: {1}", id, error instanceof Error ? error.message : String(error)));
           logger.error(`Command ${id} failed`, error, LogScope.COMMAND);
         }
       }),

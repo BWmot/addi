@@ -4,7 +4,7 @@ import { postMessage } from "../hooks/useVscode";
 import { useLocale } from "../i18n";
 
 interface ModelFormProps {
-  data: ModelConfig;
+  data: ModelConfig & { parentProviderOptions?: ModelConfig["options"] };
   mode: "edit" | "read";
   parentId?: string;
   isBatchMode?: boolean;
@@ -21,7 +21,7 @@ export const ModelForm: React.FC<ModelFormProps> = ({
   parentProviderType,
 }) => {
   const { t, tRaw } = useLocale();
-  const [formData, setFormData] = useState<ModelConfig>(data);
+  const [formData, setFormData] = useState<ModelConfig & { parentProviderOptions?: ModelConfig["options"] }>(data);
 
   useEffect(() => {
     setFormData(data);
@@ -236,21 +236,21 @@ export const ModelForm: React.FC<ModelFormProps> = ({
             <label className="checkbox-item">
               <input
                 type="checkbox"
-                checked={!!formData.options?.reasoningContentInject}
+                checked={!!(formData.options?.reasoningContentAdapt ?? formData.parentProviderOptions?.reasoningContentAdapt)}
                 onChange={(e) =>
-                  handleOptionChange("reasoningContentInject", e.target.checked || undefined)
+                  handleOptionChange("reasoningContentAdapt", e.target.checked || undefined)
                 }
                 disabled={mode === "read"}
               />{" "}
-              {t("model.reasoningContentInject")}
+              {t("model.reasoningContentAdapt")}
             </label>
-            <div className="field-hint">{t("model.reasoningContentInjectHint")}</div>
+            <div className="field-hint">{t("model.reasoningContentAdaptHint")}</div>
           </div>
           <div className="experimental-option">
             <label className="checkbox-item">
               <input
                 type="checkbox"
-                checked={!!formData.options?.extractReasoningContent}
+                checked={!!(formData.options?.extractReasoningContent ?? formData.parentProviderOptions?.extractReasoningContent)}
                 onChange={(e) =>
                   handleOptionChange("extractReasoningContent", e.target.checked || undefined)
                 }

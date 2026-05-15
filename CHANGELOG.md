@@ -2,6 +2,23 @@
 
 All notable changes to the "addi" extension will be documented in this file.
 
+## v1.1.1 - 2026-05-?? (Unreleased)
+
+### Fixed
+
+- **Provider checkbox → Model propagation**: Provider-level experimental options (`reasoningContentAdapt`, `extractReasoningContent`) now correctly propagate to:
+  - The model creation form (pre-fills checkboxes when creating a new model under a provider)
+  - The model edit form (uses provider-level option as display fallback if model-level option is not set)
+  - Previously, checking these options at the provider level had no visible effect on individual model forms
+
+### Changed
+
+- **Middleware rename & enhancement**: `reasoningContentInjectMiddleware` → `reasoningContentAdaptMiddleware`
+  - **Bidirectional adapt**: Added response-side `wrapStream`/`wrapGenerate` hooks (pass-through as framework extension points) alongside existing request-side `transformParams` for multi-turn reasoning backfill
+  - **Updated all code references**: `aiRegistry.ts`, `llmService.ts`, `ModelOptions` type, webview UI (types, ProviderForm, ModelForm, i18n)
+  - **Deleted legacy file**: `reasoningContentInjectMiddleware.ts` removed
+- **Documentation updated**: `docs/reasoning-support-plan.md` and `README.md` references to old middleware name updated
+
 ## v1.1.0 - 2026-05-15
 
 ### Added

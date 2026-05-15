@@ -77,7 +77,7 @@ Backup, migrate, or share provider configurations as JSON. Supports encrypted ex
 
 - **🌐 Complete i18n**: Full localization with Chinese (Simplified) support — everything from command labels to config descriptions
 - **🖥️ Webview UI**: New React + TypeScript + Vite forms replacing the legacy HTML editor
-- **🧠 Reasoning Support**: Thinking/reasoning content injection middleware and utilities
+- **🧠 Reasoning Support**: Thinking/reasoning content adaptation middleware and utilities
 - **🔬 E2E Tests**: Comprehensive test suite for data normalization and model fetching
 
 See the [full changelog](./CHANGELOG.md) for details.

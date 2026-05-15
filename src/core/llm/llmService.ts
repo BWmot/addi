@@ -13,7 +13,13 @@ import { logger, LogScope, generateTraceId } from "../../common/logger";
 
 interface ExecutionOptions {
   onStats?:
-    | ((stats: { firstTokenTime: number; endTime: number; tokenCount: number }) => void)
+    | ((stats: {
+        firstTokenTime: number;
+        endTime: number;
+        tokenCount: number;
+        thinkingTokens: number;
+        backfillTokens: number;
+      }) => void)
     | undefined;
   onReasoning?: ((delta: string) => void) | undefined;
   // Internal flag to prevent duplicate stats reporting in streaming mode
@@ -22,6 +28,11 @@ interface ExecutionOptions {
   requestStartTime?: number;
   // Trace ID for correlating logs across the entire request chain
   traceId?: string;
+  // ── Internal running counters (accumulated during request processing) ──
+  /** Accumulated reasoning/thinking character count from streaming parts */
+  _accumulatedThinkingChars?: number;
+  /** Accumulated backfill character count from middleware injection */
+  _accumulatedBackfillChars?: number;
 }
 
 // ============================================================================
@@ -59,7 +70,13 @@ export class LLMService {
     options: vscode.ProvideLanguageModelChatResponseOptions | undefined,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
-    onStats?: (stats: { firstTokenTime: number; endTime: number; tokenCount: number }) => void,
+    onStats?: (stats: {
+      firstTokenTime: number;
+      endTime: number;
+      tokenCount: number;
+      thinkingTokens: number;
+      backfillTokens: number;
+    }) => void,
     traceId?: string,
   ): Promise<void> {
     const execTraceId = traceId ?? generateTraceId();
@@ -139,6 +156,25 @@ export class LLMService {
     try {
       // Record request start time for accurate speed measurement
       options.requestStartTime = Date.now();
+
+      // Initialize running counters for this request
+      options._accumulatedThinkingChars = 0;
+
+      // Pre-compute backfill character count: each assistant message missing a
+      // "reasoning" part will be backfilled by reasoningContentAdaptMiddleware
+      // with exactly 1 character (a space " ").
+      let backfillChars = 0;
+      for (const msg of messages) {
+        if (msg.role === "assistant" && Array.isArray(msg.content)) {
+          const hasReasoning = msg.content.some(
+            (p: any) => p.type === "reasoning",
+          );
+          if (!hasReasoning) {
+            backfillChars++;
+          }
+        }
+      }
+      options._accumulatedBackfillChars = backfillChars;
 
       // Build AI SDK options
       const aiOptions = this.buildAiOptions(
@@ -273,6 +309,8 @@ export class LLMService {
             firstTokenTime: options.requestStartTime ?? now,
             endTime: now,
             tokenCount: usage.outputTokens || 0,
+            thinkingTokens: options._accumulatedThinkingChars ?? 0,
+            backfillTokens: options._accumulatedBackfillChars ?? 0,
           });
         }
       },
@@ -292,8 +330,8 @@ export class LLMService {
     // `providerOptions` on the streamText / generateText call, NOT at
     // model creation time.
     //
-    // 注意：当启用 reasoningContentInject 实验性功能时，中间件会自动处理
-    // reasoning_content 字段的注入/提取，providerOptions 主要用于原生
+    // 注意：当启用 reasoningContentAdapt 实验性功能时，中间件会自动处理
+    // reasoning_content 字段的注入/提取和响应适配，providerOptions 主要用于原生
     // thinking/reasoning 开关（如 Anthropic thinking、OpenAI reasoningEffort）。
     // ──────────────────────────────────────────────────────────────────────
 
@@ -304,9 +342,9 @@ export class LLMService {
       Object.assign(providerOptions, modelOptions.providerOptions);
     }
 
-    // 当 reasoningContentInject 启用时，中间件自动处理 reasoning_content 字段，
-    // 但仍需传递思考开关（enabled/disabled）给底层 provider
-    const hasReasoningMiddleware = modelOptions.reasoningContentInject === true;
+    // 当 reasoningContentAdapt 启用时，中间件自动处理 reasoning_content 字段的
+    // 双向适配（请求注入 + 响应透传），但仍需传递思考开关（enabled/disabled）给底层 provider
+    const hasReasoningMiddleware = modelOptions.reasoningContentAdapt === true;
 
     // ──────────────────────────────────────────────────────────────────────
     // 推理层级 (reasoningEffort) 统一处理
@@ -506,6 +544,8 @@ export class LLMService {
               finishReason: part.finishReason,
               usage: part.usage,
               hasReportedContent,
+              thinkingChars: executionOptions._accumulatedThinkingChars ?? 0,
+              backfillChars: executionOptions._accumulatedBackfillChars ?? 0,
               traceId: executionOptions.traceId,
             },
             LogScope.LLM_SERVICE,
@@ -578,6 +618,8 @@ export class LLMService {
             firstTokenTime,
             endTime,
             tokenCount: usage.outputTokens || 0,
+            thinkingTokens: executionOptions._accumulatedThinkingChars ?? 0,
+            backfillTokens: executionOptions._accumulatedBackfillChars ?? 0,
           });
         }
       } catch {
@@ -595,6 +637,8 @@ export class LLMService {
             firstTokenTime,
             endTime,
             tokenCount: 0,
+            thinkingTokens: executionOptions._accumulatedThinkingChars ?? 0,
+            backfillTokens: executionOptions._accumulatedBackfillChars ?? 0,
           });
         }
       }
@@ -801,6 +845,10 @@ export class LLMService {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     options: ExecutionOptions,
   ): void {
+    // Track accumulated thinking character count for logging
+    options._accumulatedThinkingChars =
+      (options._accumulatedThinkingChars ?? 0) + text.length;
+
     // 创建VSCode格式的thinking part
     const thinkingPart = new vscode.LanguageModelThinkingPart(text, part.id, part.providerMetadata);
 
@@ -837,6 +885,10 @@ export class LLMService {
     if (!reasoning) {
       return;
     }
+
+    // Track accumulated thinking character count for logging
+    options._accumulatedThinkingChars =
+      (options._accumulatedThinkingChars ?? 0) + reasoning.length;
 
     // Always report to VS Code UI
     const thinkingPart = new vscode.LanguageModelThinkingPart(reasoning);

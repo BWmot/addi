@@ -43,9 +43,9 @@ const en: I18nMessages = {
     globalExtraBody: "Global Extra Body (applied to all models)",
     experimental: "🧪 Experimental",
     experimentalDesc: "Experimental. Test thoroughly before using in production.",
-    reasoningContentInject: "Inject reasoning_content field (multi-turn backfill)",
-    reasoningContentInjectHint:
-      "For Deepseek / MiMo and similar models using reasoning_content API. Enables multi-turn thinking context handling.",
+    reasoningContentAdapt: "Adapt reasoning_content thinking mode",
+    reasoningContentAdaptHint:
+      "For Deepseek / MiMo and similar models using reasoning_content API. Automatically converts and handles response thinking content and specific data format requirements.",
     extractReasoningContent: "Extract reasoning from <think> tags",
     extractReasoningContentHint:
       "Some models return thinking inside <think> XML tags. Extracts and displays it automatically.",
@@ -94,9 +94,9 @@ const en: I18nMessages = {
     extraBodyPlaceholder: '{"key": "value"}',
     experimental: "🧪 Experimental",
     experimentalDesc: "Experimental. Test thoroughly before using in production.",
-    reasoningContentInject: "Inject reasoning_content field (multi-turn backfill)",
-    reasoningContentInjectHint:
-      "For Deepseek / MiMo and similar models using reasoning_content API. Enables multi-turn thinking context handling.",
+    reasoningContentAdapt: "Adapt reasoning_content thinking mode",
+    reasoningContentAdaptHint:
+      "For Deepseek / MiMo and similar models using reasoning_content API. Automatically converts and handles response thinking content and specific data format requirements.",
     extractReasoningContent: "Extract reasoning from <think> tags",
     extractReasoningContentHint:
       "Some models return thinking inside <think> XML tags. Extracts and displays it automatically.",

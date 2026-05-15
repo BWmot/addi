@@ -74,7 +74,7 @@ AI SDK v4 的 `CoreAssistantMessage` 中，`reasoning` part 的签名是 `{ type
 
 ### 2.2 问题 2：（已解决）`@ai-sdk/deepseek` 已移除
 
-`@ai-sdk/deepseek` 已被移除，其功能由 `reasoningContentInjectMiddleware` 统一替代。
+`@ai-sdk/deepseek` 已被移除，其功能由 `reasoningContentAdaptMiddleware` 统一替代。
 所有 DeepSeek 模型现在通过 `openai-completions` providerType 访问。
 
 ### 2.3 问题 3：`@ai-sdk/openai-compatible` 没有 V4 风格的 backfill
@@ -98,12 +98,12 @@ if (providerType === "deepseek" && !providerOptions["deepseek"]) {
 
 ### 3.1 中间件名称
 
-**最终名称**: `reasoningContentInjectMiddleware`
+**最终名称**: `reasoningContentAdaptMiddleware`
 
 备选名称考虑：
 | 名称 | 评价 |
 |------|------|
-| `reasoningContentInjectMiddleware` | ✅ 准确描述功能（注入 reasoning_content） |
+| `reasoningContentAdaptMiddleware` | ✅ 准确描述功能（双向适配 reasoning_content） |
 | `reasoningContentMiddleware` | 可接受，但略模糊 |
 | `deepseekReasoningMiddleware` | ❌ 不够通用（也用于 MiMo） |
 | `thinkingContentInjector` | ❌ 与 AI SDK 的 "thinking" 术语混淆 |
@@ -142,7 +142,7 @@ if (providerType === "deepseek" && !providerOptions["deepseek"]) {
 **工作流程**：
 
 1. 用户添加自定义模型 → 在"实验性功能"区勾选所需选项
-2. `ModelConfig.options` 中新增 `reasoningContentInject` 和 `extractReasoningContent` 字段
+2. `ModelConfig.options` 中新增 `reasoningContentAdapt` 和 `extractReasoningContent` 字段
 3. `createModel()` 根据模型 options 决定是否包装中间件
 4. 用户随时可以开关，修改立即生效
 
@@ -156,11 +156,11 @@ interface ModelOptions {
   // ... existing fields ...
 
   /**
-   * [实验性] 启用 reasoning_content 字段注入
+   * [实验性] 启用 reasoning_content 双向适配
    * 适用：DeepSeek V4/R1、MiMo 等使用 reasoning_content API 字段的模型
    * 启用后自动处理多轮 reasoning 内容的回传与 backfill
    */
-  reasoningContentInject?: boolean;
+  reasoningContentAdapt?: boolean;
 
   /**
    * [实验性] 从 <think> 标签提取 reasoning 内容
@@ -234,15 +234,15 @@ isFirstText: boolean
 
 ```typescript
 /**
- * 创建 reasoning_content 注入中间件
+ * 创建 reasoning_content 双向适配中间件
  *
  * 此中间件由用户在模型编辑页面手动启用（实验性功能），
- * 而非自动检测。用户通过模型选项中的 reasoningContentInject 控制。
+ * 而非自动检测。用户通过模型选项中的 reasoningContentAdapt 控制。
  */
-function createReasoningContentInjectMiddleware(config: {
+function createReasoningContentAdaptMiddleware(config: {
   v4StrictMode: boolean; // 由 model.rid 判断后传入
   // 无需 apiUrlPattern / modelIdPattern — 用户手动控制
-}): LanguageModelV4Middleware {
+}): LanguageModelMiddleware {
   // ...
 }
 ```
@@ -270,10 +270,10 @@ createModel(provider: Provider, modelOrId: string | Model): LanguageModel {
   const middlewares: LanguageModelV4Middleware[] = [];
 
   // [实验性] reasoning_content 字段注入
-  if (modelOptions?.reasoningContentInject) {
+  if (modelOptions?.reasoningContentAdapt) {
     const isV4Model = /deepseek-v4|mimo-v2/i.test(modelId);
     middlewares.push(
-      createReasoningContentInjectMiddleware({
+      createReasoningContentAdaptMiddleware({
         v4StrictMode: isV4Model,
       }),
     );
@@ -374,12 +374,12 @@ extractReasoningMiddleware({
 
 ```typescript
 // 使用中间件链：两个中间件按顺序应用
-// 1. reasoningContentInjectMiddleware → 协议层（reasoning_content 字段）
+// 1. reasoningContentAdaptMiddleware → 协议层（reasoning_content 字段）
 // 2. extractReasoningMiddleware → 内容层（<think> 标签）
 modelInstance = wrapLanguageModel({
   model: modelInstance,
   middleware: [
-    reasoningContentInjectMiddleware({ ... }),
+    reasoningContentAdaptMiddleware({ ... }),
     extractReasoningMiddleware({
       tagName: 'think',          // 从 <think> 标签提取
       startWithReasoning: true,  // 某些模型省略开头标签
@@ -392,15 +392,15 @@ modelInstance = wrapLanguageModel({
 
 **中间件链执行顺序**：
 
-1. `reasoningContentInjectMiddleware` 先处理 `reasoning_content` 字段 → 转换为 `reasoning` part
+1. `reasoningContentAdaptMiddleware` 处理 `reasoning_content` 字段 → 转换为 `reasoning` part
 2. `extractReasoningMiddleware` 再检查剩余的 `text` part 中是否有 `<think>` 标签
 3. 任何未被 API 层捕获的 reasoning（遗漏在 `text` 中的标签内容）都会被二次提取
 
-> **`wrapLanguageModel` 的中间件数组是从右向左执行的**，因此 `extractReasoningMiddleware` 放在数组最后（先执行），`reasoningContentInjectMiddleware` 放在前面（后执行，包裹外层）。
+> **`wrapLanguageModel` 的中间件数组是从右向左执行的**，因此 `extractReasoningMiddleware` 放在数组最后（先执行），`reasoningContentAdaptMiddleware` 放在前面（后执行，包裹外层）。
 
 ### 5.4 extractReasoningMiddleware 的启用策略
 
-| 场景                                     | 推荐启用 reasoningContentInject        | 推荐启用 extractReasoning               |
+| 场景                                     | 推荐启用 reasoningContentAdapt        | 推荐启用 extractReasoning               |
 | ---------------------------------------- | -------------------------------------- | --------------------------------------- |
 | DeepSeek 官方 API（`deepseek-v4-*`）     | ✅ 建议用户开启                        | ❌ 不开（官方直接用 reasoning_content） |
 | MiMo 官方 API（`mimo-v2*`）              | ✅ 建议用户开启                        | ❌ 不开（官方直接用 reasoning_content） |
@@ -415,7 +415,7 @@ modelInstance = wrapLanguageModel({
 
 ### 5.5 两个中间件的对比
 
-| 维度     | extractReasoningMiddleware           | reasoningContentInjectMiddleware          |
+| 维度     | extractReasoningMiddleware           | reasoningContentAdaptMiddleware           |
 | -------- | ------------------------------------ | ----------------------------------------- |
 | 来源     | `ai` package（内置）                 | Addi 自定义                               |
 | 作用域   | 内容层：`<think>` 标签提取           | 协议层：`reasoning_content` 字段注入/提取 |
@@ -481,8 +481,8 @@ modelInstance = wrapLanguageModel({
 
 ### Phase 2: 实现统一中间件（核心）
 
-1. **创建 `src/core/llm/reasoningContentInjectMiddleware.ts`**
-   - 实现 `LanguageModelV4Middleware` 接口
+1. **创建 `src/core/llm/reasoningContentAdaptMiddleware.ts`**
+   - 实现 `LanguageModelMiddleware` 接口
    - 实现 `transformParams` 钩子（request 侧 reasoning_content 注入）
    - 实现 `wrapGenerate`/`wrapStream` 钩子（response 侧 reasoning 提取）
    - 实现 V4 strict mode backfill 逻辑
@@ -490,7 +490,7 @@ modelInstance = wrapLanguageModel({
 
 2. **中间件配置接口**
    ```typescript
-   interface ReasoningContentInjectConfig {
+   interface ReasoningContentAdaptConfig {
      v4StrictMode?: boolean; // 是否启用 V4 backfill（由 model.rid 判断）
      effortLevel?: "low" | "medium" | "high"; // reasoning_effort
    }
@@ -520,12 +520,12 @@ modelInstance = wrapLanguageModel({
    ```typescript
    interface ModelOptions {
      // ...existing fields...
-     reasoningContentInject?: boolean; // [实验性] 见 Phase 2
+     reasoningContentAdapt?: boolean; // [实验性] 见 Phase 2
      extractReasoningContent?: boolean; // [实验性] 用户手动开启
    }
    ```
 2. **UI 展示**：在模型编辑页面的「实验性功能」折叠区添加复选框
-3. **中间件链**：当 `options.extractReasoningContent` 为 `true` 时，`createModel()` 在 `reasoningContentInjectMiddleware` 链后追加 `extractReasoningMiddleware`
+3. **中间件链**：当 `options.extractReasoningContent` 为 `true` 时，`createModel()` 在 `reasoningContentAdaptMiddleware` 链后追加 `extractReasoningMiddleware`
 4. **适用于**：第三方转发模型（CSU 等）和仅支持标签格式的未来模型（QwQ 等）
 
 ### Phase 6: 后续优化
@@ -545,7 +545,7 @@ modelInstance = wrapLanguageModel({
 | `src/core/llm/llmService.ts`                       | LLM 调用编排、providerOptions 注入       |
 | `src/core/llm/messageConverter.ts`                 | VS Code ↔ AI SDK 消息转换（含 bug）      |
 | `src/common/types/config.ts`                       | Model 类型定义（capabilities.reasoning） |
-| `src/core/llm/reasoningContentInjectMiddleware.ts` | **新建** — 统一中间件实现                |
+| `src/core/llm/reasoningContentAdaptMiddleware.ts` | 统一中间件实现                          |
 | `docs/ai-sdk-reference.md`                         | AI SDK 接口参考                          |
 
 ### 外部参考

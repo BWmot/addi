@@ -754,7 +754,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         exportMeta["encryptionApiKey"] = CryptoService.encryptApiKeys(apiKeys, password);
       } catch (error) {
         logger.error("Failed to encrypt API keys during export", error);
-        UserFeedback.showError("Failed to encrypt API keys, exporting without API keys");
+        UserFeedback.showError(vscode.l10n.t("Failed to encrypt API keys, exporting without API keys"));
       }
     }
 

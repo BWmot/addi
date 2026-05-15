@@ -8,7 +8,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { Provider, Model } from "../../common/types";
 import { logger, LogScope } from "../../common/logger";
-import { createReasoningContentInjectMiddleware } from "./reasoningContentInjectMiddleware";
+import { createReasoningContentAdaptMiddleware } from "./reasoningContentAdaptMiddleware";
 
 // AI SDK 的 Provider 实例通常是一个函数，接受 modelId 返回 LanguageModelV1
 // 我们定义一个通用的类型别名
@@ -274,7 +274,7 @@ export class AIProviderRegistry {
     //
     // 使用 wrapLanguageModel 的中间件链机制，从右向左执行。
     // extractReasoningMiddleware 先执行（处理 <think> 标签内容层），
-    // reasoningContentInjectMiddleware 后执行（包裹外层，处理 protocol 层）。
+    // reasoningContentAdaptMiddleware 后执行（包裹外层，处理 protocol 层）。
     //
     // 启用方式：由用户在模型编辑页面的"实验性功能"区手动勾选，
     // 而非自动检测。详见 docs/reasoning-support-plan.md §3.2。
@@ -297,12 +297,13 @@ export class AIProviderRegistry {
       );
     }
 
-    // [实验性] reasoning_content 字段注入 — 处理多轮回传
-    // 对缺少 type: "reasoning" part 的 assistant 消息注入占位 part，
-    // 确保 provider 的 convertTo*ChatMessages() 输出 reasoning_content 字段。
+    // [实验性] reasoning_content 适配中间件 — 双向处理（请求注入 + 响应适配）
+    // 请求侧：对缺少 type: "reasoning" part 的 assistant 消息注入占位 part，
+    //        确保 provider 的 convertTo*ChatMessages() 输出 reasoning_content 字段。
+    // 响应侧：透传 reasoning-delta / reasoning 内容，保障 VS Code 正确识别思考数据。
     // 适用 DeepSeek V4/R1、MiMo v2 等使用 reasoning_content API 字段的模型。
-    if (modelOptions?.reasoningContentInject) {
-      middlewares.push(createReasoningContentInjectMiddleware());
+    if (modelOptions?.reasoningContentAdapt) {
+      middlewares.push(createReasoningContentAdaptMiddleware());
     }
 
     // 应用中间件链

@@ -28,9 +28,9 @@ export interface ModelOptions {
    */
   budgetTokens?: number;
   /**
-   * [实验性] 启用 reasoning_content 字段注入中间件
+   * [实验性] 适配 reasoning_content 思考模式（双向格式适配中间件）
    */
-  reasoningContentInject?: boolean;
+  reasoningContentAdapt?: boolean;
   /**
    * [实验性] 从 <think> 标签提取 reasoning 内容
    */
