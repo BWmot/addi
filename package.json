@@ -3,7 +3,7 @@
   "icon": "resources/icon-bg.min.png",
   "displayName": "Addi",
   "description": "add more custom AI providers and models for your copilot",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "publisher": "deepwn",
   "repository": {
     "type": "git",
@@ -47,12 +47,13 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "l10n": "./l10n/",
     "icons": {},
     "viewsContainers": {
       "activitybar": [
         {
           "id": "addi-sidebar",
-          "title": "Addi",
+          "title": "%addi.views.container.title%",
           "icon": "resources/icon.min.svg"
         }
       ]
@@ -60,7 +61,7 @@
     "viewsWelcome": [
       {
         "view": "addiProviders",
-        "contents": "Welcome to Addi!\n\nGet started by adding your first AI provider. Or first check [Docs](https://github.com/deepwn/addi)\n\n[Add Provider](command:addi.addProvider)\n\n[Import Config](command:addi.importConfig)"
+        "contents": "%addi.views.welcome.contents%"
       }
     ],
     "views": {
@@ -68,11 +69,11 @@
         {
           "icon": "resources/icon.min.svg",
           "id": "addiProviders",
-          "name": "Providers",
+          "name": "%addi.views.providers.name%",
           "commands": [
             {
               "command": "addi.addProvider",
-              "title": "Add Provider",
+              "title": "%addi.command.addProvider.title%",
               "icon": "$(add)"
             }
           ]
@@ -249,22 +250,22 @@
       ]
     },
     "configuration": {
-      "title": "Addi Settings",
+      "title": "%addi.configuration.title%",
       "properties": {
         "addi.defaultMaxInputTokens": {
           "type": "number",
           "default": 80000,
-          "description": "Max input tokens"
+          "description": "%addi.configuration.maxInputTokens.desc%"
         },
         "addi.defaultMaxOutputTokens": {
           "type": "number",
           "default": 128000,
-          "description": "Max output tokens"
+          "description": "%addi.configuration.maxOutputTokens.desc%"
         },
         "addi.confirmDelete": {
           "type": "boolean",
           "default": true,
-          "description": "Whether to require confirmation before deleting providers or models"
+          "description": "%addi.configuration.confirmDelete.desc%"
         },
         "addi.sortRule": {
           "type": "string",
@@ -275,7 +276,7 @@
             "output tokens"
           ],
           "default": "none",
-          "description": "Sort rule for providers and models"
+          "description": "%addi.configuration.sortRule.desc%"
         },
         "addi.sortTarget": {
           "type": "string",
@@ -285,188 +286,188 @@
             "both"
           ],
           "default": "both",
-          "description": "Target to apply the sort rule"
+          "description": "%addi.configuration.sortTarget.desc%"
         },
         "addi.syncConfiguration": {
           "type": "boolean",
           "default": false,
-          "description": "Enable to sync provider configuration (excluding API keys) across devices via VS Code settings sync. API keys are stored locally in VS Code SecretStorage and are not synced."
+          "description": "%addi.configuration.syncConfiguration.desc%"
         }
       }
     },
     "commands": [
       {
         "command": "addi.manage",
-        "title": "Provider & Model Management",
-        "shortTitle": "Management",
+        "title": "%addi.command.manage.title%",
+        "shortTitle": "%addi.command.manage.shortTitle%",
         "icon": "$(settings-gear)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.ineligibleModelInfo",
-        "title": "need tools support to using in agent",
+        "title": "%addi.command.ineligibleModelInfo.title%",
         "icon": "$(question)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.addProvider",
-        "title": "Add Provider",
-        "shortTitle": "Add",
+        "title": "%addi.command.addProvider.title%",
+        "shortTitle": "%addi.command.addProvider.shortTitle%",
         "icon": "$(add)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.editProvider",
-        "title": "Edit Provider",
-        "shortTitle": "Edit",
+        "title": "%addi.command.editProvider.title%",
+        "shortTitle": "%addi.command.editProvider.shortTitle%",
         "icon": "$(edit)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.deleteProvider",
-        "title": "Delete Provider",
-        "shortTitle": "Delete",
+        "title": "%addi.command.deleteProvider.title%",
+        "shortTitle": "%addi.command.deleteProvider.shortTitle%",
         "icon": "$(trash)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.setModelToCopilot",
-        "title": "Set Model to Copilot",
-        "shortTitle": "Set",
+        "title": "%addi.command.setModelToCopilot.title%",
+        "shortTitle": "%addi.command.setModelToCopilot.shortTitle%",
         "icon": "$(comment)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.addModel",
-        "title": "Add Model",
-        "shortTitle": "Add",
+        "title": "%addi.command.addModel.title%",
+        "shortTitle": "%addi.command.addModel.shortTitle%",
         "icon": "$(add)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.editModels",
-        "title": "Edit Models",
-        "shortTitle": "Edit",
+        "title": "%addi.command.editModels.title%",
+        "shortTitle": "%addi.command.editModels.shortTitle%",
         "icon": "$(edit)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.deleteModels",
-        "title": "Delete Models",
-        "shortTitle": "Delete",
+        "title": "%addi.command.deleteModels.title%",
+        "shortTitle": "%addi.command.deleteModels.shortTitle%",
         "icon": "$(trash)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.showModelsInPicker",
-        "title": "Show in Picker",
-        "shortTitle": "Show",
+        "title": "%addi.command.showModelsInPicker.title%",
+        "shortTitle": "%addi.command.showModelsInPicker.shortTitle%",
         "icon": "$(eye)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.hideModelsFromPicker",
-        "title": "Hide from Picker",
-        "shortTitle": "Hide",
+        "title": "%addi.command.hideModelsFromPicker.title%",
+        "shortTitle": "%addi.command.hideModelsFromPicker.shortTitle%",
         "icon": "$(eye-closed)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.showProviderModelsInPicker",
-        "title": "Show All Models in Picker",
-        "shortTitle": "Show All",
+        "title": "%addi.command.showProviderModelsInPicker.title%",
+        "shortTitle": "%addi.command.showProviderModelsInPicker.shortTitle%",
         "icon": "$(eye)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.hideProviderModelsFromPicker",
-        "title": "Hide All Models from Picker",
-        "shortTitle": "Hide All",
+        "title": "%addi.command.hideProviderModelsFromPicker.title%",
+        "shortTitle": "%addi.command.hideProviderModelsFromPicker.shortTitle%",
         "icon": "$(eye-closed)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.copyProvider",
-        "title": "Copy Provider",
-        "shortTitle": "Copy",
+        "title": "%addi.command.copyProvider.title%",
+        "shortTitle": "%addi.command.copyProvider.shortTitle%",
         "icon": "$(copy)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.copyModel",
-        "title": "Copy Model",
-        "shortTitle": "Copy",
+        "title": "%addi.command.copyModel.title%",
+        "shortTitle": "%addi.command.copyModel.shortTitle%",
         "icon": "$(copy)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.setApiKey",
-        "title": "Set Api Key",
-        "shortTitle": "Key",
+        "title": "%addi.command.setApiKey.title%",
+        "shortTitle": "%addi.command.setApiKey.shortTitle%",
         "icon": "$(key)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.pullProviderModels",
-        "title": "Pull Models List",
-        "shortTitle": "Pull Models",
+        "title": "%addi.command.pullProviderModels.title%",
+        "shortTitle": "%addi.command.pullProviderModels.shortTitle%",
         "icon": "$(broadcast)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.exportConfig",
-        "title": "Export Configuration",
-        "shortTitle": "Export",
+        "title": "%addi.command.exportConfig.title%",
+        "shortTitle": "%addi.command.exportConfig.shortTitle%",
         "icon": "$(clone)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.importConfig",
-        "title": "Import Configuration",
-        "shortTitle": "Import",
+        "title": "%addi.command.importConfig.title%",
+        "shortTitle": "%addi.command.importConfig.shortTitle%",
         "icon": "$(cloud-upload)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.showLogs",
-        "title": "Show Logs",
-        "shortTitle": "Logs",
+        "title": "%addi.command.showLogs.title%",
+        "shortTitle": "%addi.command.showLogs.shortTitle%",
         "icon": "$(output)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.openSettings",
-        "title": "Open Settings",
-        "shortTitle": "Settings",
+        "title": "%addi.command.openSettings.title%",
+        "shortTitle": "%addi.command.openSettings.shortTitle%",
         "icon": "$(settings-gear)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.initExtension",
-        "title": "Initialize Addi Extension",
-        "shortTitle": "Initialize",
+        "title": "%addi.command.initExtension.title%",
+        "shortTitle": "%addi.command.initExtension.shortTitle%",
         "icon": "$(refresh)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.restoreFromBackup",
-        "title": "Restore from Backup",
-        "shortTitle": "Restore Backup",
+        "title": "%addi.command.restoreFromBackup.title%",
+        "shortTitle": "%addi.command.restoreFromBackup.shortTitle%",
         "icon": "$(debug-restart)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       },
       {
         "command": "addi.manageBackups",
-        "title": "Manage Backups",
-        "shortTitle": "Manage Backups",
+        "title": "%addi.command.manageBackups.title%",
+        "shortTitle": "%addi.command.manageBackups.shortTitle%",
         "icon": "$(folder)",
-        "category": "Addi"
+        "category": "%addi.command.category%"
       }
     ],
     "languageModelChatProviders": [
       {
         "vendor": "addi-provider",
-        "displayName": "Addi"
+        "displayName": "%addi.languageModel.displayName%"
       }
     ]
   },

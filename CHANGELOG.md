@@ -2,6 +2,49 @@
 
 All notable changes to the "addi" extension will be documented in this file.
 
+## v1.1.0 - 2026-05-15
+
+### Added
+
+- **i18n Multi-Language Support (Complete)**: Full localization of both code-level strings (via `vscode.l10n.t()` API) and `package.json` contribution strings (via `%key%` syntax + `package.nls.*.json` files):
+  - `bundle.l10n.json` / `bundle.l10n.zh-cn.json` — 157 code-level translation keys for source files
+  - `package.nls.json` / `package.nls.zh-cn.json` — 66 `package.json` contribution keys (command titles/shortTitles, view names, configuration descriptions, welcome text, etc.)
+- **Localization Contribution Point**: Added `l10n` contribution point in `package.json` pointing to `./l10n/` directory
+- **Webview UI (React + TypeScript + Vite)**: Brand new `webview-ui/` sub-project replacing the old `resources/editor.html` — introduces modern React forms for both Provider and Model editing with type-safe data flow
+- **ModelForm & ProviderForm Components**: New interactive forms with per-provider conditional rendering (OpenAI → "Reasoning Effort", Anthropic/Google → "Thinking Level"), field validation, and experimental features section
+- **Reasoning/Thinking Support**:
+  - `reasoningContentInjectMiddleware.ts` — middleware for `reasoning_content` field injection in multi-turn backfill scenarios
+  - `reasoningUtils.ts` — utility functions for reasoning content extraction and handling
+  - `reasoning-support-plan.md` — comprehensive integration plan documentation
+- **End-to-End Tests**: New `tests-e2e/` suite with comprehensive tests for data normalization and remote model fetching
+- **Agent Development Rules**: New `.github/copilot-instructions.md` and `agent-dev-rules.instructions.md` for consistent AI-assisted development
+
+### Changed
+
+- **All User-Facing Strings Localized**: Replaced hardcoded English strings with `vscode.l10n.t()` calls across all source files including provider commands, model commands, config commands (export/import/init/restore/backup), and utility feedback methods
+- **Chinese Translation Bundle**: Added complete Chinese (Simplified) translations for all 157 code-level strings and all 66 `package.json` contribution strings
+- **Architecture Restructure**: Removed the `src/application/` Use Cases layer (ConfigUseCases, ModelUseCases, ProviderUseCases) in favor of a cleaner domain/presentation/infrastructure split
+- **DeepSeek Support**: Updated architecture specification (`docs/architecture-spec.md`) to document DeepSeek model integration patterns
+- **LLM Service Refactor**: Major updates to `llmService.ts` with improved reasoning effort mapping across providers (OpenAI, Anthropic, Google) and better options handling
+- **ProviderModelManager**: Enhanced `addModel()` and `updateModel()` to properly handle `options` (reasoningEffort, budgetTokens, reasoningContentInject, extractReasoningContent) alongside existing fields
+- **StorageService**: Optimized save logic with change detection to prevent sync storms; improved secret handling and extended data management
+- **Editor View**: Enhanced form save/load with proper options passthrough, speed history preservation, and batch mode support
+- **Linting Infrastructure**: Replaced ESLint configuration with OXLint (`oxlintrc.json`) and OXFmt (`oxfmtrc.json`) for faster linting
+- **Documentation Consolidation**: Reorganized docs — removed outdated files (`architecture-audit.md`, `code-quality-audit.md`, `dev-coding-notes.md`, `execution-plan.md`, `project-document.md`), added new structured docs (`architecture-spec.md`, `coding-standards.md`, `reasoning-support-plan.md`, `webview-ui-migration-plan.md`)
+- **Build Script Updates**: Updated `scripts/build.ts` and `scripts/clean.ts` for the new webview-ui architecture
+- **Type Safety**: Replaced `any` types with `unknown` in webview-ui component handlers
+
+### Fixed
+
+- **Extension i18n Not Working for `package.json` UI**: Fixed bug where VS Code would not show Chinese translations for command titles, view names, configuration descriptions, or other `package.json` contribution strings — root cause was that `package.json` used direct English strings instead of `%key%` syntax, and no `package.nls.*.json` files existed. Fixed by creating `package.nls.json` (English) and `package.nls.zh-cn.json` (Chinese), and replacing all 66 user-facing strings in `package.json`'s `contributes` section with `%key%` references
+- **Unused Variable**: Removed unused `isOpenAI` variable in `ModelForm.tsx`
+
+### Removed
+
+- **Legacy Editor HTML**: Removed `resources/editor.html` (1395 lines) — fully replaced by webview-ui React application
+- **Application Layer**: Removed `src/application/` directory (ConfigUseCases, ModelUseCases, ProviderUseCases and their index files)
+- **Outdated Documents**: Removed `architecture-audit.md`, `code-quality-audit.md`, `dev-coding-notes.md`, `execution-plan.md`, `project-document.md`
+
 ## v1.0.5 - 2026-05-07
 
 ### Added
