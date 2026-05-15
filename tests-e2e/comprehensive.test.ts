@@ -457,18 +457,13 @@ describe("Reasoning Utils (AI SDK v6)", () => {
     });
 
     it("should return empty string for empty reasoning array", () => {
-      assert.strictEqual(
-        extractReasoningContentFromStep({ reasoning: [] }),
-        "",
-      );
+      assert.strictEqual(extractReasoningContentFromStep({ reasoning: [] }), "");
     });
 
     it("should handle reasoning parts using content field as fallback", () => {
       assert.strictEqual(
         extractReasoningContentFromStep({
-          reasoning: [
-            { type: "reasoning", content: "fallback content" },
-          ],
+          reasoning: [{ type: "reasoning", content: "fallback content" }],
         }),
         "fallback content",
       );

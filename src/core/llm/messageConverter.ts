@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import type { ModelMessage, UserContent, ToolContent, AssistantContent } from "ai";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 import type { ModelCapabilities } from "../../common/types";
 
 export class MessageConverter {
@@ -67,7 +67,7 @@ export class MessageConverter {
               logger.warn(
                 `Dropping orphan tool result for callId: ${tr.callId} (No matching tool call found in history)`,
                 undefined,
-                "MessageConverter",
+                LogScope.MSG_CONVERTER,
               );
               continue;
             }
@@ -181,7 +181,7 @@ export class MessageConverter {
           logger.warn(
             "Encountered empty assistant message, skipping.",
             undefined,
-            "MessageConverter",
+            LogScope.MSG_CONVERTER,
           );
         }
       }

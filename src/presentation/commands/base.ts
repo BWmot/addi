@@ -3,7 +3,7 @@ import type { ProviderModelManager } from "../../core/providers/ProviderModelMan
 import type { AddiTreeDataProvider } from "../views/providerView";
 import type { IStorageService } from "../../domain/interfaces";
 import type { EditorViewManager } from "../views/editorView";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 
 /**
  * Base command handler with common dependencies
@@ -38,9 +38,13 @@ export abstract class BaseCommandHandler {
   }
 
   protected logError(source: string, error: unknown, context?: Record<string, unknown>): void {
-    logger.error(source, {
-      error: error instanceof Error ? error.message : String(error),
-      ...context,
-    });
+    logger.error(
+      source,
+      {
+        error: error instanceof Error ? error.message : String(error),
+        ...context,
+      },
+      LogScope.COMMAND,
+    );
   }
 }

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 
 export type BuiltinToolSource = "host" | "fallback";
 
@@ -83,9 +83,13 @@ export class ToolRegistry {
         }
       }
     } catch (error) {
-      logger.warn("Failed to access vscode.lm.tools", {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      logger.warn(
+        "Failed to access vscode.lm.tools",
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+        LogScope.TOOL,
+      );
     }
     ToolRegistry.fallbackTools = map;
     return map;

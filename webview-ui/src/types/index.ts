@@ -22,7 +22,7 @@ export interface ModelOptions {
   /**
    * OpenAI Native Reasoning Effort ('low' | 'medium' | 'high')
    */
-  reasoningEffort?: 'low' | 'medium' | 'high';
+  reasoningEffort?: "low" | "medium" | "high";
   /**
    * Anthropic/Google Native Thinking Budget (Tokens)
    */
@@ -71,14 +71,14 @@ export interface ProviderConfig {
 
 /** Message received from the extension (VS Code -> Webview) */
 export interface WebviewUpdateMessage {
-  type: 'update';
-  locale: string;           // vscode.env.language
-  mode: 'edit' | 'create';
+  type: "update";
+  locale: string; // vscode.env.language
+  mode: "edit" | "create";
   item: {
-    type: 'provider' | 'model';
+    type: "provider" | "model";
     isBatchMode?: boolean;
     batchCount?: number;
-    data: ProviderConfig | ModelConfig & { parentProviderType?: string };
+    data: ProviderConfig | (ModelConfig & { parentProviderType?: string });
     parentId?: string;
   };
 }

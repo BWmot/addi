@@ -46,14 +46,14 @@ export class ModelTreeItem extends vscode.TreeItem {
     }
     const inputTokensDetail = TokenFormatter.formatDetailed(model.maxInputTokens);
     const outputTokensDetail = TokenFormatter.formatDetailed(model.maxOutputTokens);
-    let tooltip = `name: ${model.name}\nvendor: ${vendor}\nid: ${model.id}\nrid: ${model.rid}\nfamily: ${model.family}\nversion: ${model.version}\ninput: ${inputTokensDetail}\noutput: ${outputTokensDetail}`;
+    let tooltip = `${vscode.l10n.t("name: {0}", model.name)}\n${vscode.l10n.t("vendor: {0}", vendor)}\n${vscode.l10n.t("id: {0}", model.id)}\n${vscode.l10n.t("rid: {0}", model.rid)}\n${vscode.l10n.t("family: {0}", model.family)}\n${vscode.l10n.t("version: {0}", model.version)}\n${vscode.l10n.t("input: {0}", inputTokensDetail)}\n${vscode.l10n.t("output: {0}", outputTokensDetail)}`;
     if (model.averageSpeed) {
-      tooltip += `\nspeed: ${model.averageSpeed.toFixed(1)} t/s`;
+      tooltip += `\n${vscode.l10n.t("speed: {0}", model.averageSpeed.toFixed(1) + " t/s")}`;
     } else {
-      tooltip += `\nspeed: ?/s`;
+      tooltip += `\n${vscode.l10n.t("speed: {0}", "?/s")}`;
     }
     if (capabilityHints.length > 0) {
-      tooltip += `\ncapabilities: ${capabilityHints.join(", ")}`;
+      tooltip += `\n${vscode.l10n.t("capabilities: {0}", capabilityHints.join(", "))}`;
     }
 
     this.tooltip = tooltip;

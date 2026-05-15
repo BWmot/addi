@@ -73,17 +73,12 @@ export function createReasoningContentInjectMiddleware(): LanguageModelMiddlewar
         if (msg.role !== "assistant") return msg;
 
         const content: any[] = msg.content ?? [];
-        const hasReasoningPart = content.some(
-          (p: any) => p.type === "reasoning",
-        );
+        const hasReasoningPart = content.some((p: any) => p.type === "reasoning");
 
         if (!hasReasoningPart) {
           return {
             ...msg,
-            content: [
-              ...content,
-              { type: "reasoning", text: " " },
-            ],
+            content: [...content, { type: "reasoning", text: " " }],
           };
         }
 
@@ -92,6 +87,5 @@ export function createReasoningContentInjectMiddleware(): LanguageModelMiddlewar
 
       return { ...params, prompt: transformedMessages };
     },
-
   };
 }

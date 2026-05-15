@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import type { ProviderModelManager } from "../../core/providers/ProviderModelManager";
 import { ProviderTreeItem } from "./providerView";
 import { ModelTreeItem } from "./treeItems";
-import { logger, maskSecret } from "../../common/logger";
+import { logger, maskSecret, LogScope } from "../../common/logger";
 import type { Provider, Model } from "../../common/types";
 import { TokenFormatter } from "../../common/utils";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
@@ -47,7 +47,7 @@ export class EditorViewManager {
     } else {
       this._panel = vscode.window.createWebviewPanel(
         EditorViewManager.viewType,
-        "Addi Editor",
+        vscode.l10n.t("Addi Editor"),
         column || vscode.ViewColumn.One,
         {
           enableScripts: true,
@@ -63,7 +63,7 @@ export class EditorViewManager {
       this._panel.webview.html = await this._getHtmlForWebview(this._panel.webview);
 
       this._panel.webview.onDidReceiveMessage(async (data) => {
-        logger.debug("Webview message received", data, "EditorView");
+        logger.debug("Webview message received", data, LogScope.VIEW);
         switch (data.type) {
           case "saveProvider":
             await this._saveProvider(data.payload);
@@ -80,13 +80,15 @@ export class EditorViewManager {
             }
             break;
           case "log":
-            logger.debug("Webview log", data.payload, "EditorView");
+            logger.debug("Webview log", data.payload, LogScope.VIEW);
             break;
           case "cancel":
             this._panel?.dispose();
             break;
           case "showError":
-            await vscode.window.showErrorMessage(data.payload?.message || "An error occurred");
+            await vscode.window.showErrorMessage(
+              data.payload?.message || vscode.l10n.t("An error occurred"),
+            );
             break;
         }
       });
@@ -159,16 +161,17 @@ export class EditorViewManager {
       this._viewState.parentId = parentId;
     }
 
-    let title = "Addi Editor";
+    let title = vscode.l10n.t("Addi Editor");
     if (mode === "create") {
-      title = `Create ${type === "provider" ? "Provider" : "Model"}`;
+      title =
+        type === "provider" ? vscode.l10n.t("Create Provider") : vscode.l10n.t("Create Model");
     } else {
       if (isBatchMode) {
-        title = `Edit ${batchCount} Models`;
+        title = vscode.l10n.t("Edit {0} Models", batchCount);
       } else if (item instanceof ProviderTreeItem) {
-        title = `Edit ${item.provider.name}`;
+        title = vscode.l10n.t("Edit {0}", item.provider.name);
       } else if (item instanceof ModelTreeItem) {
-        title = `Edit ${item.model.name}`;
+        title = vscode.l10n.t("Edit {0}", item.model.name);
       }
     }
 
@@ -254,7 +257,7 @@ export class EditorViewManager {
   private async _saveProvider(data: any) {
     // Defensive: batch editing providers is not supported
     if (this._viewState.isBatch) {
-      vscode.window.showErrorMessage("Batch editing providers is not supported.");
+      vscode.window.showErrorMessage(vscode.l10n.t("Batch editing providers is not supported."));
       return;
     }
 
@@ -285,12 +288,12 @@ export class EditorViewManager {
 
       try {
         await this._manager.addProvider(providerData);
-        vscode.window.showInformationMessage(`Provider "${data.name}" added.`);
+        vscode.window.showInformationMessage(vscode.l10n.t('Provider "{0}" added.', data.name));
         this._refreshTree();
         this._panel?.dispose();
       } catch (e) {
         vscode.window.showErrorMessage(
-          `Failed to add provider: ${e instanceof Error ? e.message : String(e)}`,
+          vscode.l10n.t("Failed to add provider: {0}", e instanceof Error ? e.message : String(e)),
         );
       }
       return;
@@ -328,17 +331,17 @@ export class EditorViewManager {
 
     const success = await this._manager.updateProvider(provider.id, updates);
     if (success) {
-      vscode.window.showInformationMessage(`Provider "${data.name}" updated.`);
+      vscode.window.showInformationMessage(vscode.l10n.t('Provider "{0}" updated.', data.name));
       this._refreshTree();
       this._panel?.dispose();
     } else {
-      vscode.window.showErrorMessage("Failed to update provider.");
+      vscode.window.showErrorMessage(vscode.l10n.t("Failed to update provider."));
     }
   }
 
   private async _verifyModel(data: any) {
     if (!this._currentProvider) {
-      vscode.window.showErrorMessage("No provider context found.");
+      vscode.window.showErrorMessage(vscode.l10n.t("No provider context found."));
       return;
     }
 
@@ -363,7 +366,7 @@ export class EditorViewManager {
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: `Detecting parameters for ${data.name || data.id}...`,
+        title: vscode.l10n.t("Detecting parameters for {0}...", data.name || data.id),
         cancellable: true,
       },
       async (progress, token) => {
@@ -376,7 +379,7 @@ export class EditorViewManager {
           const apiKey = await this._manager.getApiKey(this._currentProvider!.id);
 
           if (!apiKey) {
-            throw new Error("API Key not found. Please configure it first.");
+            throw new Error(vscode.l10n.t("API Key not found. Please configure it first."));
           }
 
           const providerWithKey = { ...this._currentProvider!, apiKey };
@@ -400,10 +403,10 @@ export class EditorViewManager {
           if (result.success) {
             this._lastVerifiedData = JSON.stringify(data);
             this._detectedSpeed = result.speed;
-            let msg = `Detection successful for ${data.name || data.id}!`;
+            let msg = vscode.l10n.t("Detection successful for {0}!", data.name || data.id);
 
             if (result.speed) {
-              msg += ` Speed: ${result.speed.toFixed(1)} t/s`;
+              msg += vscode.l10n.t("Speed: {0} t/s", result.speed.toFixed(1));
             }
 
             const updates: any = {};
@@ -411,18 +414,20 @@ export class EditorViewManager {
 
             if (result.detectedMaxInputTokens) {
               updates.maxInputTokens = result.detectedMaxInputTokens;
-              msg += ` Input: ${result.detectedMaxInputTokens}`;
+              msg += vscode.l10n.t("Input: {0}", result.detectedMaxInputTokens);
               hasUpdates = true;
             }
             if (result.detectedMaxOutputTokens) {
               updates.maxOutputTokens = result.detectedMaxOutputTokens;
-              msg += ` Output: ${result.detectedMaxOutputTokens}`;
+              msg += vscode.l10n.t("Output: {0}", result.detectedMaxOutputTokens);
               hasUpdates = true;
             }
 
             if (result.visionSupported !== undefined && result.visionSupported !== caps.vision) {
               updates.vision = result.visionSupported;
-              msg += result.visionSupported ? " (Vision detected)" : " (Vision removed)";
+              msg += result.visionSupported
+                ? vscode.l10n.t(" (Vision detected)")
+                : vscode.l10n.t(" (Vision removed)");
               hasUpdates = true;
             }
 
@@ -431,7 +436,9 @@ export class EditorViewManager {
               result.toolCallingSupported !== caps.toolCalling
             ) {
               updates.toolCalling = result.toolCallingSupported;
-              msg += result.toolCallingSupported ? " (Tools detected)" : " (Tools removed)";
+              msg += result.toolCallingSupported
+                ? vscode.l10n.t(" (Tools detected)")
+                : vscode.l10n.t(" (Tools removed)");
               hasUpdates = true;
             }
 
@@ -449,7 +456,7 @@ export class EditorViewManager {
         } catch (e) {
           this._lastVerifiedData = undefined;
           vscode.window.showErrorMessage(
-            `Verification failed: ${e instanceof Error ? e.message : String(e)}`,
+            vscode.l10n.t("Verification failed: {0}", e instanceof Error ? e.message : String(e)),
           );
         }
       },
@@ -464,7 +471,7 @@ export class EditorViewManager {
         viewState: this._viewState,
         currentItem: this._currentItem?.constructor.name,
       },
-      "EditorView",
+      LogScope.VIEW,
     );
 
     const maxInputTokens = TokenFormatter.parse(data.maxInputTokens);
@@ -475,7 +482,7 @@ export class EditorViewManager {
 
     // For batch mode or single edit, validate that at least one token value is provided
     if (!isBatchMode && (!maxInputTokens || !maxOutputTokens)) {
-      vscode.window.showErrorMessage("Invalid token values.");
+      vscode.window.showErrorMessage(vscode.l10n.t("Invalid token values."));
       return;
     }
 
@@ -517,17 +524,19 @@ export class EditorViewManager {
         delete (modelData as any).speedHistory;
       }
       if (!this._viewState.parentId) {
-        vscode.window.showErrorMessage("No parent provider specified for new model.");
+        vscode.window.showErrorMessage(
+          vscode.l10n.t("No parent provider specified for new model."),
+        );
         return;
       }
       try {
         await this._manager.addModel(this._viewState.parentId, modelData as any);
-        vscode.window.showInformationMessage(`Model "${data.name}" added.`);
+        vscode.window.showInformationMessage(vscode.l10n.t('Model "{0}" added.', data.name));
         this._refreshTree();
         this._panel?.dispose();
       } catch (e) {
         vscode.window.showErrorMessage(
-          `Failed to add model: ${e instanceof Error ? e.message : String(e)}`,
+          vscode.l10n.t("Failed to add model: {0}", e instanceof Error ? e.message : String(e)),
         );
       }
       return;
@@ -547,7 +556,7 @@ export class EditorViewManager {
     const parentId = this._getParentProviderId(this._currentItem);
 
     if (!parentId) {
-      vscode.window.showErrorMessage("Could not find parent provider for model.");
+      vscode.window.showErrorMessage(vscode.l10n.t("Could not find parent provider for model."));
       return;
     }
 
@@ -561,17 +570,17 @@ export class EditorViewManager {
 
     const success = await this._manager.updateModel(parentId, model.id, modelData);
     if (success) {
-      vscode.window.showInformationMessage(`Model "${data.name}" updated.`);
+      vscode.window.showInformationMessage(vscode.l10n.t('Model "{0}" updated.', data.name));
       this._refreshTree();
       this._panel?.dispose();
     } else {
-      vscode.window.showErrorMessage("Failed to update model.");
+      vscode.window.showErrorMessage(vscode.l10n.t("Failed to update model."));
     }
   }
 
   private async _saveBatchModels(modelData: Partial<Model>) {
     if (!this._currentProvider) {
-      vscode.window.showErrorMessage("No provider context found for batch update.");
+      vscode.window.showErrorMessage(vscode.l10n.t("No provider context found for batch update."));
       return;
     }
 
@@ -583,12 +592,14 @@ export class EditorViewManager {
     try {
       const ids = this._currentItems.map((i) => i.model.id);
       const updatedCount = await this._manager.updateModels(parentId, ids, batchUpdateData as any);
-      vscode.window.showInformationMessage(`${updatedCount} model(s) updated successfully.`);
+      vscode.window.showInformationMessage(
+        vscode.l10n.t("{0} model(s) updated successfully.", updatedCount),
+      );
       this._refreshTree();
       this._panel?.dispose();
     } catch (e) {
       vscode.window.showErrorMessage(
-        `Failed to update models: ${e instanceof Error ? e.message : String(e)}`,
+        vscode.l10n.t("Failed to update models: {0}", e instanceof Error ? e.message : String(e)),
       );
     }
   }
@@ -598,10 +609,10 @@ export class EditorViewManager {
 
     // 构建 Vite 输出的代码路径
     const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "resources", "webview", "assets", "index.js")
+      vscode.Uri.joinPath(this._extensionUri, "resources", "webview", "assets", "index.js"),
     );
     const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "resources", "webview", "assets", "index.css")
+      vscode.Uri.joinPath(this._extensionUri, "resources", "webview", "assets", "index.css"),
     );
 
     return `<!DOCTYPE html>

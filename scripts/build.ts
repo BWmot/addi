@@ -241,7 +241,7 @@ async function buildWebviewUI(): Promise<boolean> {
   logStep("构建 Webview UI");
 
   const webviewPath = join(PROJECT_ROOT, "webview-ui");
-  
+
   if (!existsSync(webviewPath)) {
     logWarn("Webview UI 目录不存在，跳过");
     return true;

@@ -4,7 +4,7 @@ import type { ProviderTreeItem } from "../views/providerView";
 import type { ModelTreeItem } from "../views/treeItems";
 import { UserFeedback } from "../utils/feedback";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 
 /**
  * Model-related command handler
@@ -14,11 +14,15 @@ export class ModelCommandHandler extends BaseCommandHandler {
    * Add a new model to a provider
    */
   async addModel(item: ProviderTreeItem): Promise<void> {
-    logger.info("Command addModel invoked", logger.sanitizeProvider(item.provider));
+    logger.info(
+      "Command addModel invoked",
+      logger.sanitizeProvider(item.provider),
+      LogScope.COMMAND,
+    );
     if (this.editorViewManager) {
       this.editorViewManager.openEditor(undefined, "create", item.provider.id);
     } else {
-      UserFeedback.showError("Editor view manager not initialized");
+      UserFeedback.showError(vscode.l10n.t("Editor view manager not initialized"));
     }
   }
 
@@ -31,12 +35,12 @@ export class ModelCommandHandler extends BaseCommandHandler {
     }
 
     const count = items.length;
-    logger.info("Command editModels invoked", { count });
+    logger.info("Command editModels invoked", { count }, LogScope.COMMAND);
 
     if (this.editorViewManager) {
       this.editorViewManager.openEditor(items, "edit");
     } else {
-      UserFeedback.showError("Editor view manager not initialized");
+      UserFeedback.showError(vscode.l10n.t("Editor view manager not initialized"));
     }
   }
 
@@ -50,22 +54,22 @@ export class ModelCommandHandler extends BaseCommandHandler {
 
     const count = items.length;
     const names = items.map((i) => i.model.name).join(", ");
-    logger.info("Command deleteModels invoked", { count, models: names });
+    logger.info("Command deleteModels invoked", { count, models: names }, LogScope.COMMAND);
 
     if (ConfigManager.getConfirmDelete()) {
-      const deleteOption: vscode.MessageItem = { title: "Delete" };
+      const deleteOption: vscode.MessageItem = { title: vscode.l10n.t("Delete") };
       const deleteDontAskOption: vscode.MessageItem = {
-        title: "Delete and don't ask again",
+        title: vscode.l10n.t("Delete and don't ask again"),
       };
       const cancelOption: vscode.MessageItem = {
-        title: "Cancel",
+        title: vscode.l10n.t("Cancel"),
         isCloseAffordance: true,
       };
 
       const message =
         count === 1 && items[0]
-          ? `Are you sure you want to delete the model "${items[0].model.name}"?`
-          : `Are you sure you want to delete ${count} model(s)?`;
+          ? vscode.l10n.t('Are you sure you want to delete the model "{0}"?', items[0].model.name)
+          : vscode.l10n.t("Are you sure you want to delete {0} model(s)?", count);
 
       const selection = await vscode.window.showWarningMessage(
         message,
@@ -80,12 +84,12 @@ export class ModelCommandHandler extends BaseCommandHandler {
           .getConfiguration("addi")
           .update("confirmDelete", false, vscode.ConfigurationTarget.Global);
         void vscode.window.showInformationMessage(
-          "Delete confirmation disabled. You can re-enable it in settings.",
+          vscode.l10n.t("Delete confirmation disabled. You can re-enable it in settings."),
         );
       }
 
       if (!selection || selection === cancelOption) {
-        logger.debug("deleteModels canceled");
+        logger.debug("deleteModels canceled", undefined, LogScope.COMMAND);
         return;
       }
     }
@@ -95,11 +99,14 @@ export class ModelCommandHandler extends BaseCommandHandler {
       await this.manager.deleteModels(modelIds);
 
       this.refreshTreeView();
-      UserFeedback.showInfo(`${count} model(s) deleted`);
-      logger.info("Models deleted", { count, modelNames: names });
+      UserFeedback.showInfo(vscode.l10n.t("{0} model(s) deleted", count));
+      logger.info("Models deleted", { count, modelNames: names }, LogScope.COMMAND);
     } catch (error) {
       UserFeedback.showError(
-        `Failed to delete models: ${error instanceof Error ? error.message : "Unknown error"}`,
+        vscode.l10n.t(
+          "Failed to delete models: {0}",
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       );
       this.logError("deleteModels failed", error);
     }
@@ -109,12 +116,12 @@ export class ModelCommandHandler extends BaseCommandHandler {
    * Copy a model - opens editor for creating a copy
    */
   async copyModel(item: ModelTreeItem): Promise<void> {
-    logger.info("Command copyModel invoked", logger.sanitizeModel(item.model));
+    logger.info("Command copyModel invoked", logger.sanitizeModel(item.model), LogScope.COMMAND);
 
     if (this.editorViewManager) {
       const result = this.manager.findModel(item.model.id);
       if (!result) {
-        UserFeedback.showError("Parent provider not found");
+        UserFeedback.showError(vscode.l10n.t("Parent provider not found"));
         return;
       }
 
@@ -122,12 +129,12 @@ export class ModelCommandHandler extends BaseCommandHandler {
       const { id: _id, ...modelWithoutId } = item.model;
       const prefillData: Record<string, unknown> = {
         ...modelWithoutId,
-        name: `${item.model.name} Copy`,
+        name: `${item.model.name} ${vscode.l10n.t("Copy")}`,
       };
 
       this.editorViewManager.openEditor(undefined, "create", result.provider.id, prefillData);
     } else {
-      UserFeedback.showError("Editor view manager not initialized");
+      UserFeedback.showError(vscode.l10n.t("Editor view manager not initialized"));
     }
   }
 
@@ -152,6 +159,7 @@ export class ModelCommandHandler extends BaseCommandHandler {
     logger.info(
       "Command showProviderModelsInPicker invoked",
       logger.sanitizeProvider(item.provider),
+      LogScope.COMMAND,
     );
     await this.updateProviderModelsVisibility(item.provider.id, "show");
   }
@@ -163,6 +171,7 @@ export class ModelCommandHandler extends BaseCommandHandler {
     logger.info(
       "Command hideProviderModelsFromPicker invoked",
       logger.sanitizeProvider(item.provider),
+      LogScope.COMMAND,
     );
     await this.updateProviderModelsVisibility(item.provider.id, "hide");
   }
@@ -175,7 +184,7 @@ export class ModelCommandHandler extends BaseCommandHandler {
     const modelId = vendor === "addi-provider" ? `addi-model:${item.model.id}` : item.model.rid;
     const family = item.model.family;
 
-    logger.debug("Executing setModelToCopilot", { vendor, modelId, family }, "Commands");
+    logger.debug("Executing setModelToCopilot", { vendor, modelId, family }, LogScope.COMMAND);
 
     try {
       // Ensure the model is visible in the picker before selecting it
@@ -186,10 +195,14 @@ export class ModelCommandHandler extends BaseCommandHandler {
             await this.manager.updateModelVisibility(result.provider.id, item.model.id, true);
             this.refreshTreeView();
           } catch (error) {
-            logger.warn("Failed to force-show model before selection", {
-              error: error instanceof Error ? error.message : String(error),
-              modelId: item.model.id,
-            });
+            logger.warn(
+              "Failed to force-show model before selection",
+              {
+                error: error instanceof Error ? error.message : String(error),
+                modelId: item.model.id,
+              },
+              LogScope.COMMAND,
+            );
           }
         }
       }
@@ -222,7 +235,9 @@ export class ModelCommandHandler extends BaseCommandHandler {
         vendor,
         modelId,
       });
-      UserFeedback.showError("Failed to switch model in Chat UI. Please select it manually.");
+      UserFeedback.showError(
+        vscode.l10n.t("Failed to switch model in Chat UI. Please select it manually."),
+      );
     }
   }
 
@@ -269,13 +284,17 @@ export class ModelCommandHandler extends BaseCommandHandler {
       }
 
       this.refreshTreeView();
-      UserFeedback.showInfo(
-        `${totalUpdated} model(s) ${action === "show" ? "shown in" : "hidden from"} picker`,
-      );
+      const visibilityKey =
+        action === "show" ? "{0} model(s) shown in picker" : "{0} model(s) hidden from picker";
+      UserFeedback.showInfo(vscode.l10n.t(visibilityKey, totalUpdated));
       logger.info(`Models ${actionLabel}`, { count: totalUpdated });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to ${action} models: ${error instanceof Error ? error.message : "Unknown error"}`,
+        vscode.l10n.t(
+          "Failed to {0} models: {1}",
+          action,
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       );
       this.logError(`${actionLabel}Models failed`, error);
     }
@@ -293,13 +312,17 @@ export class ModelCommandHandler extends BaseCommandHandler {
       const updated = await this.manager.updateProviderAllModelsVisibility(providerId, visible);
 
       this.refreshTreeView();
-      UserFeedback.showInfo(
-        `${updated} model(s) ${action === "show" ? "shown in" : "hidden from"} picker`,
-      );
+      const providerVisibilityKey =
+        action === "show" ? "{0} model(s) shown in picker" : "{0} model(s) hidden from picker";
+      UserFeedback.showInfo(vscode.l10n.t(providerVisibilityKey, updated));
       logger.info(`Provider models ${action}`, { providerId, count: updated });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to ${action} provider models: ${error instanceof Error ? error.message : "Unknown error"}`,
+        vscode.l10n.t(
+          "Failed to {0} provider models: {1}",
+          action,
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       );
       this.logError(`updateProviderModelsVisibility failed`, error);
     }

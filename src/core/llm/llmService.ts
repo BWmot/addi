@@ -5,7 +5,7 @@ import { AIProviderRegistry } from "./aiRegistry";
 import { MessageConverter } from "./messageConverter";
 import { extractReasoningContentFromStep, hasStreamPartVisibleContent } from "./reasoningUtils";
 import { ToolOrchestrator } from "./toolOrchestrator";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 
 // ============================================================================
 // Types & Interfaces
@@ -72,7 +72,7 @@ export class LLMService {
       logger.info(
         `Model ${model.id} does not support tool calling, tools will be filtered`,
         undefined,
-        "LLMService",
+        LogScope.LLM_SERVICE,
       );
     }
 
@@ -171,9 +171,13 @@ export class LLMService {
     try {
       return JSON.parse(extraBodyStr);
     } catch {
-      logger.warn("Failed to parse extraBody JSON", {
-        extraBody: extraBodyStr,
-      });
+      logger.warn(
+        "Failed to parse extraBody JSON",
+        {
+          extraBody: extraBodyStr,
+        },
+        LogScope.LLM_SERVICE,
+      );
       return {};
     }
   }
@@ -192,9 +196,13 @@ export class LLMService {
     try {
       return JSON.parse(extraHeaderStr);
     } catch {
-      logger.warn("Failed to parse extraHeader JSON", {
-        extraHeader: extraHeaderStr,
-      });
+      logger.warn(
+        "Failed to parse extraHeader JSON",
+        {
+          extraHeader: extraHeaderStr,
+        },
+        LogScope.LLM_SERVICE,
+      );
       return {};
     }
   }
@@ -415,7 +423,7 @@ export class LLMService {
   ): Promise<void> {
     const abortController = new AbortController();
     token.onCancellationRequested(() => {
-      logger.debug("Cancellation requested, aborting stream");
+      logger.debug("Cancellation requested, aborting stream", undefined, LogScope.LLM_SERVICE);
       abortController.abort();
     });
 
@@ -453,7 +461,7 @@ export class LLMService {
         if (part.type === "error") {
           const error = part.error as any;
           const errorMsg = error?.message || String(part.error);
-          logger.error("Stream error part received", { error: errorMsg });
+          logger.error("Stream error part received", { error: errorMsg }, LogScope.LLM_SERVICE);
           throw error;
         }
 
@@ -471,15 +479,23 @@ export class LLMService {
           );
         }
         if (!hasFinished) {
-          logger.warn("Stream completed without any content reported");
+          logger.warn(
+            "Stream completed without any content reported",
+            undefined,
+            LogScope.LLM_SERVICE,
+          );
         }
       }
     } catch (error) {
       if (!hasReportedContent) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error("Streaming error before any content reported", {
-          error: errorMessage,
-        });
+        logger.error(
+          "Streaming error before any content reported",
+          {
+            error: errorMessage,
+          },
+          LogScope.LLM_SERVICE,
+        );
         progress.report(new vscode.LanguageModelTextPart(`[Error: ${errorMessage}]`));
       }
       throw error;
@@ -495,7 +511,7 @@ export class LLMService {
           accurateTokenCount = usage.outputTokens || 0;
         } catch {
           // Usage unavailable (e.g. stream cancelled early), use estimate
-          logger.debug("Could not get usage from stream result");
+          logger.debug("Could not get usage from stream result", undefined, LogScope.LLM_SERVICE);
         }
         executionOptions.onStats({
           firstTokenTime,
@@ -539,15 +555,23 @@ export class LLMService {
       }
 
       if (!hasReportedContent && result.finishReason === "stop") {
-        logger.warn("Non-streaming response completed but no content was generated");
+        logger.warn(
+          "Non-streaming response completed but no content was generated",
+          undefined,
+          LogScope.LLM_SERVICE,
+        );
         progress.report(new vscode.LanguageModelTextPart("[No response generated]"));
       }
     } catch (error) {
       if (!hasReportedContent) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error("Non-streaming error before any content reported", {
-          error: errorMessage,
-        });
+        logger.error(
+          "Non-streaming error before any content reported",
+          {
+            error: errorMessage,
+          },
+          LogScope.LLM_SERVICE,
+        );
         progress.report(new vscode.LanguageModelTextPart(`[Error: ${errorMessage}]`));
       }
       throw error;
@@ -587,7 +611,7 @@ export class LLMService {
       "reasoning-end": () => {},
 
       // AI SDK v7 may emit 'reasoning' type directly
-      "reasoning": (p) => {
+      reasoning: (p) => {
         if (p.text) {
           this.reportReasoning(p.text, p, progress, options);
         }
@@ -669,11 +693,7 @@ export class LLMService {
     options: ExecutionOptions,
   ): void {
     // 创建VSCode格式的thinking part
-    const thinkingPart = new vscode.LanguageModelThinkingPart(
-      text,
-      part.id,
-      part.providerMetadata,
-    );
+    const thinkingPart = new vscode.LanguageModelThinkingPart(text, part.id, part.providerMetadata);
 
     // 通知回调（如果有）
     if (options.onReasoning) {
@@ -752,7 +772,7 @@ export class LLMService {
     }
 
     // ALWAYS log the full error for developers to see in the logs
-    logger.error("LLMService execution error", error, "LLMService");
+    logger.error("LLMService execution error", error, LogScope.LLM_SERVICE);
 
     // Throw the original error directly as requested
     throw error;

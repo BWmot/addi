@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import type { Provider, ProviderRepository } from "../../common/types";
 import { TokenFormatter } from "../../common/utils";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 import { ToolRegistry } from "../llm/toolRegistry";
 import type { LLMService } from "../llm/llmService";
 import { MessageConverter } from "../llm/messageConverter";
@@ -33,10 +33,14 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelChatInformation[]> {
     const providers = this.repository.getProviders();
-    logger.debug("provideLanguageModelChatInformation", {
-      silent: options.silent,
-      providerCount: providers.length,
-    });
+    logger.debug(
+      "provideLanguageModelChatInformation",
+      {
+        silent: options.silent,
+        providerCount: providers.length,
+      },
+      LogScope.CHAT_PROVIDER,
+    );
     // Always expose available providers to the caller. Previously we filtered out
     // providers when `options.silent` was true if they lacked an `apiKey`. That
     // caused transient misses when secrets were still loading from SecretStorage
@@ -44,10 +48,14 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
     // unconditionally ensures the host UI (e.g. Copilot) can list and select
     // models; requests will still fail later if the provider is unconfigured.
     const filterProviders = providers;
-    logger.debug("Filtered providers for chat information", {
-      original: providers.length,
-      filtered: filterProviders.length,
-    });
+    logger.debug(
+      "Filtered providers for chat information",
+      {
+        original: providers.length,
+        filtered: filterProviders.length,
+      },
+      LogScope.CHAT_PROVIDER,
+    );
     return filterProviders.flatMap((p) =>
       p.models.map((m) => {
         const friendlyInput = TokenFormatter.format(m.maxInputTokens) || String(m.maxInputTokens);
@@ -88,51 +96,75 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
       typeof model.id === "string" && model.id.startsWith("addi-model:")
         ? model.id.replace("addi-model:", "")
         : model.id;
-    logger.info("Chat response requested", {
-      requestedModelId: modelId,
-      messageCount: messages.length,
-      hasOptions: Boolean(options),
-    });
+    logger.info(
+      "Chat response requested",
+      {
+        requestedModelId: modelId,
+        messageCount: messages.length,
+        hasOptions: Boolean(options),
+      },
+      LogScope.CHAT_PROVIDER,
+    );
     const messageSummary = MessageConverter.summarizeMessages(messages);
     const toolDefinitions = this.resolveToolDefinitions(options);
     const toolNames = toolDefinitions?.map((t) => t.name) ?? [];
-    logger.debug("Chat request summary", {
-      requestedModelId: modelId,
-      messages: messageSummary,
-      toolCount: toolDefinitions?.length ?? 0,
-      toolNames,
-      toolSource:
-        toolDefinitions && toolDefinitions.length > 0
-          ? Array.isArray(options?.tools)
-            ? "host"
-            : "fallback"
-          : "none",
-    });
+    logger.debug(
+      "Chat request summary",
+      {
+        requestedModelId: modelId,
+        messages: messageSummary,
+        toolCount: toolDefinitions?.length ?? 0,
+        toolNames,
+        toolSource:
+          toolDefinitions && toolDefinitions.length > 0
+            ? Array.isArray(options?.tools)
+              ? "host"
+              : "fallback"
+            : "none",
+      },
+      LogScope.CHAT_PROVIDER,
+    );
     const result = this.repository.findModel(modelId);
     if (!result) {
-      logger.warn("Chat response requested for unknown model", {
-        requestedModelId: modelId,
-      });
+      logger.warn(
+        "Chat response requested for unknown model",
+        {
+          requestedModelId: modelId,
+        },
+        LogScope.CHAT_PROVIDER,
+      );
       throw new Error(`Model with ID '${modelId}' not found.`);
     }
 
     const { provider, model: storedModel } = result;
-    logger.debug("Resolved model for chat response", {
-      provider: logger.sanitizeProvider(provider),
-      model: logger.sanitizeModel(storedModel),
-      messages: messageSummary,
-    });
+    logger.debug(
+      "Resolved model for chat response",
+      {
+        provider: logger.sanitizeProvider(provider),
+        model: logger.sanitizeModel(storedModel),
+        messages: messageSummary,
+      },
+      LogScope.CHAT_PROVIDER,
+    );
 
     // Retrieve API key from SecretStorage
     const apiKey = await this.repository.getApiKey(provider.id);
 
     if (!apiKey || apiKey.trim() === "") {
-      logger.warn("Provider missing API key", logger.sanitizeProvider(provider));
+      logger.warn(
+        "Provider missing API key",
+        logger.sanitizeProvider(provider),
+        LogScope.CHAT_PROVIDER,
+      );
       throw new Error(`API key for provider '${provider.name}' is not configured.`);
     }
 
     if (!provider.apiEndpoint || provider.apiEndpoint.trim() === "") {
-      logger.warn("Provider missing API endpoint", logger.sanitizeProvider(provider));
+      logger.warn(
+        "Provider missing API endpoint",
+        logger.sanitizeProvider(provider),
+        LogScope.CHAT_PROVIDER,
+      );
       throw new Error(`API endpoint for provider '${provider.name}' is not configured.`);
     }
 
@@ -140,7 +172,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
 
     const startTime = Date.now();
     const onStats = (stats: { firstTokenTime: number; endTime: number; tokenCount: number }) => {
-      logger.debug("onStats called", stats);
+      logger.debug("onStats called", stats, LogScope.CHAT_PROVIDER);
       // Validate the timing data before calculating speed
       if (
         stats.tokenCount > 0 &&
@@ -155,28 +187,40 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
           const speed = stats.tokenCount / duration;
           // Sanity check: reject unrealistic speeds (>10000 t/s is physically impossible)
           if (speed <= 10000) {
-            logger.info("Calculated speed", {
-              speed,
-              duration,
-              tokenCount: stats.tokenCount,
-            });
+            logger.info(
+              "Calculated speed",
+              {
+                speed,
+                duration,
+                tokenCount: stats.tokenCount,
+              },
+              LogScope.CHAT_PROVIDER,
+            );
             // Update speed
             if (this.repository.updateModelSpeed) {
               this.repository.updateModelSpeed(provider.id, storedModel.id, speed);
             } else {
-              logger.warn("Repository does not support updateModelSpeed");
+              logger.warn(
+                "Repository does not support updateModelSpeed",
+                undefined,
+                LogScope.CHAT_PROVIDER,
+              );
             }
           } else {
-            logger.warn("Speed rejected: unrealistic value", { speed });
+            logger.warn("Speed rejected: unrealistic value", { speed }, LogScope.CHAT_PROVIDER);
           }
         } else {
-          logger.warn("Speed rejected: unrealistic duration", { duration });
+          logger.warn("Speed rejected: unrealistic duration", { duration }, LogScope.CHAT_PROVIDER);
         }
       }
     };
 
     try {
-      logger.debug("Dispatching request via LLMService", logger.sanitizeProvider(providerWithKey));
+      logger.debug(
+        "Dispatching request via LLMService",
+        logger.sanitizeProvider(providerWithKey),
+        LogScope.CHAT_PROVIDER,
+      );
       await this.llmService.chat(
         providerWithKey,
         storedModel,
@@ -187,20 +231,28 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
         onStats,
       );
     } catch (error) {
-      logger.error("Model query error", {
-        error: error instanceof Error ? error.message : String(error),
-        provider: logger.sanitizeProvider(providerWithKey),
-        model: logger.sanitizeModel(storedModel),
-      });
+      logger.error(
+        "Model query error",
+        {
+          error: error instanceof Error ? error.message : String(error),
+          provider: logger.sanitizeProvider(providerWithKey),
+          model: logger.sanitizeModel(storedModel),
+        },
+        LogScope.CHAT_PROVIDER,
+      );
       // Just re-throw the error. If it is already a LanguageModelError, VS Code will handle it appropriately.
       // If it's a generic Error, VS Code will still show it as a failure in the chat.
       throw error;
     } finally {
       const duration = Date.now() - startTime;
-      logger.info("Chat response completed", {
-        requestedModelId: modelId,
-        durationMs: duration,
-      });
+      logger.info(
+        "Chat response completed",
+        {
+          requestedModelId: modelId,
+          durationMs: duration,
+        },
+        LogScope.CHAT_PROVIDER,
+      );
     }
   }
 

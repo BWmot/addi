@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import type { Provider, ProviderConfig, ModelConfig, ModelStats, Model } from "../../common/types";
 import type { IStorageService, BackupEntry } from "../../domain/interfaces";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 import { ApiKeyService } from "./ApiKeyService";
 import { IdGenerator } from "../../common/utils";
 
@@ -118,18 +118,22 @@ export class StorageService implements IStorageService {
       if (migrationNeeded) {
         // We will save using the new strict saveProviders method which handles types correctly
         await this.saveProviders(stored);
-        logger.info("Migrated provider IDs and normalized data on startup");
+        logger.info(
+          "Migrated provider IDs and normalized data on startup",
+          undefined,
+          LogScope.STORAGE,
+        );
       }
 
       this._onDidUpdate.fire();
     } catch (error) {
-      logger.error("Failed to initialize secrets", error);
+      logger.error("Failed to initialize secrets", error, LogScope.STORAGE);
     }
   }
 
   setSettingsSync(enabled: boolean): void {
     if (this.syncEnabled === enabled) {
-      logger.debug("Settings sync already at requested state", { enabled });
+      logger.debug("Settings sync already at requested state", { enabled }, LogScope.STORAGE);
       return;
     }
     this.syncEnabled = enabled;
@@ -138,7 +142,7 @@ export class StorageService implements IStorageService {
     } else {
       this.context.globalState.setKeysForSync([]);
     }
-    logger.info("Settings sync preference updated", { enabled });
+    logger.info("Settings sync preference updated", { enabled }, LogScope.STORAGE);
   }
 
   isSettingsSyncEnabled(): boolean {
@@ -224,7 +228,7 @@ export class StorageService implements IStorageService {
    */
   async deleteApiKey(providerId: string): Promise<void> {
     await this.apiKeyService.deleteApiKey(providerId);
-    logger.info(`Deleted API key for provider ${providerId}`);
+    logger.info(`Deleted API key for provider ${providerId}`, undefined, LogScope.STORAGE);
   }
 
   /**
@@ -236,7 +240,7 @@ export class StorageService implements IStorageService {
    */
   async setApiKey(providerId: string, apiKey: string): Promise<void> {
     await this.apiKeyService.setApiKey(providerId, apiKey);
-    logger.info(`Set API key for provider ${providerId}`);
+    logger.info(`Set API key for provider ${providerId}`, undefined, LogScope.STORAGE);
   }
 
   /**
@@ -247,7 +251,11 @@ export class StorageService implements IStorageService {
    * - Sync state
    */
   async clearAllData(): Promise<void> {
-    logger.info('Starting to clear all plugin data with wildcard pattern "addi.*"');
+    logger.info(
+      'Starting to clear all plugin data with wildcard pattern "addi.*"',
+      undefined,
+      LogScope.STORAGE,
+    );
 
     // 1. Clear ALL SecretStorage keys matching "addi.*"
     try {
@@ -256,12 +264,16 @@ export class StorageService implements IStorageService {
 
       for (const key of secretsDeleted) {
         await this.context.secrets.delete(key);
-        logger.debug(`Deleted SecretStorage key: ${key}`);
+        logger.debug(`Deleted SecretStorage key: ${key}`, undefined, LogScope.STORAGE);
       }
-      logger.info(`Cleared ${secretsDeleted.length} SecretStorage keys matching "addi.*"`);
+      logger.info(
+        `Cleared ${secretsDeleted.length} SecretStorage keys matching "addi.*"`,
+        undefined,
+        LogScope.STORAGE,
+      );
     } catch (error) {
       // keys() might not be available on older VS Code versions
-      logger.warn("Failed to use secrets.keys() method", error);
+      logger.warn("Failed to use secrets.keys() method", error, LogScope.STORAGE);
       // Fallback: clear known api keys individually
       await this.apiKeyService.deleteAllApiKeys();
     }
@@ -274,11 +286,15 @@ export class StorageService implements IStorageService {
 
       for (const key of globalStateKeys) {
         await this.context.globalState.update(key, undefined);
-        logger.debug(`Cleared globalState key: ${key}`);
+        logger.debug(`Cleared globalState key: ${key}`, undefined, LogScope.STORAGE);
       }
-      logger.info(`Cleared ${globalStateKeys.length} globalState keys matching "addi.*"`);
+      logger.info(
+        `Cleared ${globalStateKeys.length} globalState keys matching "addi.*"`,
+        undefined,
+        LogScope.STORAGE,
+      );
     } catch (error) {
-      logger.warn("Failed to clear globalState keys", error);
+      logger.warn("Failed to clear globalState keys", error, LogScope.STORAGE);
       // Fallback: clear known keys individually
       await this.context.globalState.update(StorageService.CONFIG_KEY, undefined);
       await this.context.globalState.update(StorageService.CONFIG_MODIFIED_AT_KEY, undefined);
@@ -290,7 +306,11 @@ export class StorageService implements IStorageService {
     // 3. Reset sync state
     this.syncEnabled = false;
     this.context.globalState.setKeysForSync([]);
-    logger.info("Cleared all plugin data successfully with wildcard pattern");
+    logger.info(
+      "Cleared all plugin data successfully with wildcard pattern",
+      undefined,
+      LogScope.STORAGE,
+    );
 
     // Fire update event to refresh UI
     this._onDidUpdate.fire();
@@ -405,7 +425,11 @@ export class StorageService implements IStorageService {
       // If config didn't change, we still save stats (local),
       // but avoid bumping the modification time to prevent sync storms.
       await this.saveExtendedData(providers);
-      logger.debug("Skipping synced config update: No changes detected");
+      logger.debug(
+        "Skipping synced config update: No changes detected",
+        undefined,
+        LogScope.STORAGE,
+      );
       return;
     }
 
@@ -459,9 +483,13 @@ export class StorageService implements IStorageService {
     // Generate a new device ID (UUID v4)
     const newDeviceId = crypto.randomUUID();
     this.context.globalState.update(StorageService.DEVICE_ID_KEY, newDeviceId);
-    logger.info("Generated new device ID for conflict resolution", {
-      deviceId: newDeviceId,
-    });
+    logger.info(
+      "Generated new device ID for conflict resolution",
+      {
+        deviceId: newDeviceId,
+      },
+      LogScope.STORAGE,
+    );
     return newDeviceId;
   }
 
@@ -503,11 +531,15 @@ export class StorageService implements IStorageService {
     const updated = [entry, ...entries].slice(0, StorageService.MAX_BACKUPS);
     this.saveBackupEntries(updated);
 
-    logger.info("Backup created", {
-      backupId,
-      providerCount: providers.length,
-      totalBackups: updated.length,
-    });
+    logger.info(
+      "Backup created",
+      {
+        backupId,
+        providerCount: providers.length,
+        totalBackups: updated.length,
+      },
+      LogScope.STORAGE,
+    );
 
     return backupId;
   }
@@ -528,15 +560,19 @@ export class StorageService implements IStorageService {
     const entry = entries.find((e) => e.id === backupId);
 
     if (!entry) {
-      logger.warn("restoreBackup: backup not found", { backupId });
+      logger.warn("restoreBackup: backup not found", { backupId }, LogScope.STORAGE);
       return [];
     }
 
-    logger.info("Restoring from backup", {
-      backupId,
-      providerCount: entry.providerCount,
-      timestamp: entry.timestamp,
-    });
+    logger.info(
+      "Restoring from backup",
+      {
+        backupId,
+        providerCount: entry.providerCount,
+        timestamp: entry.timestamp,
+      },
+      LogScope.STORAGE,
+    );
 
     // Return the backed-up providers — caller (ConfigCommandHandler) will prompt
     // the user and then call saveProviders() to persist the restored data.
@@ -550,11 +586,11 @@ export class StorageService implements IStorageService {
     const entries = this.getBackupEntry();
     const filtered = entries.filter((e) => e.id !== backupId);
     if (filtered.length === entries.length) {
-      logger.debug("deleteBackup: backup not found", { backupId });
+      logger.debug("deleteBackup: backup not found", { backupId }, LogScope.STORAGE);
       return;
     }
     this.saveBackupEntries(filtered);
-    logger.info("Backup deleted", { backupId, remaining: filtered.length });
+    logger.info("Backup deleted", { backupId, remaining: filtered.length }, LogScope.STORAGE);
   }
 
   /**
@@ -562,6 +598,6 @@ export class StorageService implements IStorageService {
    */
   clearAllBackups(): void {
     this.context.globalState.update(StorageService.BACKUPS_KEY, []);
-    logger.info("All backups cleared");
+    logger.info("All backups cleared", undefined, LogScope.STORAGE);
   }
 }

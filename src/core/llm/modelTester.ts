@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import type { ModelDraft, Provider, Model } from "../../common/types";
 import { AIProviderRegistry } from "./aiRegistry";
 import { generateText, type ModelMessage, type Tool, jsonSchema } from "ai";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 import { LLMService } from "./llmService";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
 
@@ -131,13 +131,13 @@ export class ModelTester {
         try {
           result.speed = await ModelTester.measureSpeed(provider, modelDraft, token);
         } catch (speedError) {
-          logger.warn("Speed test failed", speedError);
+          logger.warn("Speed test failed", speedError, LogScope.MODEL_TESTER);
           // Don't fail the whole test, just leave speed undefined
         }
       }
     } catch (error: any) {
       result.error = error.message || String(error);
-      logger.error("Model test failed", error);
+      logger.error("Model test failed", error, LogScope.MODEL_TESTER);
     }
 
     return result;

@@ -1,22 +1,23 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { I18nMessages } from './types';
-import en from './en';
-import zh from './zh';
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import type { I18nMessages } from "./types";
+import en from "./en";
+import zh from "./zh";
 
 /** Supported locales */
-export type Locale = 'en' | 'zh';
+export type Locale = "en" | "zh";
 
 /** Deeply resolve a dotted path like "model.title" from I18nMessages */
 // Check if a type has only an index signature (like Record<string, string>)
 type HasIndexSignature<T> = string extends keyof T ? true : false;
 
 type NestedKeyOf<T extends { [key: string]: any }> = {
-  [K in keyof T & string]:
-    T[K] extends string | number | boolean | null | undefined ? K :
-    HasIndexSignature<T[K]> extends true ? K :  // Record<string, ...> — treat as leaf
-    T[K] extends { [key: string]: any }
-      ? `${K}.${NestedKeyOf<T[K]>}`
-      : K;
+  [K in keyof T & string]: T[K] extends string | number | boolean | null | undefined
+    ? K
+    : HasIndexSignature<T[K]> extends true
+      ? K // Record<string, ...> — treat as leaf
+      : T[K] extends { [key: string]: any }
+        ? `${K}.${NestedKeyOf<T[K]>}`
+        : K;
 }[keyof T & string];
 
 type TranslationKey = NestedKeyOf<I18nMessages>;
@@ -32,7 +33,7 @@ interface I18nContextValue {
 }
 
 const I18nContext = createContext<I18nContextValue>({
-  locale: 'en',
+  locale: "en",
   t: (key) => key,
   tRaw: () => undefined,
   setLocale: () => {},
@@ -44,8 +45,8 @@ const messages: Record<Locale, I18nMessages> = { en, zh };
 
 /** Resolve a dotted path like "provider.title" within a messages object */
 function resolve(obj: Record<string, unknown>, path: string): unknown {
-  return path.split('.').reduce<unknown>((acc, part) => {
-    if (acc && typeof acc === 'object' && part in (acc as Record<string, unknown>)) {
+  return path.split(".").reduce<unknown>((acc, part) => {
+    if (acc && typeof acc === "object" && part in (acc as Record<string, unknown>)) {
       return (acc as Record<string, unknown>)[part];
     }
     return undefined;
@@ -68,7 +69,7 @@ export const I18nProvider: React.FC<{ locale: Locale; children: React.ReactNode 
       if (msg === undefined || msg === null) {
         // fallback to English if key missing in current locale
         const fallback = resolve(messages.en as unknown as Record<string, unknown>, key);
-        if (typeof fallback === 'string') return fallback;
+        if (typeof fallback === "string") return fallback;
         return key; // last resort: return the key itself
       }
       let result = String(msg);
@@ -94,15 +95,13 @@ export const I18nProvider: React.FC<{ locale: Locale; children: React.ReactNode 
   );
 
   return (
-    <I18nContext.Provider value={{ locale, t, tRaw, setLocale }}>
-      {children}
-    </I18nContext.Provider>
+    <I18nContext.Provider value={{ locale, t, tRaw, setLocale }}>{children}</I18nContext.Provider>
   );
 };
 
 // ── Hooks ──
 
-export function useT(): I18nContextValue['t'] {
+export function useT(): I18nContextValue["t"] {
   return useContext(I18nContext).t;
 }
 
@@ -116,6 +115,6 @@ export function useLocale(): I18nContextValue {
  * 'en' for everything else.
  */
 export function detectLocale(vscodeLanguage: string): Locale {
-  if (vscodeLanguage.startsWith('zh')) return 'zh';
-  return 'en';
+  if (vscodeLanguage.startsWith("zh")) return "zh";
+  return "en";
 }

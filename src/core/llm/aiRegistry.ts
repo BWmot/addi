@@ -7,7 +7,7 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { Provider, Model } from "../../common/types";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 import { createReasoningContentInjectMiddleware } from "./reasoningContentInjectMiddleware";
 
 // AI SDK 的 Provider 实例通常是一个函数，接受 modelId 返回 LanguageModelV1
@@ -98,19 +98,26 @@ export class AIProviderRegistry {
           // Handle headers as Headers object or plain object
           if (finalOptions.headers instanceof Headers) {
             if (!finalOptions.headers.has("User-Agent")) {
-              finalOptions.headers.set("User-Agent", "Vscode Extension: Addi (https://github.com/deepwn/addi)");
+              finalOptions.headers.set(
+                "User-Agent",
+                "Vscode Extension: Addi (https://github.com/deepwn/addi)",
+              );
             }
           } else if (Array.isArray(finalOptions.headers)) {
             // [string, string][] format — add if missing
             const headersArray = finalOptions.headers as [string, string][];
             if (!headersArray.some(([k]) => k.toLowerCase() === "user-agent")) {
-              headersArray.push(["User-Agent", "Vscode Extension: Addi (https://github.com/deepwn/addi)"]);
+              headersArray.push([
+                "User-Agent",
+                "Vscode Extension: Addi (https://github.com/deepwn/addi)",
+              ]);
             }
           } else {
             const headersRecord: Record<string, string> =
               (finalOptions.headers as Record<string, string>) || {};
             if (!headersRecord["User-Agent"] && !headersRecord["user-agent"]) {
-              headersRecord["User-Agent"] = "Vscode Extension: Addi (https://github.com/deepwn/addi)";
+              headersRecord["User-Agent"] =
+                "Vscode Extension: Addi (https://github.com/deepwn/addi)";
             }
             finalOptions.headers = headersRecord;
           }
@@ -124,15 +131,15 @@ export class AIProviderRegistry {
               logger.error(
                 errorMsg,
                 { status: response.status, body: text.substring(0, 500) },
-                "AIRegistry",
+                LogScope.AI_REGISTRY,
               );
             } catch (e) {
-              logger.error(errorMsg, e, "AIRegistry");
+              logger.error(errorMsg, e, LogScope.AI_REGISTRY);
             }
           }
           return response;
         } catch (e) {
-          logger.error(`[AI-SDK Fetch] Network Error: ${urlStr}`, e, "AIRegistry");
+          logger.error(`[AI-SDK Fetch] Network Error: ${urlStr}`, e, LogScope.AI_REGISTRY);
           throw e;
         }
       };
@@ -261,8 +268,9 @@ export class AIProviderRegistry {
     // ──────────────────────────────────────────────────────────────────────
 
     // 获取模型 options（用户手动配置的实验性功能开关）
-    const modelOptions = (typeof modelOrId === "object" ? modelOrId.options : undefined)
-      ?? provider.models?.find(m => m.rid === modelId || m.id === modelId)?.options;
+    const modelOptions =
+      (typeof modelOrId === "object" ? modelOrId.options : undefined) ??
+      provider.models?.find((m) => m.rid === modelId || m.id === modelId)?.options;
 
     const middlewares: LanguageModelMiddleware[] = [];
 

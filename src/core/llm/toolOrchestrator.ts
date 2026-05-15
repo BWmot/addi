@@ -1,6 +1,6 @@
 import type * as vscode from "vscode";
 import { type Tool, jsonSchema } from "ai";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 
 export class ToolOrchestrator {
   /**
@@ -24,7 +24,7 @@ export class ToolOrchestrator {
             inputSchema: jsonSchema(schema),
           } as Tool;
         } catch (e) {
-          logger.error(`Failed to register host tool ${tool.name}`, e);
+          logger.error(`Failed to register host tool ${tool.name}`, e, LogScope.TOOL);
         }
       }
     }

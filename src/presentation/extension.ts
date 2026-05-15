@@ -6,7 +6,7 @@ import { AddiTreeDataProvider, type ProviderTreeItem } from "./views/providerVie
 import { type ModelTreeItem, normalizeTreeItems } from "./views/treeItems";
 import { CommandHandler } from "./commands";
 import { EditorViewManager } from "./views/editorView";
-import { logger } from "../common/logger";
+import { logger, LogScope } from "../common/logger";
 import { UserFeedback } from "./utils/feedback";
 import { StorageService } from "../infrastructure/storage/storageService";
 
@@ -23,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
   logger.initialize(context);
   const extension = vscode.extensions.getExtension("deepwn.addi");
   const version = extension?.packageJSON?.version ?? "unknown";
-  logger.info(`Extension activated (v${version})`, undefined, "Extension");
+  logger.info(`Extension activated (v${version})`, undefined, LogScope.EXTENSION);
 
   // Initialize Services (Infrastructure)
   const storageService = new StorageService(context);
@@ -74,9 +74,13 @@ export function activate(context: vscode.ExtensionContext) {
       const tools = vscode.lm.tools;
       const names = tools.map((t) => t.name).join(", ");
       vscode.window.showInformationMessage(`Registered LM Tools: ${names}`);
-      logger.info("Registered LM Tools", {
-        tools: tools.map((t) => ({ name: t.name, tags: t.tags })),
-      });
+      logger.info(
+        "Registered LM Tools",
+        {
+          tools: tools.map((t) => ({ name: t.name, tags: t.tags })),
+        },
+        LogScope.EXTENSION,
+      );
     }),
   );
 
@@ -119,7 +123,7 @@ export function activate(context: vscode.ExtensionContext) {
           await handler(...args);
         } catch (error) {
           UserFeedback.showError(`Command ${id} failed: ${error}`);
-          logger.error(`Command ${id} failed`, error);
+          logger.error(`Command ${id} failed`, error, LogScope.COMMAND);
         }
       }),
     );

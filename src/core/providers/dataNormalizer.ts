@@ -15,7 +15,7 @@
 import type { Model, Provider, ProviderType } from "../../common/types";
 import { IdGenerator } from "../../common/utils";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 
 export interface NormalizationResult {
   mutated: boolean;
@@ -43,12 +43,12 @@ export function normalizeCapabilities(
     normalized.toolCalling = typeof toolSource === "number" ? toolSource : Boolean(toolSource);
   }
 
-    if (candidate.reasoning !== undefined || base.reasoning !== undefined) {
-      normalized.reasoning = Boolean(candidate.reasoning ?? base.reasoning);
-    }
-
-    return normalized;
+  if (candidate.reasoning !== undefined || base.reasoning !== undefined) {
+    normalized.reasoning = Boolean(candidate.reasoning ?? base.reasoning);
   }
+
+  return normalized;
+}
 
 /**
  * Normalize all providers in-place. Mutates the array directly.
@@ -96,11 +96,15 @@ export function normalizeProvidersInPlace(
         delete providerRecord["apiKey"];
       }
 
-      logger.info("Migrating provider ID to UUID", {
-        oldId: providerIdCandidate || "(none)",
-        newId,
-        hasApiKey: !!oldApiKey,
-      });
+      logger.info(
+        "Migrating provider ID to UUID",
+        {
+          oldId: providerIdCandidate || "(none)",
+          newId,
+          hasApiKey: !!oldApiKey,
+        },
+        LogScope.PROVIDER_MGR,
+      );
 
       provider.id = newId;
       mutated = true;
@@ -150,7 +154,11 @@ export function normalizeProvidersInPlace(
     }
 
     if (!Array.isArray(provider.models)) {
-      logger.warn("Provider models array invalid, resetting", logger.sanitizeProvider(provider));
+      logger.warn(
+        "Provider models array invalid, resetting",
+        logger.sanitizeProvider(provider),
+        LogScope.PROVIDER_MGR,
+      );
       provider.models = [];
       mutated = true;
       critical = true; // Data loss/reset is critical

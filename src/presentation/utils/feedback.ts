@@ -79,7 +79,12 @@ export class UserFeedback {
     severity: "info" | "warning" | "error" = "warning",
     modal = false,
   ): Promise<boolean> {
-    const choice = await UserFeedback.showMessage(severity, message, ["Confirm", "Cancel"], modal);
-    return choice === "Confirm";
+    const choice = await UserFeedback.showMessage(
+      severity,
+      message,
+      [vscode.l10n.t("Confirm"), vscode.l10n.t("Cancel")],
+      modal,
+    );
+    return choice === vscode.l10n.t("Confirm");
   }
 }

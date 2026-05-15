@@ -3,7 +3,7 @@ import { BaseCommandHandler } from "./base";
 import type { ProviderTreeItem } from "../views/providerView";
 import { UserFeedback } from "../utils/feedback";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
-import { maskSecret, logger } from "../../common/logger";
+import { maskSecret, logger, LogScope } from "../../common/logger";
 import type { Provider, Model } from "../../common/types";
 
 /**
@@ -17,7 +17,7 @@ export class ProviderCommandHandler extends BaseCommandHandler {
     if (this.editorViewManager) {
       this.editorViewManager.openEditor(undefined, "create");
     } else {
-      UserFeedback.showError("Editor view manager not initialized");
+      UserFeedback.showError(vscode.l10n.t("Editor view manager not initialized"));
     }
   }
 
@@ -28,7 +28,7 @@ export class ProviderCommandHandler extends BaseCommandHandler {
     if (this.editorViewManager) {
       this.editorViewManager.openEditor(item, "edit");
     } else {
-      UserFeedback.showError("Editor view manager not initialized");
+      UserFeedback.showError(vscode.l10n.t("Editor view manager not initialized"));
     }
   }
 
@@ -37,17 +37,18 @@ export class ProviderCommandHandler extends BaseCommandHandler {
    */
   async deleteProvider(item: ProviderTreeItem): Promise<void> {
     if (ConfigManager.getConfirmDelete()) {
-      const deleteOption: vscode.MessageItem = { title: "Delete" };
+      const deleteOption: vscode.MessageItem = { title: vscode.l10n.t("Delete") };
       const deleteDontAskOption: vscode.MessageItem = {
-        title: "Delete and don't ask again",
+        title: vscode.l10n.t("Delete and don't ask again"),
       };
       const cancelOption: vscode.MessageItem = {
-        title: "Cancel",
+        title: vscode.l10n.t("Cancel"),
         isCloseAffordance: true,
       };
 
       const selection = await vscode.window.showWarningMessage(
-        `Are you sure you want to delete provider "${item.provider.name}"? This will also delete all of its models.`,
+        vscode.l10n.t('Are you sure you want to delete provider "{0}"?', item.provider.name) +
+          vscode.l10n.t(" This will also delete all of its models."),
         { modal: false },
         deleteOption,
         deleteDontAskOption,
@@ -59,12 +60,16 @@ export class ProviderCommandHandler extends BaseCommandHandler {
           .getConfiguration("addi")
           .update("confirmDelete", false, vscode.ConfigurationTarget.Global);
         void vscode.window.showInformationMessage(
-          "Delete confirmation disabled. You can re-enable it in settings.",
+          vscode.l10n.t("Delete confirmation disabled. You can re-enable it in settings."),
         );
       }
 
       if (!selection || selection === cancelOption) {
-        logger.debug("deleteProvider canceled", logger.sanitizeProvider(item.provider));
+        logger.debug(
+          "deleteProvider canceled",
+          logger.sanitizeProvider(item.provider),
+          LogScope.COMMAND,
+        );
         return;
       }
     }
@@ -72,11 +77,14 @@ export class ProviderCommandHandler extends BaseCommandHandler {
     try {
       await this.manager.deleteProvider(item.provider.id);
       this.refreshTreeView();
-      UserFeedback.showInfo(`Provider "${item.provider.name}" deleted`);
-      logger.info("Provider deleted", logger.sanitizeProvider(item.provider));
+      UserFeedback.showInfo(vscode.l10n.t('Provider "{0}" deleted', item.provider.name));
+      logger.info("Provider deleted", logger.sanitizeProvider(item.provider), LogScope.COMMAND);
     } catch (error) {
       UserFeedback.showError(
-        `Failed to delete provider: ${error instanceof Error ? error.message : "Unknown error"}`,
+        vscode.l10n.t(
+          "Failed to delete provider: {0}",
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       );
       this.logError("deleteProvider failed", error);
     }
@@ -89,27 +97,38 @@ export class ProviderCommandHandler extends BaseCommandHandler {
     const currentApiKey = (await this.manager.getApiKey(item.provider.id)) || "";
 
     const newApiKey = await UserFeedback.showInputBox({
-      prompt: `Set Api Key for "${item.provider.name}"`,
+      prompt: vscode.l10n.t('Set Api Key for "{0}"', item.provider.name),
       value: "",
       password: true,
       placeHolder: currentApiKey
-        ? `Current: ${maskSecret(currentApiKey)}`
-        : "Please enter the new API key",
+        ? vscode.l10n.t("Current: {0}", maskSecret(currentApiKey) ?? "")
+        : vscode.l10n.t("Please enter the new API key"),
     });
 
     if (newApiKey === undefined || newApiKey === "") {
-      logger.debug("setApiKey canceled or empty", logger.sanitizeProvider(item.provider));
+      logger.debug(
+        "setApiKey canceled or empty",
+        logger.sanitizeProvider(item.provider),
+        LogScope.COMMAND,
+      );
       return;
     }
 
     try {
       await this.manager.setApiKey(item.provider.id, newApiKey);
-      logger.info("Provider API key updated", logger.sanitizeProvider(item.provider));
+      logger.info(
+        "Provider API key updated",
+        logger.sanitizeProvider(item.provider),
+        LogScope.COMMAND,
+      );
       this.refreshTreeView();
-      UserFeedback.showInfo(`Provider "${item.provider.name}" API key updated`);
+      UserFeedback.showInfo(vscode.l10n.t('Provider "{0}" API key updated', item.provider.name));
     } catch (error) {
       UserFeedback.showError(
-        `Failed to update API key: ${error instanceof Error ? error.message : "Unknown error"}`,
+        vscode.l10n.t(
+          "Failed to update API key: {0}",
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       );
       this.logError("setApiKey failed", error);
     }
@@ -119,7 +138,11 @@ export class ProviderCommandHandler extends BaseCommandHandler {
    * Pull models from a provider
    */
   async pullProviderModels(item: ProviderTreeItem): Promise<void> {
-    logger.info("Command pullProviderModels invoked", logger.sanitizeProvider(item.provider));
+    logger.info(
+      "Command pullProviderModels invoked",
+      logger.sanitizeProvider(item.provider),
+      LogScope.COMMAND,
+    );
     await this.syncProviderModels(item.provider.id);
   }
 
@@ -127,19 +150,23 @@ export class ProviderCommandHandler extends BaseCommandHandler {
    * Copy a provider - opens editor for creating a copy
    */
   async copyProvider(item: ProviderTreeItem): Promise<void> {
-    logger.info("Command copyProvider invoked", logger.sanitizeProvider(item.provider));
+    logger.info(
+      "Command copyProvider invoked",
+      logger.sanitizeProvider(item.provider),
+      LogScope.COMMAND,
+    );
 
     if (this.editorViewManager) {
       // Copy provider data without id/models to ensure it's treated as new
       const { id: _id, models: _models, ...providerWithoutIdModels } = item.provider;
       const prefillData: Record<string, unknown> = {
         ...providerWithoutIdModels,
-        name: `${item.provider.name} Copy`,
+        name: `${item.provider.name} ${vscode.l10n.t("Copy")}`,
       };
 
       this.editorViewManager.openEditor(undefined, "create", undefined, prefillData);
     } else {
-      UserFeedback.showError("Editor view manager not initialized");
+      UserFeedback.showError(vscode.l10n.t("Editor view manager not initialized"));
     }
   }
 
@@ -157,16 +184,23 @@ export class ProviderCommandHandler extends BaseCommandHandler {
     const providers = this.manager.getProviders();
     const providerIndex = providers.findIndex((p) => p.id === providerId);
     if (providerIndex < 0) {
-      UserFeedback.showError("Provider not found");
+      UserFeedback.showError(vscode.l10n.t("Provider not found"));
       return;
     }
 
     const provider = providers[providerIndex]!;
     const endpoint = provider.apiEndpoint?.trim();
     if (!endpoint) {
-      const message = `Provider "${provider.name}" is missing an API endpoint. Configure it and try pulling models again.`;
+      const message = vscode.l10n.t(
+        'Provider "{0}" is missing an API endpoint. Configure it and try pulling models again.',
+        provider.name,
+      );
       UserFeedback.showWarning(message);
-      logger.warn("syncProviderModels missing endpoint", logger.sanitizeProvider(provider));
+      logger.warn(
+        "syncProviderModels missing endpoint",
+        logger.sanitizeProvider(provider),
+        LogScope.COMMAND,
+      );
       return;
     }
 
@@ -174,9 +208,16 @@ export class ProviderCommandHandler extends BaseCommandHandler {
     const apiKey = await this.manager.getApiKey(provider.id);
 
     if (!apiKey) {
-      const message = `Provider "${provider.name}" is missing an API key. Set the key and rerun "Pull Models List".`;
+      const message = vscode.l10n.t(
+        'Provider "{0}" is missing an API key. Set the key and rerun "Pull Models List".',
+        provider.name,
+      );
       UserFeedback.showWarning(message);
-      logger.warn("syncProviderModels missing api key", logger.sanitizeProvider(provider));
+      logger.warn(
+        "syncProviderModels missing api key",
+        logger.sanitizeProvider(provider),
+        LogScope.COMMAND,
+      );
       return;
     }
 
@@ -186,9 +227,13 @@ export class ProviderCommandHandler extends BaseCommandHandler {
       apiKey,
     };
 
-    logger.debug("syncProviderModels start", {
-      provider: logger.sanitizeProvider(fetchableProvider),
-    });
+    logger.debug(
+      "syncProviderModels start",
+      {
+        provider: logger.sanitizeProvider(fetchableProvider),
+      },
+      LogScope.COMMAND,
+    );
 
     try {
       const result = await UserFeedback.showProgress<ModelSyncResult>(
@@ -202,9 +247,13 @@ export class ProviderCommandHandler extends BaseCommandHandler {
           let skipped = 0;
 
           if (remoteModels.length === 0) {
-            logger.warn("fetchProviderModelsFromApi returned no models", {
-              provider: logger.sanitizeProvider(fetchableProvider),
-            });
+            logger.warn(
+              "fetchProviderModelsFromApi returned no models",
+              {
+                provider: logger.sanitizeProvider(fetchableProvider),
+              },
+              LogScope.COMMAND,
+            );
             return {
               added,
               updated,
@@ -290,11 +339,15 @@ export class ProviderCommandHandler extends BaseCommandHandler {
             // Check for rid conflict: if there's a model with same rid but different local id
             const conflictingModel = provider.models.find((m) => m.rid === remoteRid);
             if (conflictingModel) {
-              logger.warn("Found model with conflicting rid during pull", {
-                provider: logger.sanitizeProvider(fetchableProvider),
-                remoteRid,
-                existingModelId: conflictingModel.id,
-              });
+              logger.warn(
+                "Found model with conflicting rid during pull",
+                {
+                  provider: logger.sanitizeProvider(fetchableProvider),
+                  remoteRid,
+                  existingModelId: conflictingModel.id,
+                },
+                LogScope.COMMAND,
+              );
               // Update the existing model's other properties instead of adding duplicate
               conflictingModel.name = remote.name?.trim() || remote.id;
               if (remote.family?.trim()) {
@@ -362,35 +415,49 @@ export class ProviderCommandHandler extends BaseCommandHandler {
       }
 
       if (!result.mutated) {
-        logger.info("syncProviderModels: no changes", {
-          provider: logger.sanitizeProvider(fetchableProvider),
-        });
+        logger.info(
+          "syncProviderModels: no changes",
+          {
+            provider: logger.sanitizeProvider(fetchableProvider),
+          },
+          LogScope.COMMAND,
+        );
         return;
       }
 
       const fragments: string[] = [];
       if (result.added > 0) {
-        fragments.push(`${result.added} added`);
+        fragments.push(vscode.l10n.t("{0} added", result.added));
       }
       if (result.updated > 0) {
-        fragments.push(`${result.updated} updated`);
+        fragments.push(vscode.l10n.t("{0} updated", result.updated));
       }
-      const summary = fragments.length > 0 ? fragments.join(", ") : "up to date";
-      UserFeedback.showInfo(`Synced models for "${provider.name}" (${summary})`);
-      logger.info("syncProviderModels success", {
-        provider: logger.sanitizeProvider(fetchableProvider),
-        added: result.added,
-        updated: result.updated,
-        skipped: result.totalRemote - result.added - result.updated,
-        totalRemote: result.totalRemote,
-      });
+      const summary = fragments.length > 0 ? fragments.join(", ") : vscode.l10n.t("up to date");
+      UserFeedback.showInfo(vscode.l10n.t('Synced models for "{0}" ({1})', provider.name, summary));
+      logger.info(
+        "syncProviderModels success",
+        {
+          provider: logger.sanitizeProvider(fetchableProvider),
+          added: result.added,
+          updated: result.updated,
+          skipped: result.totalRemote - result.added - result.updated,
+          totalRemote: result.totalRemote,
+        },
+        LogScope.COMMAND,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      UserFeedback.showError(`Failed to sync models for "${provider.name}": ${message}`);
-      logger.error("syncProviderModels error", {
-        provider: logger.sanitizeProvider(fetchableProvider),
-        error: message,
-      });
+      UserFeedback.showError(
+        vscode.l10n.t('Failed to sync models for "{0}": {1}', provider.name, message),
+      );
+      logger.error(
+        "syncProviderModels error",
+        {
+          provider: logger.sanitizeProvider(fetchableProvider),
+          error: message,
+        },
+        LogScope.COMMAND,
+      );
     }
   }
 }

@@ -3,7 +3,7 @@ import type { Model, Provider, ModelDraft, RemoteModelInfo } from "../../common/
 import type { IStorageService, IProviderModelManager, BackupEntry } from "../../domain/interfaces";
 import { IdGenerator, InputValidator } from "../../common/utils";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 import { normalizeCapabilities, normalizeProvidersInPlace } from "./dataNormalizer";
 import { fetchProviderModelsFromApi as fetchRemoteModels } from "./remoteModelFetcher";
 
@@ -136,21 +136,26 @@ export class ProviderModelManager implements IProviderModelManager {
         {
           providerCount: stored.length,
         },
+        LogScope.PROVIDER_MGR,
       );
     } else if (mutated) {
-      logger.debug("Applied cosmetic provider data normalization (in-memory only)", {
-        providerCount: stored.length,
-      });
+      logger.debug(
+        "Applied cosmetic provider data normalization (in-memory only)",
+        {
+          providerCount: stored.length,
+        },
+        LogScope.PROVIDER_MGR,
+      );
     }
 
-    logger.debug("Loaded providers", { providerCount: stored.length });
+    logger.debug("Loaded providers", { providerCount: stored.length }, LogScope.PROVIDER_MGR);
     return stored;
   }
 
   async saveProviders(providers: Provider[]): Promise<void> {
     normalizeProvidersInPlace(providers as Array<Provider & Record<string, unknown>>);
     await this.storageService.saveProviders(providers);
-    logger.info("Saved providers", { providerCount: providers.length });
+    logger.info("Saved providers", { providerCount: providers.length }, LogScope.PROVIDER_MGR);
   }
 
   async addProvider(providerData: Omit<Provider, "id" | "models">): Promise<Provider> {
@@ -177,7 +182,7 @@ export class ProviderModelManager implements IProviderModelManager {
 
       providers.push(newProvider);
       await this.saveProviders(providers);
-      logger.info("Provider added", logger.sanitizeProvider(newProvider));
+      logger.info("Provider added", logger.sanitizeProvider(newProvider), LogScope.PROVIDER_MGR);
       return newProvider;
     });
   }
@@ -209,10 +214,18 @@ export class ProviderModelManager implements IProviderModelManager {
 
         providers[index] = updatedProvider;
         await this.saveProviders(providers);
-        logger.info("Provider updated", logger.sanitizeProvider(providers[index]!));
+        logger.info(
+          "Provider updated",
+          logger.sanitizeProvider(providers[index]!),
+          LogScope.PROVIDER_MGR,
+        );
         return true;
       }
-      logger.warn("Attempted to update missing provider", { providerId: id });
+      logger.warn(
+        "Attempted to update missing provider",
+        { providerId: id },
+        LogScope.PROVIDER_MGR,
+      );
       return false;
     });
   }
@@ -225,10 +238,14 @@ export class ProviderModelManager implements IProviderModelManager {
         // Also delete the API key from SecretStorage when provider is deleted
         await this.storageService.deleteApiKey(id);
         await this.saveProviders(filtered);
-        logger.info("Provider deleted", { providerId: id });
+        logger.info("Provider deleted", { providerId: id }, LogScope.PROVIDER_MGR);
         return true;
       }
-      logger.warn("Attempted to delete missing provider", { providerId: id });
+      logger.warn(
+        "Attempted to delete missing provider",
+        { providerId: id },
+        LogScope.PROVIDER_MGR,
+      );
       return false;
     });
   }
@@ -266,13 +283,21 @@ export class ProviderModelManager implements IProviderModelManager {
         };
         providers[providerIndex]!.models.push(newModel);
         await this.saveProviders(providers);
-        logger.info("Model added", {
-          provider: logger.sanitizeProvider(providers[providerIndex]!),
-          model: logger.sanitizeModel(newModel),
-        });
+        logger.info(
+          "Model added",
+          {
+            provider: logger.sanitizeProvider(providers[providerIndex]!),
+            model: logger.sanitizeModel(newModel),
+          },
+          LogScope.PROVIDER_MGR,
+        );
         return newModel;
       }
-      logger.warn("Attempted to add model to missing provider", { providerId });
+      logger.warn(
+        "Attempted to add model to missing provider",
+        { providerId },
+        LogScope.PROVIDER_MGR,
+      );
       return null;
     });
   }
@@ -334,17 +359,25 @@ export class ProviderModelManager implements IProviderModelManager {
           };
           providers[providerIndex]!.models[modelIndex] = updatedModel;
           await this.saveProviders(providers);
-          logger.info("Model updated", {
-            provider: logger.sanitizeProvider(providers[providerIndex]!),
-            model: logger.sanitizeModel(updatedModel),
-          });
+          logger.info(
+            "Model updated",
+            {
+              provider: logger.sanitizeProvider(providers[providerIndex]!),
+              model: logger.sanitizeModel(updatedModel),
+            },
+            LogScope.PROVIDER_MGR,
+          );
           return true;
         }
       }
-      logger.warn("Attempted to update missing model", {
-        providerId,
-        modelId,
-      });
+      logger.warn(
+        "Attempted to update missing model",
+        {
+          providerId,
+          modelId,
+        },
+        LogScope.PROVIDER_MGR,
+      );
       return false;
     });
   }
@@ -358,9 +391,13 @@ export class ProviderModelManager implements IProviderModelManager {
       const providers = this.getProviders();
       const providerIndex = providers.findIndex((p) => p.id === providerId);
       if (providerIndex < 0) {
-        logger.warn("Attempted batch update on missing provider", {
-          providerId,
-        });
+        logger.warn(
+          "Attempted batch update on missing provider",
+          {
+            providerId,
+          },
+          LogScope.PROVIDER_MGR,
+        );
         return 0;
       }
 
@@ -423,10 +460,14 @@ export class ProviderModelManager implements IProviderModelManager {
 
       if (updatedCount > 0) {
         await this.saveProviders(providers);
-        logger.info("Models batch updated", {
-          providerId,
-          count: updatedCount,
-        });
+        logger.info(
+          "Models batch updated",
+          {
+            providerId,
+            count: updatedCount,
+          },
+          LogScope.PROVIDER_MGR,
+        );
       }
 
       return updatedCount;
@@ -460,9 +501,13 @@ export class ProviderModelManager implements IProviderModelManager {
       const providers = this.getProviders();
       const providerIndex = providers.findIndex((p) => p.id === providerId);
       if (providerIndex < 0) {
-        logger.warn("Attempted visibility update on missing provider", {
-          providerId,
-        });
+        logger.warn(
+          "Attempted visibility update on missing provider",
+          {
+            providerId,
+          },
+          LogScope.PROVIDER_MGR,
+        );
         return 0;
       }
 
@@ -484,11 +529,15 @@ export class ProviderModelManager implements IProviderModelManager {
 
       if (updatedCount > 0) {
         await this.saveProviders(providers);
-        logger.info("Models visibility updated", {
-          providerId,
-          count: updatedCount,
-          isUserSelectable,
-        });
+        logger.info(
+          "Models visibility updated",
+          {
+            providerId,
+            count: updatedCount,
+            isUserSelectable,
+          },
+          LogScope.PROVIDER_MGR,
+        );
       }
 
       return updatedCount;
@@ -506,9 +555,13 @@ export class ProviderModelManager implements IProviderModelManager {
       const providers = this.getProviders();
       const providerIndex = providers.findIndex((p) => p.id === providerId);
       if (providerIndex < 0) {
-        logger.warn("Attempted visibility update on missing provider", {
-          providerId,
-        });
+        logger.warn(
+          "Attempted visibility update on missing provider",
+          {
+            providerId,
+          },
+          LogScope.PROVIDER_MGR,
+        );
         return 0;
       }
 
@@ -527,11 +580,15 @@ export class ProviderModelManager implements IProviderModelManager {
 
       if (updatedCount > 0) {
         await this.saveProviders(providers);
-        logger.info("Provider all models visibility updated", {
-          providerId,
-          count: updatedCount,
-          isUserSelectable,
-        });
+        logger.info(
+          "Provider all models visibility updated",
+          {
+            providerId,
+            count: updatedCount,
+            isUserSelectable,
+          },
+          LogScope.PROVIDER_MGR,
+        );
       }
 
       return updatedCount;
@@ -540,7 +597,11 @@ export class ProviderModelManager implements IProviderModelManager {
 
   async updateModelSpeed(providerId: string, modelId: string, speed: number): Promise<void> {
     await this.withLock(async () => {
-      logger.debug("updateModelSpeed called", { providerId, modelId, speed });
+      logger.debug(
+        "updateModelSpeed called",
+        { providerId, modelId, speed },
+        LogScope.PROVIDER_MGR,
+      );
       const providers = this.getProviders();
       const providerIndex = providers.findIndex((p) => p.id === providerId);
       if (providerIndex >= 0) {
@@ -560,12 +621,12 @@ export class ProviderModelManager implements IProviderModelManager {
             averageSpeed: average,
           };
           await this.saveProviders(providers);
-          logger.debug("Model speed updated", { modelId, speed, average });
+          logger.debug("Model speed updated", { modelId, speed, average }, LogScope.PROVIDER_MGR);
         } else {
-          logger.warn("Model not found for speed update", { modelId });
+          logger.warn("Model not found for speed update", { modelId }, LogScope.PROVIDER_MGR);
         }
       } else {
-        logger.warn("Provider not found for speed update", { providerId });
+        logger.warn("Provider not found for speed update", { providerId }, LogScope.PROVIDER_MGR);
       }
     });
   }
@@ -586,7 +647,7 @@ export class ProviderModelManager implements IProviderModelManager {
 
       if (deleted) {
         await this.saveProviders(providers);
-        logger.info("Model deleted", { modelId });
+        logger.info("Model deleted", { modelId }, LogScope.PROVIDER_MGR);
       }
 
       return deleted;
@@ -615,7 +676,7 @@ export class ProviderModelManager implements IProviderModelManager {
 
       if (deletedCount > 0) {
         await this.saveProviders(providers);
-        logger.info("Models batch deleted", { count: deletedCount });
+        logger.info("Models batch deleted", { count: deletedCount }, LogScope.PROVIDER_MGR);
       }
 
       return deletedCount;
@@ -628,23 +689,31 @@ export class ProviderModelManager implements IProviderModelManager {
       // First try to find by local id (UUID)
       let model = provider.models.find((m) => m.id === modelId);
       if (model) {
-        logger.debug("Model lookup hit by id", {
-          provider: logger.sanitizeProvider(provider),
-          model: logger.sanitizeModel(model),
-        });
+        logger.debug(
+          "Model lookup hit by id",
+          {
+            provider: logger.sanitizeProvider(provider),
+            model: logger.sanitizeModel(model),
+          },
+          LogScope.PROVIDER_MGR,
+        );
         return { provider, model };
       }
       // If not found by id, try by rid (remote id)
       model = provider.models.find((m) => m.rid === modelId);
       if (model) {
-        logger.debug("Model lookup hit by rid", {
-          provider: logger.sanitizeProvider(provider),
-          model: logger.sanitizeModel(model),
-        });
+        logger.debug(
+          "Model lookup hit by rid",
+          {
+            provider: logger.sanitizeProvider(provider),
+            model: logger.sanitizeModel(model),
+          },
+          LogScope.PROVIDER_MGR,
+        );
         return { provider, model };
       }
     }
-    logger.warn("Model lookup miss", { modelId });
+    logger.warn("Model lookup miss", { modelId }, LogScope.PROVIDER_MGR);
     return null;
   }
 

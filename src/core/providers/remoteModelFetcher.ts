@@ -11,7 +11,7 @@
  */
 
 import type { Model, Provider, RemoteModelInfo } from "../../common/types";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 
 const TOKEN_LIMIT = 1024 * 1024 * 4;
 
@@ -48,10 +48,14 @@ export async function fetchProviderModelsFromApi(
   }
 
   const providerType = provider.providerType ?? "generic";
-  logger.debug("fetchProviderModelsFromApi invoked", {
-    provider: logger.sanitizeProvider(provider),
-    providerType,
-  });
+  logger.debug(
+    "fetchProviderModelsFromApi invoked",
+    {
+      provider: logger.sanitizeProvider(provider),
+      providerType,
+    },
+    LogScope.REMOTE_FETCHER,
+  );
 
   try {
     switch (providerType) {
@@ -250,14 +254,18 @@ export async function fetchProviderModelsFromApi(
       }
 
       default:
-        logger.warn("Unknown provider type for model fetching", {
-          providerType,
-        });
+        logger.warn(
+          "Unknown provider type for model fetching",
+          {
+            providerType,
+          },
+          LogScope.REMOTE_FETCHER,
+        );
         return [];
     }
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
-    logger.error("Error fetching provider models", { error: msg });
+    logger.error("Error fetching provider models", { error: msg }, LogScope.REMOTE_FETCHER);
     throw new Error(`Failed to fetch models: ${msg}`, { cause: e });
   }
 }

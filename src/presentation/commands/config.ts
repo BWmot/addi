@@ -4,7 +4,7 @@ import type { Provider } from "../../common/types";
 import { UserFeedback } from "../utils/feedback";
 import { IdGenerator } from "../../common/utils";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 import { CryptoService, type ProviderApiKeys } from "../../infrastructure/crypto";
 
 /**
@@ -15,37 +15,40 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * Export configuration to file or clipboard
    */
   async exportConfig(): Promise<void> {
-    logger.info("Command exportConfig invoked");
+    logger.info("Command exportConfig invoked", undefined, LogScope.COMMAND);
     try {
       const allProviders = this.manager.getProviders();
       if (allProviders.length === 0) {
-        UserFeedback.showWarning("No configurations to export");
-        logger.warn("exportConfig aborted: no providers configured");
+        UserFeedback.showWarning(vscode.l10n.t("No configurations to export"));
+        logger.warn("exportConfig aborted: no providers configured", undefined, LogScope.COMMAND);
         return;
       }
 
       // 1. Select providers
       const selectedProviders = await this.selectProvidersForExport(allProviders);
       if (!selectedProviders || selectedProviders.length === 0) {
-        logger.debug("exportConfig canceled at provider selection");
+        logger.debug("exportConfig canceled at provider selection", undefined, LogScope.COMMAND);
         return;
       }
 
       // 2. Prompt for password (enter password to encrypt, empty to exclude ApiKey)
       const password = await this.promptForEncryptionPassword();
       if (password === undefined) {
-        logger.debug("exportConfig canceled at password prompt");
+        logger.debug("exportConfig canceled at password prompt", undefined, LogScope.COMMAND);
         return;
       }
 
       // 3. Selection Destination
-      const destination = await vscode.window.showQuickPick(["Save to File", "Copy to Clipboard"], {
-        title: "Export Destination",
-        placeHolder: "Where do you want to save the configuration?",
-      });
+      const destination = await vscode.window.showQuickPick(
+        [vscode.l10n.t("Save to File"), vscode.l10n.t("Copy to Clipboard")],
+        {
+          title: vscode.l10n.t("Export Destination"),
+          placeHolder: vscode.l10n.t("Where do you want to save the configuration?"),
+        },
+      );
 
       if (!destination) {
-        logger.debug("exportConfig canceled at destination selection");
+        logger.debug("exportConfig canceled at destination selection", undefined, LogScope.COMMAND);
         return;
       }
 
@@ -60,10 +63,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
         const saveDialogOptions: vscode.SaveDialogOptions = {
           filters: {
-            "Config Files": ["json"],
-            "All Files": ["*"],
+            [vscode.l10n.t("Config Files")]: ["json"],
+            [vscode.l10n.t("All Files")]: ["*"],
           },
-          title: "Export Configuration",
+          title: vscode.l10n.t("Export Configuration"),
         };
 
         if (defaultUri) {
@@ -72,30 +75,37 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
         const uri = await vscode.window.showSaveDialog(saveDialogOptions);
         if (!uri) {
-          logger.debug("exportConfig canceled at save dialog");
+          logger.debug("exportConfig canceled at save dialog", undefined, LogScope.COMMAND);
           return;
         }
 
         const targetUri = this.ensureJsonExtension(uri);
-        await UserFeedback.showProgress("Saving to file...", async () => {
+        await UserFeedback.showProgress(vscode.l10n.t("Saving to file..."), async () => {
           await vscode.workspace.fs.writeFile(targetUri, Buffer.from(encoded, "utf8"));
-          UserFeedback.showInfo(`Configuration exported to ${targetUri.fsPath}`);
+          UserFeedback.showInfo(vscode.l10n.t("Configuration exported to {0}", targetUri.fsPath));
         });
       } else {
         await vscode.env.clipboard.writeText(encoded);
-        UserFeedback.showInfo("Configuration copied to clipboard");
+        UserFeedback.showInfo(vscode.l10n.t("Configuration copied to clipboard"));
       }
 
-      logger.info("Configuration exported", {
-        providerCount: selectedProviders.length,
-        hasPassword: !!password,
-        destination,
-      });
+      logger.info(
+        "Configuration exported",
+        {
+          providerCount: selectedProviders.length,
+          hasPassword: !!password,
+          destination,
+        },
+        LogScope.COMMAND,
+      );
 
       this.refreshTreeView();
     } catch (error) {
       UserFeedback.showError(
-        `Failed to export configuration: ${error instanceof Error ? error.message : "Unknown error"}`,
+        vscode.l10n.t(
+          "Failed to export configuration: {0}",
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       );
       this.logError("exportConfig failed", error);
     }
@@ -105,19 +115,19 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * Import configuration from file or clipboard
    */
   async importConfig(): Promise<void> {
-    logger.info("Command importConfig invoked");
+    logger.info("Command importConfig invoked", undefined, LogScope.COMMAND);
     try {
       // 1. Selection Source
       const source = await vscode.window.showQuickPick(
-        ["Import from File", "Import from Clipboard"],
+        [vscode.l10n.t("Import from File"), vscode.l10n.t("Import from Clipboard")],
         {
-          title: "Import Source",
-          placeHolder: "Where is the configuration located?",
+          title: vscode.l10n.t("Import Source"),
+          placeHolder: vscode.l10n.t("Where is the configuration located?"),
         },
       );
 
       if (!source) {
-        logger.debug("importConfig canceled at source selection");
+        logger.debug("importConfig canceled at source selection", undefined, LogScope.COMMAND);
         return;
       }
 
@@ -125,16 +135,16 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       if (source === "Import from File") {
         const openDialogOptions: vscode.OpenDialogOptions = {
           filters: {
-            "Config Files": ["json", "txt"],
-            "All Files": ["*"],
+            [vscode.l10n.t("Config Files")]: ["json", "txt"],
+            [vscode.l10n.t("All Files")]: ["*"],
           },
-          title: "Import Configuration",
+          title: vscode.l10n.t("Import Configuration"),
           canSelectMany: false,
         };
 
         const uri = await vscode.window.showOpenDialog(openDialogOptions);
         if (!uri || uri.length === 0) {
-          logger.debug("importConfig canceled at file selection");
+          logger.debug("importConfig canceled at file selection", undefined, LogScope.COMMAND);
           return;
         }
         const data = await vscode.workspace.fs.readFile(uri[0]!);
@@ -142,7 +152,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       } else {
         content = await vscode.env.clipboard.readText();
         if (!content || content.trim().length === 0) {
-          UserFeedback.showError("Clipboard is empty");
+          UserFeedback.showError(vscode.l10n.t("Clipboard is empty"));
           return;
         }
       }
@@ -165,7 +175,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
             const v = Number(parsed.version);
             if (!Number.isFinite(v) || v < 1 || v > 1) {
               UserFeedback.showWarning(
-                `Export version "${parsed.version}" may not be fully compatible with this extension. Proceed with caution.`,
+                vscode.l10n.t(
+                  'Export version "{0}" may not be fully compatible with this extension. Proceed with caution.',
+                  String(parsed.version),
+                ),
               );
             }
           }
@@ -173,15 +186,21 @@ export class ConfigCommandHandler extends BaseCommandHandler {
           if (parsed.encryptionApiKey) {
             const password = await this.promptForDecryptionPassword();
             if (password === undefined) {
-              logger.debug("importConfig canceled at decryption password prompt");
+              logger.debug(
+                "importConfig canceled at decryption password prompt",
+                undefined,
+                LogScope.COMMAND,
+              );
               return;
             }
             encryptedApiKeys = CryptoService.decryptApiKeys(parsed.encryptionApiKey, password);
             if (!encryptedApiKeys) {
               UserFeedback.showWarning(
-                "Failed to decrypt API Keys from config (wrong password?), API Keys will be skipped",
+                vscode.l10n.t(
+                  "Failed to decrypt API Keys from config (wrong password?), API Keys will be skipped",
+                ),
               );
-              logger.warn("importConfig: failed to decrypt API keys");
+              logger.warn("importConfig: failed to decrypt API keys", undefined, LogScope.COMMAND);
             }
           }
         } else {
@@ -194,7 +213,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         this.validateProviders(providersToImport);
       } catch (err) {
         throw new Error(
-          `Failed to parse configuration: ${err instanceof Error ? err.message : "Invalid format"}`,
+          vscode.l10n.t(
+            "Failed to parse configuration: {0}",
+            err instanceof Error ? err.message : "Invalid format",
+          ),
           { cause: err },
         );
       }
@@ -213,7 +235,7 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       // 4. Provider Selection
       const selectedToImport = await this.selectProvidersForImport(providersToImport);
       if (!selectedToImport || selectedToImport.length === 0) {
-        logger.debug("importConfig canceled at provider selection");
+        logger.debug("importConfig canceled at provider selection", undefined, LogScope.COMMAND);
         return;
       }
 
@@ -221,16 +243,16 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       const currentProviders = this.manager.getProviders();
       if (currentProviders.length > 0) {
         try {
-          await this.manager.createBackup("Auto-backup before import");
-          logger.debug("Auto-backup created before import");
+          await this.manager.createBackup(vscode.l10n.t("Auto-backup before import"));
+          logger.debug("Auto-backup created before import", undefined, LogScope.COMMAND);
         } catch (err) {
-          logger.warn("Failed to create auto-backup before import", err);
+          logger.warn("Failed to create auto-backup before import", err, LogScope.COMMAND);
           // Non-fatal: proceed without backup
         }
       }
 
       // 5. Merge/Conflict Resolution
-      await UserFeedback.showProgress("Importing configuration...", async () => {
+      await UserFeedback.showProgress(vscode.l10n.t("Importing configuration..."), async () => {
         const currentProviders = this.manager.getProviders();
         const mergedProviders = [...currentProviders];
 
@@ -238,20 +260,20 @@ export class ConfigCommandHandler extends BaseCommandHandler {
           const existingIndex = mergedProviders.findIndex((p) => p.id === provider.id);
           if (existingIndex !== -1) {
             const result = await vscode.window.showWarningMessage(
-              `Provider "${provider.name}" (ID: ${provider.id}) already exists.`,
+              vscode.l10n.t('Provider "{0}" (ID: {1}) already exists.', provider.name, provider.id),
               { modal: false },
-              "Overwrite",
-              "Skip",
-              "Keep Both (Rename)",
+              vscode.l10n.t("Overwrite"),
+              vscode.l10n.t("Skip"),
+              vscode.l10n.t("Keep Both (Rename)"),
             );
 
-            if (result === "Overwrite") {
+            if (result === vscode.l10n.t("Overwrite")) {
               mergedProviders[existingIndex] = provider;
-            } else if (result === "Keep Both (Rename)") {
+            } else if (result === vscode.l10n.t("Keep Both (Rename)")) {
               const newProvider = {
                 ...provider,
                 id: IdGenerator.generate(),
-                name: `${provider.name} (Imported)`,
+                name: vscode.l10n.t("{0} (Imported)", provider.name),
               };
               mergedProviders.push(newProvider);
             }
@@ -275,14 +297,23 @@ export class ConfigCommandHandler extends BaseCommandHandler {
         }
 
         this.refreshTreeView();
-        UserFeedback.showInfo(`${selectedToImport.length} provider(s) imported successfully`);
-        logger.info("Configuration imported successfully", {
-          providerCount: selectedToImport.length,
-        });
+        UserFeedback.showInfo(
+          vscode.l10n.t("{0} provider(s) imported successfully", selectedToImport.length),
+        );
+        logger.info(
+          "Configuration imported successfully",
+          {
+            providerCount: selectedToImport.length,
+          },
+          LogScope.COMMAND,
+        );
       });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to import configuration: ${error instanceof Error ? error.message : "Unknown error"}`,
+        vscode.l10n.t(
+          "Failed to import configuration: {0}",
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       );
       this.logError("importConfig failed", error);
     }
@@ -294,10 +325,10 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * Shows a confirmation dialog before proceeding.
    */
   async initExtension(): Promise<void> {
-    logger.info("Command initExtension invoked");
+    logger.info("Command initExtension invoked", undefined, LogScope.COMMAND);
 
     if (!this.storageService) {
-      UserFeedback.showError("Storage service not initialized");
+      UserFeedback.showError(vscode.l10n.t("Storage service not initialized"));
       return;
     }
 
@@ -305,34 +336,33 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     const currentProviders = this.manager.getProviders();
     if (currentProviders.length > 0) {
       try {
-        await this.manager.createBackup("Auto-backup before initialize extension");
-        logger.debug("Auto-backup created before initExtension");
+        await this.manager.createBackup(vscode.l10n.t("Auto-backup before initialize extension"));
+        logger.debug("Auto-backup created before initExtension", undefined, LogScope.COMMAND);
       } catch (err) {
-        logger.warn("Failed to create auto-backup before initExtension", err);
+        logger.warn("Failed to create auto-backup before initExtension", err, LogScope.COMMAND);
         // Non-fatal: continue
       }
     }
 
     const warningResult = await vscode.window.showWarningMessage(
-      "Initialize Addi Extension",
+      vscode.l10n.t("Initialize Addi Extension"),
       {
         modal: true,
-        detail:
-          "This will clear ALL addi-related storage and reset all settings to defaults.\n\n" +
-          "You will need to reconfigure the extension after this operation.\n\n" +
-          "Continue?",
+        detail: vscode.l10n.t(
+          "This will clear ALL addi-related storage and reset all settings to defaults.\n\nYou will need to reconfigure the extension after this operation.\n\nContinue?",
+        ),
       },
-      { title: "Initialize", isDangerous: true },
-      { title: "Cancel", isCloseAffordance: true },
+      { title: vscode.l10n.t("Initialize"), isDangerous: true },
+      { title: vscode.l10n.t("Cancel"), isCloseAffordance: true },
     );
 
-    if (!warningResult || warningResult.title === "Cancel") {
-      logger.debug("initExtension canceled by user");
+    if (!warningResult || warningResult.title === vscode.l10n.t("Cancel")) {
+      logger.debug("initExtension canceled by user", undefined, LogScope.COMMAND);
       return;
     }
 
     try {
-      await UserFeedback.showProgress("Initializing extension...", async () => {
+      await UserFeedback.showProgress(vscode.l10n.t("Initializing extension..."), async () => {
         // Step 1: Clear all storage data using wildcard pattern
         await this.storageService!.clearAllData();
 
@@ -341,13 +371,16 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
         // Step 3: Show success message
         UserFeedback.showInfo(
-          "Addi extension has been initialized. Please reconfigure your providers.",
+          vscode.l10n.t("Addi extension has been initialized. Please reconfigure your providers."),
         );
-        logger.info("initExtension: completed successfully");
+        logger.info("initExtension: completed successfully", undefined, LogScope.COMMAND);
       });
     } catch (error) {
       UserFeedback.showError(
-        `Failed to initialize extension: ${error instanceof Error ? error.message : "Unknown error"}`,
+        vscode.l10n.t(
+          "Failed to initialize extension: {0}",
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       );
       this.logError("initExtension failed", error);
     }
@@ -357,12 +390,14 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * Restore providers from a local backup
    */
   async restoreFromBackup(): Promise<void> {
-    logger.info("Command restoreFromBackup invoked");
+    logger.info("Command restoreFromBackup invoked", undefined, LogScope.COMMAND);
 
     const backups = this.manager.listBackups();
     if (backups.length === 0) {
       UserFeedback.showInfo(
-        "No backups available. Backups are created automatically before import, reset, or clear operations.",
+        vscode.l10n.t(
+          "No backups available. Backups are created automatically before import, reset, or clear operations.",
+        ),
       );
       return;
     }
@@ -375,13 +410,13 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
-      title: "Restore from Backup",
-      placeHolder: "Select a backup to restore",
+      title: vscode.l10n.t("Restore from Backup"),
+      placeHolder: vscode.l10n.t("Select a backup to restore"),
       canPickMany: false,
     });
 
     if (!selected) {
-      logger.debug("restoreFromBackup canceled by user");
+      logger.debug("restoreFromBackup canceled by user", undefined, LogScope.COMMAND);
       return;
     }
 
@@ -389,16 +424,18 @@ export class ConfigCommandHandler extends BaseCommandHandler {
 
     // Confirm before overwriting
     const confirmResult = await vscode.window.showWarningMessage(
-      `Restore backup from ${new Date(backup.timestamp).toLocaleString()}?\n` +
-        `This will replace your current providers with ${backup.providerCount} provider(s) from the backup.\n` +
-        `Your current data will be lost unless you have another backup.`,
+      vscode.l10n.t(
+        "Restore backup from {0}?\nThis will replace your current providers with {1} provider(s) from the backup.\nYour current data will be lost unless you have another backup.",
+        new Date(backup.timestamp).toLocaleString(),
+        backup.providerCount,
+      ),
       { modal: true },
-      { title: "Restore", isDangerous: true },
-      { title: "Cancel", isCloseAffordance: true },
+      { title: vscode.l10n.t("Restore"), isDangerous: true },
+      { title: vscode.l10n.t("Cancel"), isCloseAffordance: true },
     );
 
-    if (confirmResult?.title !== "Restore") {
-      logger.debug("restoreFromBackup canceled by user");
+    if (confirmResult?.title !== vscode.l10n.t("Restore")) {
+      logger.debug("restoreFromBackup canceled by user", undefined, LogScope.COMMAND);
       return;
     }
 
@@ -407,24 +444,32 @@ export class ConfigCommandHandler extends BaseCommandHandler {
       const restoredProviders = this.manager.restoreBackup(backup.id);
 
       // Create a safety backup of current state before overwriting
-      await this.manager.createBackup("Auto-backup before restore");
+      await this.manager.createBackup(vscode.l10n.t("Auto-backup before restore"));
 
       // Persist the restored providers
       await this.manager.saveProviders(restoredProviders);
 
       this.refreshTreeView();
       UserFeedback.showInfo(
-        `Restored ${restoredProviders.length} provider(s) from backup. ` +
-          "Note: API keys from SecretStorage are NOT included in backups. " +
-          "You will need to re-enter them manually if needed.",
+        vscode.l10n.t(
+          "Restored {0} provider(s) from backup. Note: API keys from SecretStorage are NOT included in backups. You will need to re-enter them manually if needed.",
+          restoredProviders.length,
+        ),
       );
-      logger.info("restoreFromBackup: completed successfully", {
-        restoredCount: restoredProviders.length,
-        backupId: backup.id,
-      });
+      logger.info(
+        "restoreFromBackup: completed successfully",
+        {
+          restoredCount: restoredProviders.length,
+          backupId: backup.id,
+        },
+        LogScope.COMMAND,
+      );
     } catch (error) {
       UserFeedback.showError(
-        `Failed to restore backup: ${error instanceof Error ? error.message : "Unknown error"}`,
+        vscode.l10n.t(
+          "Failed to restore backup: {0}",
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       );
       this.logError("restoreFromBackup failed", error);
     }
@@ -434,12 +479,14 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    * List and manage local backups
    */
   async manageBackups(): Promise<void> {
-    logger.info("Command manageBackups invoked");
+    logger.info("Command manageBackups invoked", undefined, LogScope.COMMAND);
 
     const backups = this.manager.listBackups();
     if (backups.length === 0) {
       UserFeedback.showInfo(
-        "No backups available. Backups are created automatically before dangerous operations.",
+        vscode.l10n.t(
+          "No backups available. Backups are created automatically before dangerous operations.",
+        ),
       );
       return;
     }
@@ -448,38 +495,49 @@ export class ConfigCommandHandler extends BaseCommandHandler {
     const items = backups.map((b) => ({
       label: this.formatBackupLabel(b),
       description: b.description,
-      detail: `${b.providerCount} provider(s) — ${b.providers.map((p) => p.name).join(", ")}`,
+      detail: vscode.l10n.t(
+        "{0} provider(s) — {1}",
+        b.providerCount,
+        b.providers.map((p) => p.name).join(", "),
+      ),
       backup: b,
     }));
 
     const selected = await vscode.window.showQuickPick(items, {
-      title: "Manage Backups",
-      placeHolder: "Select a backup to delete (ESC to cancel)",
+      title: vscode.l10n.t("Manage Backups"),
+      placeHolder: vscode.l10n.t("Select a backup to delete (ESC to cancel)"),
       canPickMany: false,
     });
 
     if (!selected) {
-      logger.debug("manageBackups canceled by user");
+      logger.debug("manageBackups canceled by user", undefined, LogScope.COMMAND);
       return;
     }
 
     const confirmDelete = await vscode.window.showWarningMessage(
-      `Delete backup from ${new Date(selected.backup.timestamp).toLocaleString()}?`,
+      vscode.l10n.t(
+        "Delete backup from {0}?",
+        new Date(selected.backup.timestamp).toLocaleString(),
+      ),
       { modal: true },
-      { title: "Delete", isDangerous: true },
-      { title: "Cancel", isCloseAffordance: true },
+      { title: vscode.l10n.t("Delete"), isDangerous: true },
+      { title: vscode.l10n.t("Cancel"), isCloseAffordance: true },
     );
 
-    if (confirmDelete?.title !== "Delete") {
-      logger.debug("manageBackups: delete canceled by user");
+    if (confirmDelete?.title !== vscode.l10n.t("Delete")) {
+      logger.debug("manageBackups: delete canceled by user", undefined, LogScope.COMMAND);
       return;
     }
 
     this.manager.deleteBackup(selected.backup.id);
-    UserFeedback.showInfo("Backup deleted.");
-    logger.info("manageBackups: deleted backup", {
-      backupId: selected.backup.id,
-    });
+    UserFeedback.showInfo(vscode.l10n.t("Backup deleted."));
+    logger.info(
+      "manageBackups: deleted backup",
+      {
+        backupId: selected.backup.id,
+      },
+      LogScope.COMMAND,
+    );
   }
 
   // ==================== Private Helper Methods ====================
@@ -592,13 +650,15 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    */
   private async promptForEncryptionPassword(): Promise<string | undefined> {
     const result = await vscode.window.showInputBox({
-      title: "Export Configuration - API Key Security",
-      prompt: "Enter a password to encrypt ApiKey (Leave empty to exclude ApiKey from export)",
+      title: vscode.l10n.t("Export Configuration - API Key Security"),
+      prompt: vscode.l10n.t(
+        "Enter a password to encrypt ApiKey (Leave empty to exclude ApiKey from export)",
+      ),
       password: true,
-      placeHolder: "Password (minimum 8 characters)",
+      placeHolder: vscode.l10n.t("Password (minimum 8 characters)"),
       validateInput: (value) => {
         if (value && value.length < 8) {
-          return "Password must be at least 8 characters";
+          return vscode.l10n.t("Password must be at least 8 characters");
         }
         return undefined;
       },
@@ -613,10 +673,12 @@ export class ConfigCommandHandler extends BaseCommandHandler {
    */
   private async promptForDecryptionPassword(): Promise<string | undefined> {
     const result = await vscode.window.showInputBox({
-      title: "Import Configuration - Decrypt API Key",
-      prompt: "This configuration contains encrypted API Keys. Enter password to decrypt:",
+      title: vscode.l10n.t("Import Configuration - Decrypt API Key"),
+      prompt: vscode.l10n.t(
+        "This configuration contains encrypted API Keys. Enter password to decrypt:",
+      ),
       password: true,
-      placeHolder: "Password",
+      placeHolder: vscode.l10n.t("Password"),
     });
 
     return result;

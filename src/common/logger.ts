@@ -1,5 +1,27 @@
 import * as vscode from "vscode";
 
+// ============================================================================
+// Scope Constants — used consistently across the codebase
+// ============================================================================
+export const LogScope = {
+  EXTENSION: "Ext",
+  COMMAND: "Cmd",
+  PROVIDER_MGR: "ProviderMgr",
+  CHAT_PROVIDER: "Chat",
+  LLM_SERVICE: "LLM",
+  AI_REGISTRY: "AI",
+  MSG_CONVERTER: "MsgConv",
+  VIEW: "View",
+  STORAGE: "Storage",
+  CRYPTO: "Crypto",
+  MODEL_TESTER: "Test",
+  REMOTE_FETCHER: "Remote",
+  TOOL: "Tool",
+} as const;
+
+// ============================================================================
+// Secrets Masking
+// ============================================================================
 export function maskSecret(value: string | undefined | null): string | undefined {
   if (!value) {
     return value ?? undefined;
@@ -17,6 +39,18 @@ export function maskSecret(value: string | undefined | null): string | undefined
   return `${prefix}***${suffix}`;
 }
 
+// ============================================================================
+// Trace ID — correlates logs across a single request flow
+// ============================================================================
+let _nextId = 1;
+export function generateTraceId(): string {
+  const id = _nextId++;
+  return `#${id.toString(16).padStart(3, "0")}`;
+}
+
+// ============================================================================
+// Logger
+// ============================================================================
 export class AddiLogger {
   private channel: vscode.LogOutputChannel | undefined;
 
@@ -34,16 +68,19 @@ export class AddiLogger {
     this.channel?.show(true);
   }
 
+  // --------------------------------------------------------------------------
+  // Public API
+  // --------------------------------------------------------------------------
+
   /**
    * Log an error message.
    * @param message Main message
-   * @param error Error object or metadata
-   * @param scope Optional component scope (e.g., 'Provider', 'LLMService')
+   * @param error Error object or metadata (optional)
+   * @param scope Component scope constant from LogScope (optional)
    */
   error(message: string, error?: unknown, scope?: string): void {
     const formatted = this.formatMessage(message, scope);
     if (error instanceof Error) {
-      // LogOutputChannel handles Error objects well
       this.getChannel().error(formatted, error);
     } else if (error !== undefined) {
       this.getChannel().error(formatted, error);
@@ -67,6 +104,10 @@ export class AddiLogger {
   trace(message: string, metadata?: unknown, scope?: string): void {
     this.log("trace", message, metadata, scope);
   }
+
+  // --------------------------------------------------------------------------
+  // Internal
+  // --------------------------------------------------------------------------
 
   private log(
     level: "warn" | "info" | "debug" | "trace",
@@ -92,14 +133,17 @@ export class AddiLogger {
     if (!this.channel) {
       // Graceful degradation: when running outside extension host (e.g. tests),
       // create a lightweight fallback so callers don't crash.
-      // Production code always calls initialize() first.
       this.channel = vscode.window.createOutputChannel("Addi", { log: true });
     }
     return this.channel;
   }
 
+  // --------------------------------------------------------------------------
+  // Sanitizers
+  // --------------------------------------------------------------------------
+
   /**
-   * Sanitize provider info for logging.
+   * Sanitize provider info for logging (masks API key).
    */
   sanitizeProvider(provider?: {
     id?: string;

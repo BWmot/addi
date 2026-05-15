@@ -25,24 +25,24 @@ export class ProviderTreeItem extends vscode.TreeItem {
       this.description = provider.description;
     }
 
-    let tooltip = `${provider.name} (${provider.models.length} models)`;
+    let tooltip = vscode.l10n.t("{0} models", provider.models.length);
 
     if (provider.description) {
-      tooltip += `\nDescription: ${provider.description}`;
+      tooltip += `\n${vscode.l10n.t("Description: {0}", provider.description)}`;
     }
     if (provider.website) {
-      tooltip += `\nWebsite: ${provider.website}`;
+      tooltip += `\n${vscode.l10n.t("Website: {0}", provider.website)}`;
     }
     if (provider.apiEndpoint) {
-      tooltip += `\nAPI Endpoint: ${provider.apiEndpoint}`;
+      tooltip += `\n${vscode.l10n.t("API Endpoint: {0}", provider.apiEndpoint)}`;
     }
     if (provider.providerType) {
-      tooltip += `\nType: ${provider.providerType}`;
+      tooltip += `\n${vscode.l10n.t("Type: {0}", provider.providerType)}`;
     }
 
     // Show warning if no API key is set
     if (!hasApiKey) {
-      tooltip += `\n⚠ API key not configured yet. Please set it up to use this provider.`;
+      tooltip += `\n${vscode.l10n.t("⚠ API key not configured yet. Please set it up to use this provider.")}`;
     }
 
     this.tooltip = tooltip;

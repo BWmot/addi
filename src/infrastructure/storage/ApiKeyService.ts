@@ -1,5 +1,5 @@
 import type * as vscode from "vscode";
-import { logger } from "../../common/logger";
+import { logger, LogScope } from "../../common/logger";
 
 /**
  * ApiKeyService - 专门负责 API Key 的存储和检索
@@ -26,13 +26,18 @@ export class ApiKeyService {
       const secretKey = ApiKeyService.SECRET_PREFIX + providerId;
       const secret = await this.context.secrets.get(secretKey);
       if (secret && secret.trim()) {
-        logger.debug(`ApiKeyService.getApiKey: found in SecretStorage for ${providerId}`);
+        logger.debug(
+          `ApiKeyService.getApiKey: found in SecretStorage for ${providerId}`,
+          undefined,
+          LogScope.STORAGE,
+        );
         return secret;
       }
     } catch (error) {
       logger.error(
         `ApiKeyService.getApiKey: failed to get from SecretStorage for ${providerId}`,
         error,
+        LogScope.STORAGE,
       );
     }
 
@@ -55,9 +60,13 @@ export class ApiKeyService {
     try {
       const secretKey = ApiKeyService.SECRET_PREFIX + providerId;
       await this.context.secrets.store(secretKey, apiKey.trim());
-      logger.info(`ApiKeyService.setApiKey: stored for ${providerId}`);
+      logger.info(`ApiKeyService.setApiKey: stored for ${providerId}`, undefined, LogScope.STORAGE);
     } catch (error) {
-      logger.error(`ApiKeyService.setApiKey: failed to store for ${providerId}`, error);
+      logger.error(
+        `ApiKeyService.setApiKey: failed to store for ${providerId}`,
+        error,
+        LogScope.STORAGE,
+      );
       throw error;
     }
   }
@@ -71,10 +80,18 @@ export class ApiKeyService {
     try {
       const secretKey = ApiKeyService.SECRET_PREFIX + providerId;
       await this.context.secrets.delete(secretKey);
-      logger.info(`ApiKeyService.deleteApiKey: deleted for ${providerId}`);
+      logger.info(
+        `ApiKeyService.deleteApiKey: deleted for ${providerId}`,
+        undefined,
+        LogScope.STORAGE,
+      );
     } catch (error) {
       // SecretStorage.delete 即使 key 不存在也不会报错
-      logger.debug(`ApiKeyService.deleteApiKey: failed or key not exists for ${providerId}`, error);
+      logger.debug(
+        `ApiKeyService.deleteApiKey: failed or key not exists for ${providerId}`,
+        error,
+        LogScope.STORAGE,
+      );
     }
   }
 
@@ -89,9 +106,13 @@ export class ApiKeyService {
       for (const provider of providers) {
         await this.deleteApiKey(provider.id);
       }
-      logger.info(`Deleted ${providers.length} API keys via fallback method`);
+      logger.info(
+        `Deleted ${providers.length} API keys via fallback method`,
+        undefined,
+        LogScope.STORAGE,
+      );
     } catch (error) {
-      logger.error("ApiKeyService.deleteAllApiKeys: fallback failed", error);
+      logger.error("ApiKeyService.deleteAllApiKeys: fallback failed", error, LogScope.STORAGE);
     }
   }
 
@@ -106,6 +127,11 @@ export class ApiKeyService {
       const secret = await this.context.secrets.get(secretKey);
       return !!secret && secret.trim().length > 0;
     } catch (error) {
+      logger.error(
+        `ApiKeyService.hasApiKey: failed to check for ${providerId}`,
+        error,
+        LogScope.STORAGE,
+      );
       return false;
     }
   }
