@@ -2,14 +2,27 @@
 
 All notable changes to the "addi" extension will be documented in this file.
 
-## v1.1.1 - 2026-05-?? (Unreleased)
+## v1.1.1 - 2026-05-15
 
 ### Fixed
 
-- **Provider checkbox → Model propagation**: Provider-level experimental options (`reasoningContentAdapt`, `extractReasoningContent`) now correctly propagate to:
+- **Provider-level experimental features → model middleware chain (runtime)**: Provider-level `reasoningContentAdapt` and `extractReasoningContent` settings now correctly propagate to the middleware chain at runtime, not just the UI forms. Root cause: `aiRegistry.ts:createModel()` only read `modelSpecificOptions` when building the middleware gate conditions, ignoring `provider.options` entirely. Fixed by merging `provider.options` as defaults with model-specific options as overrides: `{ ...provider.options, ...modelSpecificOptions }`
+- **Provider checkbox → Model propagation**: Provider-level experimental options now correctly propagate to:
   - The model creation form (pre-fills checkboxes when creating a new model under a provider)
   - The model edit form (uses provider-level option as display fallback if model-level option is not set)
   - Previously, checking these options at the provider level had no visible effect on individual model forms
+- **`thinkingChars: 0` in debug logs**: Two related issues prevented `reasoningEffort` from reaching the API for reasoning-capable models, causing thinking token tracking to always report zero:
+  1. **`hasReasoningMiddleware` guards removed from `llmService.ts:buildAiOptions()`**: Three conditional guards blocked sending `reasoningEffort` to the API whenever `reasoningContentAdapt` middleware was enabled. This was incorrect because the middleware only handles format adaptation (reasoning part backfill/pass-through), not enabling thinking mode on the API side. The `reasoningEffort` signal must always be sent when a model supports reasoning.
+  2. **`providerOptions` key mismatch for custom OpenAI-compatible endpoints**: All `providerOptions["openai"]` entries were hardcoded to key `"openai"`, which only works for native OpenAI (`@ai-sdk/openai`). Custom endpoints (DeepSeek, MiMo, etc.) use `@ai-sdk/openai-compatible({ name: "openai-proxy" })`, which expects the providerOptions key to be `"openaiProxy"` (camelCase of the provider name). Added runtime detection of native vs custom endpoint to select the correct key (`"openai"` vs `"openaiProxy"`) across all three code paths: user-configured `reasoningEffort`, default fallback, and explicit disable.
+- **`fromAiCoreMessage` drops thinking parts (P0-02)**: Reverse conversion (`AI SDK → VS Code`) silently discarded `type: "reasoning"` parts because `parts` array was typed as `LanguageModelTextPart[]` and only handled `part.type === "text"`. Fixed by:
+  - Changing `parts` array type to `(LanguageModelTextPart | LanguageModelThinkingPart)[]`
+  - Adding `hasThinkingSupport` guard (`"LanguageModelThinkingPart" in vscode`)
+  - Creating `new vscode.LanguageModelThinkingPart(text)` for each AI SDK reasoning part
+  - Using `new LanguageModelChatMessage2(role, parts)` constructor (supports ThinkingPart) instead of static factory `Assistant()` (which doesn't)
+- **`reasoningContentAdaptMiddleware` applies to all provider types (P0-01)**: `transformParams` backfilled empty-string reasoning content for every assistant message regardless of provider type. `@ai-sdk/openai-compatible`'s `convertToChatMessages` checks `reasoning.length > 0`, so `reasoning_content` was never emitted even for OpenAI-compatible providers. Fixed by:
+  - Passing `provider.providerType` to `createReasoningContentAdaptMiddleware(providerType)` in `aiRegistry.ts`
+  - Adding `isOpenAICompatible` guard in `transformParams`: only `openai-completions` type receives the backfill
+  - Differentiating backfill text: tool-call turns get `" "` (space, triggers `reasoning.length > 0`), non-tool-call turns get `""` (empty, skipped)
 
 ### Changed
 
