@@ -188,8 +188,6 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
       firstTokenTime: number;
       endTime: number;
       tokenCount: number;
-      thinkingTokens: number;
-      backfillTokens: number;
     }) => {
       logger.debug(
         `[${traceId}] onStats called`,
@@ -216,8 +214,6 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
                 speed,
                 duration,
                 tokenCount: stats.tokenCount,
-                thinkingTokens: stats.thinkingTokens,
-                backfillTokens: stats.backfillTokens,
                 traceId,
               },
               LogScope.CHAT_PROVIDER,

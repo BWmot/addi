@@ -281,9 +281,18 @@ export class AIProviderRegistry {
     // ──────────────────────────────────────────────────────────────────────
 
     // 获取模型 options（用户手动配置的实验性功能开关）
-    const modelOptions =
+    // ─── 重要：Provider 级 options 作为默认值，Model 级 options 覆盖 ───
+    // 当用户在 Provider 编辑页面勾选了 reasoningContentAdapt 等实验性功能，
+    // 该设置存储在 provider.options 中。然而，createModel 在构建中间件链时
+    // 也必须读取 provider.options，否则 provider 级设置不会生效。
+    //
+    // 解决方案：将 provider.options 作为基底，model 级 options 覆盖在其上。
+    const providerOptions = provider.options ?? {};
+    const modelSpecificOptions =
       (typeof modelOrId === "object" ? modelOrId.options : undefined) ??
-      provider.models?.find((m) => m.rid === modelId || m.id === modelId)?.options;
+      provider.models?.find((m) => m.rid === modelId || m.id === modelId)?.options ??
+      {};
+    const modelOptions = { ...providerOptions, ...modelSpecificOptions };
 
     const middlewares: LanguageModelMiddleware[] = [];
 
@@ -302,8 +311,12 @@ export class AIProviderRegistry {
     //        确保 provider 的 convertTo*ChatMessages() 输出 reasoning_content 字段。
     // 响应侧：透传 reasoning-delta / reasoning 内容，保障 VS Code 正确识别思考数据。
     // 适用 DeepSeek V4/R1、MiMo v2 等使用 reasoning_content API 字段的模型。
+    //
+    // 作用范围由 createReasoningContentAdaptMiddleware 内部守卫：
+    //   仅对 providerType === "openai-completions" 执行 backfill，
+    //   因为 DeepSeek 等三方模型通过 openai-compatible 接口接入。
     if (modelOptions?.reasoningContentAdapt) {
-      middlewares.push(createReasoningContentAdaptMiddleware());
+      middlewares.push(createReasoningContentAdaptMiddleware(provider.providerType));
     }
 
     // 应用中间件链

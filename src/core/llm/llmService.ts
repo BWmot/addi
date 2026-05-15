@@ -17,8 +17,6 @@ interface ExecutionOptions {
         firstTokenTime: number;
         endTime: number;
         tokenCount: number;
-        thinkingTokens: number;
-        backfillTokens: number;
       }) => void)
     | undefined;
   onReasoning?: ((delta: string) => void) | undefined;
@@ -28,11 +26,6 @@ interface ExecutionOptions {
   requestStartTime?: number;
   // Trace ID for correlating logs across the entire request chain
   traceId?: string;
-  // ── Internal running counters (accumulated during request processing) ──
-  /** Accumulated reasoning/thinking character count from streaming parts */
-  _accumulatedThinkingChars?: number;
-  /** Accumulated backfill character count from middleware injection */
-  _accumulatedBackfillChars?: number;
 }
 
 // ============================================================================
@@ -74,8 +67,6 @@ export class LLMService {
       firstTokenTime: number;
       endTime: number;
       tokenCount: number;
-      thinkingTokens: number;
-      backfillTokens: number;
     }) => void,
     traceId?: string,
   ): Promise<void> {
@@ -156,25 +147,6 @@ export class LLMService {
     try {
       // Record request start time for accurate speed measurement
       options.requestStartTime = Date.now();
-
-      // Initialize running counters for this request
-      options._accumulatedThinkingChars = 0;
-
-      // Pre-compute backfill character count: each assistant message missing a
-      // "reasoning" part will be backfilled by reasoningContentAdaptMiddleware
-      // with exactly 1 character (a space " ").
-      let backfillChars = 0;
-      for (const msg of messages) {
-        if (msg.role === "assistant" && Array.isArray(msg.content)) {
-          const hasReasoning = msg.content.some(
-            (p: any) => p.type === "reasoning",
-          );
-          if (!hasReasoning) {
-            backfillChars++;
-          }
-        }
-      }
-      options._accumulatedBackfillChars = backfillChars;
 
       // Build AI SDK options
       const aiOptions = this.buildAiOptions(
@@ -309,8 +281,6 @@ export class LLMService {
             firstTokenTime: options.requestStartTime ?? now,
             endTime: now,
             tokenCount: usage.outputTokens || 0,
-            thinkingTokens: options._accumulatedThinkingChars ?? 0,
-            backfillTokens: options._accumulatedBackfillChars ?? 0,
           });
         }
       },
@@ -344,7 +314,6 @@ export class LLMService {
 
     // 当 reasoningContentAdapt 启用时，中间件自动处理 reasoning_content 字段的
     // 双向适配（请求注入 + 响应透传），但仍需传递思考开关（enabled/disabled）给底层 provider
-    const hasReasoningMiddleware = modelOptions.reasoningContentAdapt === true;
 
     // ──────────────────────────────────────────────────────────────────────
     // 推理层级 (reasoningEffort) 统一处理
@@ -353,29 +322,38 @@ export class LLMService {
     // 该配置会被映射为各 provider 的特定参数：
     //
     //   OpenAI (openai-responses):     { reasoningEffort: "low|medium|high" }
-    //   OpenAI (openai-completions):   同 OpenAI (仅当 !hasReasoningMiddleware)
+    //   OpenAI (openai-completions):   同 OpenAI
     //   Anthropic:                     { thinking: { budgetTokens: N } }
     //   Google:                        { thinkingConfig: { thinkingBudget: N } }
-    //   openai-completions + 中间件:   通过 extraBody 传递 thinking.type
     //
-    // 如果用户未配置 reasoningEffort，则使用各 provider 的默认值。
+    // 注意：reasoningContentAdapt 中间件只负责格式适配（backfill + 透传），
+    // 不负责开启/关闭 thinking 模式。因此即使中间件启用，仍须发送
+    // reasoningEffort/thinking 信号来告知底层 provider 启用推理/思考输出。
     // ──────────────────────────────────────────────────────────────────────
+
+    // 计算 openai-completions 的正确 providerOptions key：
+    // - 原生 OpenAI 使用 @ai-sdk/openai → provider name = "openai" → key = "openai"
+    // - 自定义端点使用 @ai-sdk/openai-compatible(name="openai-proxy") → key = "openaiProxy" (camelCase)
+    const isNativeOpenAI =
+      !provider.apiEndpoint || provider.apiEndpoint.includes("api.openai.com");
+    const openaiCompatibleKey = isNativeOpenAI ? "openai" : "openaiProxy";
 
     // 将用户配置的 reasoningEffort 映射为各 provider 的参数
     if (modelOptions.reasoningEffort) {
       const effort = modelOptions.reasoningEffort;
       const providerType = provider.providerType;
 
-      // OpenAI — direct mapping
+      // OpenAI (/responses) — direct mapping
       if (providerType === "openai-responses" && !providerOptions["openai"]) {
         providerOptions["openai"] = { reasoningEffort: effort };
       }
 
-      // openai-completions — pass reasoningEffort (unless middleware handles it)
-      if (providerType === "openai-completions" && !providerOptions["openai"]) {
-        if (!hasReasoningMiddleware) {
-          providerOptions["openai"] = { reasoningEffort: effort };
-        }
+      // openai-completions — pass reasoningEffort
+      // 注：reasoningContentAdapt 中间件仅处理格式适配（backfill + 透传），
+      // 不会替我们开启 API 的 thinking 模式。因此即使中间件启用，仍须发送
+      // reasoningEffort 信号来告知底层 provider 启用推理/思考输出。
+      if (providerType === "openai-completions" && !providerOptions[openaiCompatibleKey]) {
+        providerOptions[openaiCompatibleKey] = { reasoningEffort: effort };
       }
 
       // Anthropic — map effort to budgetTokens
@@ -411,12 +389,20 @@ export class LLMService {
       }
 
       // OpenAI — reasoningEffort (default: medium)
+      // 同上：中间件只负责格式适配，不负责开启/关闭 thinking 模式。
+      // 因此即使中间件启用，仍需发送默认 reasoningEffort。
       if (
         (providerType === "openai-responses" || providerType === "openai-completions") &&
-        !providerOptions["openai"]
+        !providerOptions["openai"] &&
+        !providerOptions[openaiCompatibleKey]
       ) {
-        if (!hasReasoningMiddleware) {
+        // OpenAI (/responses)
+        if (providerType === "openai-responses") {
           providerOptions["openai"] = { reasoningEffort: "medium" };
+        }
+        // openai-completions (native or custom endpoint)
+        if (providerType === "openai-completions") {
+          providerOptions[openaiCompatibleKey] = { reasoningEffort: "medium" };
         }
       }
 
@@ -436,12 +422,12 @@ export class LLMService {
     if (!model.capabilities?.reasoning) {
       const providerType = provider.providerType;
 
-      if (
-        (providerType === "openai-responses" || providerType === "openai-completions") &&
-        !providerOptions["openai"] &&
-        !hasReasoningMiddleware
-      ) {
+      if (providerType === "openai-responses" && !providerOptions["openai"]) {
         providerOptions["openai"] = { reasoningEffort: "none" };
+      }
+
+      if (providerType === "openai-completions" && !providerOptions[openaiCompatibleKey]) {
+        providerOptions[openaiCompatibleKey] = { reasoningEffort: "none" };
       }
     }
 
@@ -544,8 +530,6 @@ export class LLMService {
               finishReason: part.finishReason,
               usage: part.usage,
               hasReportedContent,
-              thinkingChars: executionOptions._accumulatedThinkingChars ?? 0,
-              backfillChars: executionOptions._accumulatedBackfillChars ?? 0,
               traceId: executionOptions.traceId,
             },
             LogScope.LLM_SERVICE,
@@ -618,8 +602,6 @@ export class LLMService {
             firstTokenTime,
             endTime,
             tokenCount: usage.outputTokens || 0,
-            thinkingTokens: executionOptions._accumulatedThinkingChars ?? 0,
-            backfillTokens: executionOptions._accumulatedBackfillChars ?? 0,
           });
         }
       } catch {
@@ -637,8 +619,6 @@ export class LLMService {
             firstTokenTime,
             endTime,
             tokenCount: 0,
-            thinkingTokens: executionOptions._accumulatedThinkingChars ?? 0,
-            backfillTokens: executionOptions._accumulatedBackfillChars ?? 0,
           });
         }
       }
@@ -753,22 +733,15 @@ export class LLMService {
         progress.report(new vscode.LanguageModelTextPart(p.text));
       },
 
-      // Thinking/Reasoning内容 - AI SDK fullStream uses type 'reasoning-delta' with 'delta' property
+      // Thinking/Reasoning内容 - AI SDK fullStream uses type 'reasoning-delta' with 'text' property.
+      // Provider SDK emit { delta }, but streamText pipeline transforms delta→text (see createOutputTransformStream).
       "reasoning-delta": (p) => {
         this.handleThinkingDelta(p, progress, options);
       },
 
-      // AI SDK v6 fullStream may also expose explicit reasoning lifecycle markers.
-      // reasoning-start/end do not contain displayable text and can be ignored.
+      // reasoning-start/end are lifecycle markers without displayable text, ignored.
       "reasoning-start": () => {},
       "reasoning-end": () => {},
-
-      // AI SDK v7 may emit 'reasoning' type directly
-      reasoning: (p) => {
-        if (p.text) {
-          this.reportReasoning(p.text, p, progress, options);
-        }
-      },
 
       // Thinking签名 - 加密内容，通常不需要直接显示
       "reasoning-part-finish": () => {
@@ -826,8 +799,10 @@ export class LLMService {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     options: ExecutionOptions,
   ): void {
-    // CRITICAL: AI SDK fullStream uses 'delta' property, NOT 'reasoningDelta' or 'text'
-    const text = part.delta;
+    // CRITICAL: AI SDK fullStream emits 'reasoning-delta' parts with 'text' property (NOT 'delta').
+    // The streamText pipeline (createOutputTransformStream) transforms provider's chunk.delta → part.text.
+    // Source: @ai-sdk/openai-compatible sends { delta } → ai/dist/index.mjs transforms to { text } → fullStream emits.
+    const text = part.text ?? part.delta;
 
     if (!text) {
       return;
@@ -845,10 +820,6 @@ export class LLMService {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     options: ExecutionOptions,
   ): void {
-    // Track accumulated thinking character count for logging
-    options._accumulatedThinkingChars =
-      (options._accumulatedThinkingChars ?? 0) + text.length;
-
     // 创建VSCode格式的thinking part
     const thinkingPart = new vscode.LanguageModelThinkingPart(text, part.id, part.providerMetadata);
 
@@ -885,10 +856,6 @@ export class LLMService {
     if (!reasoning) {
       return;
     }
-
-    // Track accumulated thinking character count for logging
-    options._accumulatedThinkingChars =
-      (options._accumulatedThinkingChars ?? 0) + reasoning.length;
 
     // Always report to VS Code UI
     const thinkingPart = new vscode.LanguageModelThinkingPart(reasoning);

@@ -96,6 +96,59 @@ import type {
   LanguageModelV3Prompt,
   LanguageModelV3ReasoningPart,
 } from "@ai-sdk/provider";
+import { logger, LogScope } from "../../common/logger";
+
+// ============================================================================
+// historyMessageConverter — 历史消息分析工具
+//
+// 用于检查 AI SDK 格式的 prompt 消息列表，识别哪些 assistant 消息
+// 缺少 type: "reasoning" part（即缺少推理/思考内容），并区分这些消息
+// 是否包含 tool-call（工具调用），以便 transformParams 根据场景
+// 决定 fallback 策略。
+//
+// DeepSeek Thinking Mode 文档规则：
+//   - 无工具调用轮次 → reasoning_content 被 API 忽略，无需回传
+//   - 有工具调用轮次 → reasoning_content 必须回传（否则 400）
+// ============================================================================
+
+export interface HistoryMessageAnalysis {
+  /** 需要 fallback 注入的消息列表 */
+  needsFallback: Array<{
+    /** 消息在 prompt 数组中的索引 */
+    index: number;
+    /** 该消息是否包含 tool-call part（工具调用轮次） */
+    hasToolCalls: boolean;
+  }>;
+}
+
+/**
+ * 分析 AI SDK prompt 消息列表，识别缺少 reasoning part 的 assistant 消息。
+ *
+ * 此函数是 "数据转换检查" 的核心，通过解析消息内容结构，
+ * 区分有/无工具调用的场景，为 transformParams 提供精确的 fallback 决策依据。
+ */
+export function historyMessageConverter(
+  messages: LanguageModelV3Prompt,
+): HistoryMessageAnalysis {
+  const needsFallback: Array<{ index: number; hasToolCalls: boolean }> = [];
+
+  messages.forEach((msg, index) => {
+    if (msg.role !== "assistant") return;
+
+    const hasReasoningPart = msg.content.some(
+      (p) => p.type === "reasoning",
+    );
+    const hasToolCalls = msg.content.some(
+      (p) => p.type === "tool-call",
+    );
+
+    if (!hasReasoningPart) {
+      needsFallback.push({ index, hasToolCalls });
+    }
+  });
+
+  return { needsFallback };
+}
 
 // ============================================================================
 // 中间件工厂函数
@@ -104,12 +157,23 @@ import type {
 /**
  * 创建 reasoning_content 双向适配中间件
  *
+ * @param providerType - Provider 类型标识（如 "openai-completions"），
+ *                       用于决定是否执行请求侧 backfill。
+ *                       仅对 providerType === "openai-completions" 生效，
+ *                       因为 DeepSeek 等三方模型通过 openai-compatible 接口
+ *                       接入，其 convertToChatMessages 支持 case 'reasoning'
+ *                       输出 reasoning_content 字段。
+ *
  * 返回的中间件对象包含三个钩子：
  * - transformParams（请求侧）：注入 type: "reasoning" part 实现多轮回传 backfill
  * - wrapStream（响应侧）：透传流式响应，保障 reasoning-delta 格式正确
  * - wrapGenerate（响应侧）：透传非流式响应，保障 reasoning 内容传递
  */
-export function createReasoningContentAdaptMiddleware(): LanguageModelMiddleware {
+export function createReasoningContentAdaptMiddleware(
+  providerType?: string,
+): LanguageModelMiddleware {
+  const isOpenAICompatible = providerType === "openai-completions";
+
   return {
     specificationVersion: "v3",
 
@@ -127,6 +191,15 @@ export function createReasoningContentAdaptMiddleware(): LanguageModelMiddleware
     // 3. 对于 assistant 消息，case 'reasoning' 累加 reasoning += part.text
     //    然后输出 ...(reasoning.length > 0 ? { reasoning_content: reasoning } : {})
     // 4. 因此，要控制 reasoning_content 的输出，必须操作 content 数组本身
+    //
+    // 作用范围：
+    //   仅对 providerType === "openai-completions" 生效，因为：
+    //   - openai-completions + 自定义端点 → @ai-sdk/openai-compatible
+    //     → convertToChatMessages 有 case 'reasoning' → 输出 reasoning_content
+    //     → DeepSeek Thinking Mode 需要工具调用轮次回传
+    //   - openai-responses → 原生 reasoningEffort，无 reasoning_content
+    //   - anthropic-messages → extended thinking，不同协议
+    //   - google-generateContent → 不同协议
     // ======================================================================
     transformParams: async ({
       params,
@@ -134,24 +207,69 @@ export function createReasoningContentAdaptMiddleware(): LanguageModelMiddleware
       type: "generate" | "stream";
       params: LanguageModelV3CallOptions;
     }) => {
+      // ─── Provider 类型守卫 ──────────────────────────────────────────
+      // 仅对 openai-compatible 类 provider 执行 reasoning_content backfill。
+      // 非 openai-completions 类型（如 openai-responses、anthropic-messages 等）
+      // 不使用 reasoning_content 协议，直接透传。
+      if (!isOpenAICompatible) {
+        return params;
+      }
       const messages = params.prompt;
+      const analysis = historyMessageConverter(messages);
+
+      if (analysis.needsFallback.length > 0) {
+        logger.info(
+          `[reasoningContentAdapt] Reasoning content backfill needed for ${analysis.needsFallback.length} assistant message(s)`,
+          {
+            fallbackItems: analysis.needsFallback.map((item) => ({
+              index: item.index,
+              hasToolCalls: item.hasToolCalls,
+            })),
+          },
+          LogScope.AI_REGISTRY,
+        );
+      }
 
       // 对所有 assistant 消息 backfill reasoning_content
-      // 如果 assistant 消息缺少 type: "reasoning" part，注入一个非空 part，
-      // 确保 converter 输出 reasoning_content 字段（避免 400 错误）。
-      // 所有使用 reasoning_content 的模型都兼容此行为。
+      // 如果 assistant 消息缺少 type: "reasoning" part，注入一个占位 part。
+      //
+      // 策略说明：
+      //   根据 DeepSeek Thinking Mode 文档：
+      //   - 无工具调用轮次 → reasoning_content 可省略（API 忽略）
+      //   - 有工具调用轮次 → reasoning_content 必须回传（否则 400）
+      //
+      //   text 值策略（P0-01 修复）：
+      //   - 有工具调用（hasToolCalls=true） → 使用空格 " "
+      //     → AI SDK converter 中 reasoning.length > 0 为 true
+      //     → 输出 reasoning_content 字段 → API 不会拒绝
+      //   - 无工具调用（hasToolCalls=false）→ 使用空字符串 ""
+      //     → AI SDK converter 中 reasoning.length > 0 为 false
+      //     → 跳过 reasoning_content 输出 → 减少多余请求体
       const transformedMessages = messages.map((msg) => {
         if (msg.role !== "assistant") return msg;
 
         const hasReasoningPart = msg.content.some(
           (p) => p.type === "reasoning",
         );
+        const hasToolCalls = msg.content.some(
+          (p) => p.type === "tool-call",
+        );
 
         if (!hasReasoningPart) {
+          const reasoningText = hasToolCalls ? " " : "";
           const reasoningPart: LanguageModelV3ReasoningPart = {
             type: "reasoning",
-            text: " ",
+            text: reasoningText,
           };
+
+          // 记录每条 fallback 消息（日志标记：reasoning_filling_fallback）
+          logger.debug(
+            `[reasoningContentAdapt] reasoning_filling_fallback | index=${
+              messages.indexOf(msg)
+            } | hasToolCalls=${hasToolCalls} | textLength=${reasoningText.length} | msg.content.length=${msg.content.length}`,
+            undefined,
+            LogScope.AI_REGISTRY,
+          );
 
           return {
             ...msg,

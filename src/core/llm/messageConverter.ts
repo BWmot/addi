@@ -193,6 +193,10 @@ export class MessageConverter {
   /**
    * 将 AI SDK ModelMessage 转换为 VS Code 的 LanguageModelChatRequestMessage
    * 用于反向转换场景（如保存对话历史）
+   *
+   * P0-02 修复：保留 AI SDK reasoning part → VS Code LanguageModelThinkingPart，
+   * 避免反向转换过程中推理/思考内容的丢失。仅在 VS Code 支持
+   * LanguageModelChatMessage2 + LanguageModelThinkingPart 时生效。
    */
   static fromAiCoreMessage(
     message: ModelMessage,
@@ -202,39 +206,59 @@ export class MessageConverter {
         ? vscode.LanguageModelChatMessageRole.User
         : vscode.LanguageModelChatMessageRole.Assistant;
 
-    // 检查是否支持 LanguageModelChatMessage2
+    // 检查是否支持 LanguageModelChatMessage2（含 ThinkingPart 支持）
     const useChatMessage2 = "LanguageModelChatMessage2" in vscode;
+    const hasThinkingSupport = "LanguageModelThinkingPart" in vscode;
 
     if (typeof message.content === "string") {
       // 简单文本内容
       if (useChatMessage2) {
-        return vscode.LanguageModelChatMessage2.Assistant(message.content);
+        return new vscode.LanguageModelChatMessage2(
+          role,
+          message.content,
+        );
+      }
+      if (role === vscode.LanguageModelChatMessageRole.User) {
+        return vscode.LanguageModelChatMessage.User(message.content);
       }
       return vscode.LanguageModelChatMessage.Assistant(message.content);
     }
 
-    // 多部分内容
-    const parts: vscode.LanguageModelTextPart[] = [];
+    // ─── 多部分内容：构建包含 text + reasoning 的混合 parts 数组 ───
+    // 使用联合类型以同时容纳 LanguageModelTextPart 和 LanguageModelThinkingPart
+    const parts: (
+      | vscode.LanguageModelTextPart
+      | vscode.LanguageModelThinkingPart
+    )[] = [];
 
     for (const part of message.content) {
       if (part.type === "text") {
         parts.push(new vscode.LanguageModelTextPart(part.text));
+      } else if (part.type === "reasoning" && hasThinkingSupport) {
+        // P0-02: 将 AI SDK reasoning part 转换为 VS Code LanguageModelThinkingPart
+        const text = typeof part.text === "string" ? part.text : "";
+        parts.push(new vscode.LanguageModelThinkingPart(text));
       }
-      // 注意：反向转换时，tool-call 和 reasoning 通常需要特殊处理
-      // 这里简化处理，仅转换文本部分
-    }
-
-    if (role === vscode.LanguageModelChatMessageRole.User) {
-      if (useChatMessage2) {
-        return vscode.LanguageModelChatMessage2.User(parts);
-      }
-      return vscode.LanguageModelChatMessage.User(parts);
+      // tool-call parts 需要更复杂的处理，暂略
     }
 
     if (useChatMessage2) {
-      return vscode.LanguageModelChatMessage2.Assistant(parts);
+      // 使用构造函数（而非静态工厂方法）传递 parts 数组，
+      // 因为 LanguageModelChatMessage2 的构造函数签名包含
+      // LanguageModelThinkingPart，而静态工厂方法 Assistant() 不包含。
+      return new vscode.LanguageModelChatMessage2(role, parts);
     }
-    return vscode.LanguageModelChatMessage.Assistant(parts);
+
+    // Fallback: LanguageModelChatMessage（不支持 ThinkingPart）
+    // 过滤出纯文本 parts
+    const textParts = parts.filter(
+      (p): p is vscode.LanguageModelTextPart =>
+        p instanceof vscode.LanguageModelTextPart,
+    );
+    if (role === vscode.LanguageModelChatMessageRole.User) {
+      return vscode.LanguageModelChatMessage.User(textParts);
+    }
+    return vscode.LanguageModelChatMessage.Assistant(textParts);
   }
 
   static mapChatRole(role: vscode.LanguageModelChatMessageRole): string {
