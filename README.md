@@ -69,16 +69,18 @@ Backup, migrate, or share provider configurations as JSON. Supports encrypted ex
 | [Coding Standards](./docs/coding-standards.md)                   | Type safety, logging, error handling, naming conventions    |
 | [AI SDK Reference](./docs/ai-sdk-reference.md)                   | AI SDK v6 API types and mapping                             |
 | [VS Code API Reference](./docs/vscode-reference.md)              | VS Code Copilot API and Proposed API reference              |
-| [Reasoning Support Plan](./docs/reasoning-support-plan.md)       | Integration roadmap for reasoning/thinking capabilities     |
+| [Reasoning Architecture](./docs/reasoning-architecture.md)       | Architecture reference for reasoning/thinking capabilities   |
 | [Config Export/Import](./docs/encrypted-config-export-import.md) | Encrypted JSON backup, migration, and sharing of configs    |
-| [Webview UI Migration](./docs/webview-ui-migration-plan.md)      | Plan for migrating from legacy HTML editor to React webview |
 
-## Latest: v1.1.0
+## Feature Roadmap
 
 - **🌐 Complete i18n**: Full localization with Chinese (Simplified) support — everything from command labels to config descriptions
 - **🖥️ Webview UI**: New React + TypeScript + Vite forms replacing the legacy HTML editor
 - **🧠 Reasoning Support**: Thinking/reasoning content adaptation middleware and utilities
 - **🔬 E2E Tests**: Comprehensive test suite for data normalization and model fetching
+- **🔐 Encrypted Config Export/Import**: Secure backup and migration of provider/model configurations
+- **⚡ Performance Metrics**: Real-time speed monitoring and historical performance tracking
+- **🛠️ More Providers**: Ongoing integration of new providers and model types based on user demand
 
 See the [full changelog](./CHANGELOG.md) for details.
 

@@ -80,7 +80,7 @@
  *
  * 此中间件为"实验性功能"，由用户在模型编辑页面手动启用
  * （ModelOptions.reasoningContentAdapt），而非自动检测。
- * 详见 docs/reasoning-support-plan.md。
+ * 详见 docs/reasoning-architecture.md。
  *
  * ────────────────────────────────────────────────────────────────────────────
  * 版本历史

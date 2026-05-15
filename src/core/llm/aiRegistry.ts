@@ -277,7 +277,7 @@ export class AIProviderRegistry {
     // reasoningContentAdaptMiddleware 后执行（包裹外层，处理 protocol 层）。
     //
     // 启用方式：由用户在模型编辑页面的"实验性功能"区手动勾选，
-    // 而非自动检测。详见 docs/reasoning-support-plan.md §3.2。
+    // 而非自动检测。详见 docs/reasoning-architecture.md §3.2。
     // ──────────────────────────────────────────────────────────────────────
 
     // 获取模型 options（用户手动配置的实验性功能开关）
