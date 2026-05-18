@@ -366,7 +366,7 @@ describe("Reasoning Utils (AI SDK v6)", () => {
         hasStreamPartVisibleContent({
           type: "reasoning-delta",
           id: "reasoning-1",
-          delta: "step by step",
+          text: "step by step",
         }),
         true,
       );
