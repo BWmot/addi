@@ -288,7 +288,11 @@ export class LLMService {
 
     if (Object.keys(tools).length > 0) {
       baseOptions.tools = tools;
-      baseOptions.maxSteps = modelOptions.maxSteps ?? 100;
+      // maxSteps 固定为 1：AI SDK 只做单步生成（可能含工具调用声明），
+      // 工具的实际执行和循环控制交由 VS Code 的外部工具循环管理。
+      // 设置 >1 会导致 VS Code 与 AI SDK 的双层工具循环嵌套，
+      // 造成工具重复执行和 token 过度消耗。
+      baseOptions.maxSteps = 1;
       baseOptions.toolChoice = modelOptions.toolChoice;
     }
 
