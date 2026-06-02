@@ -1,0 +1,38 @@
+# Auto-detect text files and normalize to LF in the repository
+* text=auto
+
+# Source code (always LF in repo, checkout as platform-native)
+*.ts        text
+*.tsx       text
+*.js        text
+*.jsx       text
+*.json      text
+*.css       text
+*.html      text
+*.svg       text
+*.md        text
+*.yml       text
+*.yaml      text
+*.toml      text
+
+# Shell scripts (must stay LF even on Windows)
+*.sh        text eol=lf
+
+# Batch files (must stay CRLF on Windows)
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+
+# VS Code / editor config
+*.code-workspace text
+
+# Git files
+*.gitattributes text
+*.gitignore     text
+
+# Binaries (do not touch)
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.ico       binary
+*.vsix      binary
+*.vsixmanifest binary

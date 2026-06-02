@@ -2,6 +2,17 @@
 
 All notable changes to the "addi" extension will be documented in this file.
 
+## v1.1.2 - 2026-06-02
+
+### Fixed
+
+- **Dual tool loop prevention**: `maxSteps` reduced from `100` to `1` in `llmService.ts` to prevent the AI SDK's internal tool loop from conflicting with VS Code's Chat tool invocation flow, which can cause infinite recursion in tool-rich contexts
+
+### Changed
+
+- **Cleaned up proposed API declarations**: Removed `chatParticipantPrivate` and `toolInvocationApproveCombination` from `enabledApiProposals` and their corresponding type declaration files, as these APIs have been stabilized in VS Code `^1.120.0`. Only `languageModelThinkingPart` remains as a proposed API dependency
+- **Updated dependencies**: Bumped `@ai-sdk/*` packages, `ai`, `@types/node`, `mocha`, `oxlint` and webview UI dependencies to latest compatible versions
+
 ## v1.1.1 - 2026-05-15
 
 ### Fixed
