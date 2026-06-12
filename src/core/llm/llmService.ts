@@ -4,6 +4,7 @@ import type { Provider, Model, ModelOptions } from "../../common/types";
 import { AIProviderRegistry } from "./aiRegistry";
 import { MessageConverter } from "./messageConverter";
 import { extractReasoningContentFromStep, hasStreamPartVisibleContent } from "./reasoningUtils";
+import { shouldSkipOpenAIReasoningEffort, stripOpenAIReasoningEffort } from "./reasoningPolicy";
 import { ToolOrchestrator } from "./toolOrchestrator";
 import { logger, LogScope, generateTraceId } from "../../common/logger";
 
@@ -341,6 +342,11 @@ export class LLMService {
     const isNativeOpenAI =
       !provider.apiEndpoint || provider.apiEndpoint.includes("api.openai.com");
     const openaiCompatibleKey = isNativeOpenAI ? "openai" : "openaiProxy";
+    const skipOpenAIReasoningEffort = shouldSkipOpenAIReasoningEffort(provider, model);
+
+    if (skipOpenAIReasoningEffort) {
+      stripOpenAIReasoningEffort(providerOptions as Record<string, Record<string, unknown>>, provider, model, openaiCompatibleKey);
+    }
 
     // 将用户配置的 reasoningEffort 映射为各 provider 的参数
     if (modelOptions.reasoningEffort) {
@@ -356,7 +362,11 @@ export class LLMService {
       // 注：reasoningContentAdapt 中间件仅处理格式适配（backfill + 透传），
       // 不会替我们开启 API 的 thinking 模式。因此即使中间件启用，仍须发送
       // reasoningEffort 信号来告知底层 provider 启用推理/思考输出。
-      if (providerType === "openai-completions" && !providerOptions[openaiCompatibleKey]) {
+      if (
+        providerType === "openai-completions" &&
+        !skipOpenAIReasoningEffort &&
+        !providerOptions[openaiCompatibleKey]
+      ) {
         providerOptions[openaiCompatibleKey] = { reasoningEffort: effort };
       }
 
@@ -405,7 +415,7 @@ export class LLMService {
           providerOptions["openai"] = { reasoningEffort: "medium" };
         }
         // openai-completions (native or custom endpoint)
-        if (providerType === "openai-completions") {
+        if (providerType === "openai-completions" && !skipOpenAIReasoningEffort) {
           providerOptions[openaiCompatibleKey] = { reasoningEffort: "medium" };
         }
       }
@@ -430,7 +440,11 @@ export class LLMService {
         providerOptions["openai"] = { reasoningEffort: "none" };
       }
 
-      if (providerType === "openai-completions" && !providerOptions[openaiCompatibleKey]) {
+      if (
+        providerType === "openai-completions" &&
+        !skipOpenAIReasoningEffort &&
+        !providerOptions[openaiCompatibleKey]
+      ) {
         providerOptions[openaiCompatibleKey] = { reasoningEffort: "none" };
       }
     }
