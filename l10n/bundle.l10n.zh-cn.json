@@ -68,8 +68,8 @@
   "Parent provider not found": "未找到父提供商",
   "{0} model(s) shown in picker": "{0} 个模型已在选择器中显示",
   "{0} model(s) hidden from picker": "{0} 个模型已从选择器隐藏",
-  "Failed to {0} models: {1}": "将模型{1}失败",
-  "Failed to {0} provider models: {1}": "提供商模型{1}失败",
+  "Failed to {0} models: {1}": "模型 {0} 失败：{1}",
+  "Failed to {0} provider models: {1}": "提供商模型 {0} 失败：{1}",
   "Failed to switch model in Chat UI. Please select it manually.": "在聊天界面切换模型失败，请手动选择。",
 
   "No configurations to export": "没有可导出的配置",
