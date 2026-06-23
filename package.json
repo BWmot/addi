@@ -3,7 +3,7 @@
   "icon": "resources/icon-bg.min.png",
   "displayName": "Addi",
   "description": "add more custom AI providers and models for your copilot",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "publisher": "deepwn",
   "repository": {
     "type": "git",
@@ -14,7 +14,7 @@
     "url": "https://github.com/deepwn/addi/issues"
   },
   "engines": {
-    "vscode": "^1.120.0"
+    "vscode": "^1.125.0"
   },
   "keywords": [
     "AI",
@@ -27,8 +27,8 @@
     "Gemini",
     "LLM",
     "Agent",
-    "Custom",
-    "OAI"
+    "OAI",
+    "language model"
   ],
   "categories": [
     "AI",
@@ -492,21 +492,21 @@
     "@types/bun": "^1.3.14",
     "@types/jest": "^30.0.0",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^25.9.1",
-    "@types/vscode": "^1.120.0",
+    "@types/node": "^25.9.4",
+    "@types/vscode": "^1.125.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
-    "@vscode/vsce": "^3.9.1",
+    "@vscode/vsce": "^3.9.2",
     "mocha": "^11.7.6",
     "oxfmt": "^0.48.0",
-    "oxlint": "^1.68.0",
+    "oxlint": "^1.71.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.81",
-    "@ai-sdk/google": "^3.0.80",
-    "@ai-sdk/openai": "^3.0.67",
-    "@ai-sdk/openai-compatible": "^2.0.48",
-    "ai": "^6.0.194"
+    "@ai-sdk/anthropic": "^3.0.85",
+    "@ai-sdk/google": "^3.0.83",
+    "@ai-sdk/openai": "^3.0.74",
+    "@ai-sdk/openai-compatible": "^2.0.51",
+    "ai": "^6.0.208"
   }
 }
