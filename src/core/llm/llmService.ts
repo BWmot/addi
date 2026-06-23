@@ -520,6 +520,7 @@ export class LLMService {
 
     let firstTokenTime: number | undefined;
     let hasReportedContent = false;
+    let hasReportedText = false;
     let hasFinished = false;
     let finishReason: string | undefined;
 
@@ -575,6 +576,18 @@ export class LLMService {
         if (hasStreamPartVisibleContent(part)) {
           hasReportedContent = true;
         }
+
+        // Track whether any text content was reported (vs reasoning-only).
+        // Copilot requires at least one LanguageModelTextPart to consider
+        // the response "returned"; LanguageModelThinkingPart alone is not
+        // sufficient.  When extractReasoningMiddleware is active and the
+        // model wraps all content in <think> tags (or the closing </think>
+        // tag is split across stream chunks and missed), the entire stream
+        // can be consumed as reasoning-delta parts without ever emitting
+        // a text-delta.  We must detect this and inject a fallback text part.
+        if (part.type === "text-delta" && typeof part.text === "string" && part.text.length > 0) {
+          hasReportedText = true;
+        }
       }
 
       if (!hasReportedContent && !token.isCancellationRequested) {
@@ -591,7 +604,34 @@ export class LLMService {
           );
         }
       }
+
+      // Fallback: when reasoning/thinking content was reported but no
+      // text content reached Copilot (e.g. extractReasoningMiddleware
+      // consumed the entire response as <think> reasoning), inject a
+      // minimal text part so Copilot does not show "no response".
+      if (hasReportedContent && !hasReportedText && !token.isCancellationRequested) {
+        logger.info(
+          `[${executionOptions.traceId ?? "?"}] Stream had reasoning but no text — injecting fallback text part`,
+          { traceId: executionOptions.traceId },
+          LogScope.LLM_SERVICE,
+        );
+        progress.report(new vscode.LanguageModelTextPart(" "));
+        hasReportedText = true;
+      }
     } catch (error) {
+      // When reasoning was reported but stream errored before any text:
+      // inject fallback text part before re-throwing so Copilot doesn't
+      // show "no response" (which would hide the actual error).
+      if (hasReportedContent && !hasReportedText) {
+        logger.info(
+          `[${executionOptions.traceId ?? "?"}] Stream errored with reasoning but no text — injecting fallback before throwing`,
+          { traceId: executionOptions.traceId },
+          LogScope.LLM_SERVICE,
+        );
+        progress.report(new vscode.LanguageModelTextPart(" "));
+        hasReportedText = true;
+      }
+
       if (!hasReportedContent) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error(
@@ -656,14 +696,19 @@ export class LLMService {
     executionOptions: ExecutionOptions,
   ): Promise<void> {
     let hasReportedContent = false;
+    let hasReportedReasoning = false;
 
     try {
       const result = await generateText(options);
       const steps = (result.steps as any[]) || [];
 
       for (const step of steps) {
+        const reasoningBefore = this.extractReasoningContent(step);
         this.processReasoning(step, progress, executionOptions);
         this.processToolCalls(step, progress);
+        if (reasoningBefore) {
+          hasReportedReasoning = true;
+        }
       }
 
       if (result.text) {
@@ -678,6 +723,19 @@ export class LLMService {
 
       if (result.finishReason === "content-filter") {
         throw vscode.LanguageModelError.Blocked("Message blocked by model content safety filters.");
+      }
+
+      // When reasoning was produced but no text content reached Copilot
+      // (extractReasoningMiddleware consumed the response as <think> reasoning),
+      // inject a minimal text part to prevent Copilot's "no response" error.
+      if (!hasReportedContent && hasReportedReasoning && result.finishReason === "stop") {
+        logger.info(
+          `[${executionOptions.traceId ?? "?"}] Non-streaming had reasoning but no text — injecting fallback text part`,
+          { traceId: executionOptions.traceId },
+          LogScope.LLM_SERVICE,
+        );
+        progress.report(new vscode.LanguageModelTextPart(" "));
+        hasReportedContent = true;
       }
 
       if (!hasReportedContent && result.finishReason === "stop") {

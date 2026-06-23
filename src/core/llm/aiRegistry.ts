@@ -297,7 +297,10 @@ export class AIProviderRegistry {
     const middlewares: LanguageModelMiddleware[] = [];
 
     // [实验性] <think> 标签提取 — 从 text 中提取 <think>...</think> 内容
-    if (modelOptions?.extractReasoningContent) {
+    // 与 reasoningContentAdapt 互斥：后者面向原生 reasoning_content API 字段
+    // (DeepSeek R1/V4)，前者面向在 text 中嵌入 <think> 标签的模型。同时启用会
+    // 导致 extractReasoningMiddleware 将所有 text-delta 误转为 reasoning-delta。
+    if (modelOptions?.extractReasoningContent && !modelOptions?.reasoningContentAdapt) {
       middlewares.push(
         extractReasoningMiddleware({
           tagName: "think",

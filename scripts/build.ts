@@ -14,6 +14,9 @@ import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 
+// 优先使用当前 Bun 运行时的可执行文件，避免依赖系统 PATH
+const BUN_EXECUTABLE = Bun.which("bun") ?? process.execPath;
+
 // 解析命令行参数
 const args = process.argv.slice(2);
 const isRelease = args.includes("--release");
@@ -129,7 +132,7 @@ function execCommand(
     const proc = spawn(command, args, {
       cwd: options.cwd || PROJECT_ROOT,
       stdio: options.silent ? "pipe" : "inherit",
-      shell: true,
+      shell: false,
     });
 
     let output = "";
@@ -196,7 +199,7 @@ async function needsInstall(): Promise<boolean> {
 async function installDependencies(): Promise<boolean> {
   logStep("安装依赖");
 
-  const result = await execCommand("bun", ["install"]);
+  const result = await execCommand(BUN_EXECUTABLE, ["install"]);
 
   if (result.code !== 0) {
     logError("安装依赖失败");
@@ -251,14 +254,14 @@ async function buildWebviewUI(): Promise<boolean> {
   const webviewNodeModules = join(webviewPath, "node_modules");
   if (!existsSync(webviewNodeModules)) {
     log("   安装 Webview UI 依赖...", "gray");
-    const installResult = await execCommand("bun", ["install"], { cwd: webviewPath });
+    const installResult = await execCommand(BUN_EXECUTABLE, ["install"], { cwd: webviewPath });
     if (installResult.code !== 0) {
       logError("Webview UI 依赖安装失败");
       return false;
     }
   }
 
-  const result = await execCommand("bun", ["run", "build"], { cwd: webviewPath });
+  const result = await execCommand(BUN_EXECUTABLE, ["run", "build"], { cwd: webviewPath });
 
   if (result.code !== 0) {
     logError("Webview UI 构建失败");
@@ -277,7 +280,7 @@ async function compile(): Promise<boolean> {
 
   logStep("编译 TypeScript");
 
-  const result = await execCommand("bun", ["run", "compile"]);
+  const result = await execCommand(BUN_EXECUTABLE, ["run", "compile"]);
 
   if (result.code !== 0) {
     logError("编译失败");
@@ -307,7 +310,7 @@ async function packageVsix(): Promise<boolean> {
   }
 
   // 运行编译（minify 版本）
-  let result = await execCommand("bun", ["run", "package"]);
+  let result = await execCommand(BUN_EXECUTABLE, ["run", "package"]);
 
   if (result.code !== 0) {
     logError("编译失败");
@@ -315,7 +318,8 @@ async function packageVsix(): Promise<boolean> {
   }
 
   // 使用 vsce 打包
-  result = await execCommand("bunx", [
+  result = await execCommand(BUN_EXECUTABLE, [
+    "x",
     "@vscode/vsce",
     "package",
     "--baseImagesUrl",

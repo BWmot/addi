@@ -9,10 +9,13 @@ export function hasStreamPartVisibleContent(part: unknown): boolean {
     case "text-delta":
       return typeof candidate["text"] === "string" && candidate["text"].length > 0;
     case "reasoning-delta":
-      // fullStream emits 'reasoning-delta' with 'text' property (streamText pipeline transforms delta→text)
-      return typeof candidate["text"] === "string" && candidate["text"].length > 0;
+      // fullStream emits 'reasoning-delta' with 'text' property (streamText pipeline
+      // transforms delta→text), but some provider paths may emit raw 'delta'. Check both.
+      return (typeof candidate["text"] === "string" && candidate["text"].length > 0)
+        || (typeof candidate["delta"] === "string" && candidate["delta"].length > 0);
     case "reasoning":
-      return typeof candidate["text"] === "string" && candidate["text"].length > 0;
+      return (typeof candidate["text"] === "string" && candidate["text"].length > 0)
+        || (typeof candidate["delta"] === "string" && candidate["delta"].length > 0);
     case "tool-call":
     case "tool-result":
       return true;
