@@ -127,6 +127,46 @@ export class AIProviderRegistry {
             finalOptions.headers = headersRecord;
           }
 
+          // ── REQUEST-BODY DIAGNOSTIC: log the actual JSON body sent to API ──
+          if (finalOptions.body && typeof finalOptions.body === "string") {
+            try {
+              const parsed = JSON.parse(finalOptions.body);
+              // Build metadata with only fields present in the actual request body.
+              // AI SDK omits undefined params from JSON, so parsed.temperature etc.
+              // will be undefined when the user hasn't configured those values.
+              // Logging undefined fields causes VS Code LogOutputChannel to silently
+              // drop them, making it look like the log is "incomplete."
+              const meta: Record<string, unknown> = {
+                model: parsed.model,
+                max_tokens: parsed.max_tokens,
+                stream: parsed.stream,
+                has_tools: !!parsed.tools,
+                message_count: parsed.messages?.length,
+                msg_preview: parsed.messages?.length > 0
+                  ? parsed.messages[parsed.messages.length - 1]?.role + "/" +
+                    (typeof parsed.messages[parsed.messages.length - 1]?.content === "string"
+                      ? (parsed.messages[parsed.messages.length - 1]?.content as string).substring(0, 80)
+                      : "[multi-part]")
+                  : "none",
+                provider: providerLabel,
+              };
+              // Sampling/penalty/reasoning fields — only include when the AI SDK
+              // actually serialized them into the request body.
+              if (parsed.temperature !== undefined) { meta.temperature = parsed.temperature; }
+              if (parsed.top_p !== undefined) { meta.top_p = parsed.top_p; }
+              if (parsed.frequency_penalty !== undefined) { meta.frequency_penalty = parsed.frequency_penalty; }
+              if (parsed.presence_penalty !== undefined) { meta.presence_penalty = parsed.presence_penalty; }
+              if (parsed.reasoning_effort !== undefined) { meta.reasoning_effort = parsed.reasoning_effort; }
+              if (parsed.stream_options !== undefined) { meta.stream_options = parsed.stream_options; }
+              logger.info(
+                `${providerCtx}[REQ-BODY] ${urlStr}`,
+                meta,
+                LogScope.AI_REGISTRY,
+              );
+            } catch { /* ignore parse errors */ }
+          }
+          // ── END REQUEST-BODY DIAGNOSTIC ──
+
           const response = await fetchFn(url, finalOptions);
           if (!response.ok) {
             const errorMsg = `${providerCtx}[AI-SDK Fetch] Error ${response.status} from ${urlStr}`;

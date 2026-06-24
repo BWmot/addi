@@ -3,7 +3,7 @@ import { streamText, generateText, type ModelMessage, type Tool } from "ai";
 import type { Provider, Model, ModelOptions } from "../../common/types";
 import { AIProviderRegistry } from "./aiRegistry";
 import { MessageConverter } from "./messageConverter";
-import { extractReasoningContentFromStep, hasStreamPartVisibleContent } from "./reasoningUtils";
+import { extractReasoningContentFromStep, hasStreamPartVisibleContent, collapseRepeatedPunctuation, collapseRepeatedSuffix, collapseStreamSuffix, collapseRepeatedWhitespace } from "./reasoningUtils";
 import { shouldSkipOpenAIReasoningEffort, stripOpenAIReasoningEffort } from "./reasoningPolicy";
 import { ToolOrchestrator } from "./toolOrchestrator";
 import { logger, LogScope, generateTraceId } from "../../common/logger";
@@ -466,7 +466,39 @@ export class LLMService {
       "responseFormat",
       "maxSteps",
     ];
+
+    const SNAKE_TO_CAMEL: Record<string, string> = {
+      top_p: "topP",
+      presence_penalty: "presencePenalty",
+      frequency_penalty: "frequencyPenalty",
+      response_format: "responseFormat",
+      max_output_tokens: "maxOutputTokens",
+      stop_sequences: "stopSequences",
+    };
     for (const [key, value] of Object.entries(extraBody)) {
+      // Filter reasoning_effort / reasoningEffort when the provider doesn't support it.
+      // extraBody is user-configurable and can bypass the providerOptions skip logic,
+      // so we must explicitly guard here too.
+      if (skipOpenAIReasoningEffort && (key === "reasoning_effort" || key === "reasoningEffort")) {
+        logger.debug(
+          `[${options.traceId ?? "?"}] Stripping reasoning_effort from extraBody`,
+          { modelRid: model.rid, providerType: provider.providerType },
+          LogScope.LLM_SERVICE,
+        );
+        continue;
+      }
+
+      const mapped = SNAKE_TO_CAMEL[key];
+      if (mapped) {
+        // Map snake_case extraBody keys (e.g. top_p) → camelCase (topP).
+        // If the camelCase key was NOT already handled, remap the value now;
+        // otherwise just skip the snake_case key to avoid duplicates.
+        if (value !== undefined && !handledParams.includes(mapped) && baseOptions[mapped] === undefined) {
+          baseOptions[mapped] = value;
+        }
+        continue;
+      }
+
       if (!handledParams.includes(key) && value !== undefined) {
         baseOptions[key] = value;
       }
@@ -487,8 +519,13 @@ export class LLMService {
         messages: coreMsgSummary,
         temperature: baseOptions.temperature,
         maxTokens: baseOptions.maxOutputTokens,
+        frequencyPenalty: baseOptions.frequencyPenalty,
+        presencePenalty: baseOptions.presencePenalty,
+        extraBody: extraBody && Object.keys(extraBody).length > 0 ? extraBody : void 0,
         hasTools: Object.keys(tools).length > 0,
         hasProviderOptions: Object.keys(providerOptions).length > 0,
+        providerOptionsKeys: Object.keys(providerOptions),
+        providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : void 0,
         streamMode: baseOptions.stream !== false ? "streaming" : "non-streaming",
         hasHeaders: !!baseOptions.headers,
         traceId: options.traceId,
@@ -523,9 +560,21 @@ export class LLMService {
     let hasReportedText = false;
     let hasFinished = false;
     let finishReason: string | undefined;
+    // Accumulate full response text for diagnostic log at stream end.
+    let accumulatedText = "";
+    // Rolling buffer for suffix-repetition detection (Ali DS looping).
+    let recentCleanText = "";
+    // Rolling buffer for punctuation-collapse (per-delta is too small;
+    // colons etc. arrive one char at a time in streaming).
+    let recentPunctCleaned = "";
 
     let result: any;
     try {
+      // Prevent onFinish fallback (from buildAiOptions) from double-firing
+      // in streaming mode.  The finally block below is the sole stats reporter
+      // for streaming; onFinish is only needed for non-streaming requests.
+      executionOptions._streamingReported = true;
+
       result = streamText({
         ...options,
         abortSignal: abortController.signal,
@@ -571,7 +620,57 @@ export class LLMService {
           throw error;
         }
 
-        this.processResponsePart(part, progress, executionOptions);
+        // ── Text-delta cleanup: punctuation collapse + suffix repetition ──
+        // Apply both cleanups before processResponsePart so the UI never
+        // sees the raw repeated text.  This also ensures downstream
+        // hasReportedText / hasReportedContent tracking uses cleaned values.
+        //
+        // Punctuation collapse must be applied to the ACCUMULATED text
+        // (not per-delta) because in streaming colons / dots arrive one
+        // character at a time — a single-char delta will never trigger the
+        // ≥3 threshold.
+        if (part.type === "text-delta" && typeof part.text === "string") {
+          const combined = recentPunctCleaned + part.text;
+          const punctCleaned = collapseRepeatedPunctuation(combined);
+          const punctDelta = punctCleaned.slice(recentPunctCleaned.length);
+          recentPunctCleaned = punctCleaned;
+
+          const [newRecent, cleanDelta] = collapseStreamSuffix(recentCleanText, punctDelta);
+          recentCleanText = newRecent;
+
+          // Whitespace cleanup: collapse runs of 2+ spaces and trim trailing
+          // whitespace.  Some DeepSeek-family models emit streams of pure
+          // spaces (thousands of chars) — this prevents them from reaching
+          // the UI while keeping legitimate single spaces intact.
+          const wsCleaned = collapseRepeatedWhitespace(cleanDelta);
+          if (wsCleaned.length > 0) {
+            // Mutate part.text so processResponsePart picks up the cleaned delta
+            part.text = wsCleaned;
+            this.processResponsePart(part, progress, executionOptions);
+          }
+          // Always accumulate for diagnostic log (even fully-suppressed deltas)
+          accumulatedText += punctDelta;
+        } else {
+          this.processResponsePart(part, progress, executionOptions);
+        }
+        // ── End text-delta cleanup ──
+
+        // ── DIAGNOSTIC: log each stream part ──
+        if (part.type === "text-delta" || part.type === "reasoning-delta") {
+          const text = part.text ?? part.delta ?? "";
+          const preview = text.length > 80 ? text.substring(0, 80) + "..." : text;
+          logger.debug(
+            `[${executionOptions.traceId ?? "?"}] STREAM-DIAG part`,
+            {
+              type: part.type,
+              textLen: text.length,
+              preview,
+              traceId: executionOptions.traceId,
+            },
+            LogScope.LLM_SERVICE,
+          );
+        }
+        // ── END DIAGNOSTIC ──
 
         if (hasStreamPartVisibleContent(part)) {
           hasReportedContent = true;
@@ -581,7 +680,8 @@ export class LLMService {
         // Copilot requires at least one LanguageModelTextPart to consider
         // the response "returned"; LanguageModelThinkingPart alone is not
         // sufficient.  When extractReasoningMiddleware is active and the
-        // model wraps all content in <think> tags (or the closing </think>
+        // model wraps all content in 。
+        // tags (or the closing 。
         // tag is split across stream chunks and missed), the entire stream
         // can be consumed as reasoning-delta parts without ever emitting
         // a text-delta.  We must detect this and inject a fallback text part.
@@ -607,7 +707,8 @@ export class LLMService {
 
       // Fallback: when reasoning/thinking content was reported but no
       // text content reached Copilot (e.g. extractReasoningMiddleware
-      // consumed the entire response as <think> reasoning), inject a
+      // consumed the entire response as 。
+      // reasoning), inject a
       // minimal text part so Copilot does not show "no response".
       if (hasReportedContent && !hasReportedText && !token.isCancellationRequested) {
         logger.info(
@@ -618,6 +719,27 @@ export class LLMService {
         progress.report(new vscode.LanguageModelTextPart(" "));
         hasReportedText = true;
       }
+
+      // ── DIAGNOSTIC: Log full accumulated response text for inspection ──
+      if (accumulatedText.length > 0) {
+        // Truncate at 2000 chars for log safety; tail is most relevant for
+        // trailing-garbage patterns like "::::::" or "。。。。。。" or
+        // Ali DS suffix looping like "我来试试。我来试试。"
+        const tail = accumulatedText.length > 2000
+          ? "…" + accumulatedText.slice(-2000)
+          : accumulatedText;
+        const suffixCleaned = collapseRepeatedSuffix(accumulatedText);
+        const collapsed = collapseRepeatedWhitespace(suffixCleaned);
+        const cleanedTail = collapsed.length > 2000
+          ? "…" + collapsed.slice(-2000)
+          : collapsed;
+        logger.info(
+          `[${executionOptions.traceId ?? "?"}] STREAM-TEXT response text (len=${accumulatedText.length}, cleaned=${collapsed.length})`,
+          { tail, cleanedTail, traceId: executionOptions.traceId },
+          LogScope.LLM_SERVICE,
+        );
+      }
+      // ── END DIAGNOSTIC ──
     } catch (error) {
       // When reasoning was reported but stream errored before any text:
       // inject fallback text part before re-throwing so Copilot doesn't
@@ -726,7 +848,8 @@ export class LLMService {
       }
 
       // When reasoning was produced but no text content reached Copilot
-      // (extractReasoningMiddleware consumed the response as <think> reasoning),
+      // (extractReasoningMiddleware consumed the response as 。
+      // reasoning),
       // inject a minimal text part to prevent Copilot's "no response" error.
       if (!hasReportedContent && hasReportedReasoning && result.finishReason === "stop") {
         logger.info(
@@ -806,7 +929,8 @@ export class LLMService {
     const handlers: Record<string, (part: any) => void> = {
       // 文本内容 - AI SDK fullStream 使用 'text' 属性
       "text-delta": (p) => {
-        progress.report(new vscode.LanguageModelTextPart(p.text));
+        const cleaned = collapseRepeatedPunctuation(p.text);
+        progress.report(new vscode.LanguageModelTextPart(cleaned));
       },
 
       // Thinking/Reasoning内容 - AI SDK fullStream uses type 'reasoning-delta' with 'text' property.

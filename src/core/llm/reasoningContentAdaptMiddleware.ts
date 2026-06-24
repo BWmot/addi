@@ -214,24 +214,15 @@ export function createReasoningContentAdaptMiddleware(
       if (!isOpenAICompatible) {
         return params;
       }
-      const messages = params.prompt;
-      const analysis = historyMessageConverter(messages);
-
-      if (analysis.needsFallback.length > 0) {
-        logger.info(
-          `[reasoningContentAdapt] Reasoning content backfill needed for ${analysis.needsFallback.length} assistant message(s)`,
-          {
-            fallbackItems: analysis.needsFallback.map((item) => ({
-              index: item.index,
-              hasToolCalls: item.hasToolCalls,
-            })),
-          },
-          LogScope.AI_REGISTRY,
-        );
-      }
-
-      // 对所有 assistant 消息 backfill reasoning_content
-      // 如果 assistant 消息缺少 type: "reasoning" part，注入一个占位 part。
+      // ─── Single-pass backfill ──────────────────────────────────────
+      // Iterate messages once: detect missing reasoning parts AND apply
+      // backfill in the same pass.  Previously historyMessageConverter
+      // (pass 1) and messages.map (pass 2) duplicated the same checks
+      // for every message, which is wasteful for long conversation
+      // histories (30+ messages).
+      //
+      // We also use map's built-in index instead of O(n) indexOf per
+      // message to avoid O(n²) overhead in the debug log path.
       //
       // 策略说明：
       //   根据 DeepSeek Thinking Mode 文档：
@@ -245,40 +236,49 @@ export function createReasoningContentAdaptMiddleware(
       //   - 无工具调用（hasToolCalls=false）→ 使用空字符串 ""
       //     → AI SDK converter 中 reasoning.length > 0 为 false
       //     → 跳过 reasoning_content 输出 → 减少多余请求体
-      const transformedMessages = messages.map((msg) => {
+      const messages = params.prompt;
+      const fallbackItems: Array<{ index: number; hasToolCalls: boolean }> = [];
+
+      const transformedMessages = messages.map((msg, idx) => {
         if (msg.role !== "assistant") return msg;
 
         const hasReasoningPart = msg.content.some(
           (p) => p.type === "reasoning",
         );
+        // Fast-path: already has a reasoning part (either real content or
+        // a previous backfill placeholder).  Skip both backfill and logging.
+        if (hasReasoningPart) return msg;
+
         const hasToolCalls = msg.content.some(
           (p) => p.type === "tool-call",
         );
+        fallbackItems.push({ index: idx, hasToolCalls });
 
-        if (!hasReasoningPart) {
-          const reasoningText = hasToolCalls ? " " : "";
-          const reasoningPart: LanguageModelV3ReasoningPart = {
-            type: "reasoning",
-            text: reasoningText,
-          };
+        const reasoningText = hasToolCalls ? " " : "";
+        const reasoningPart: LanguageModelV3ReasoningPart = {
+          type: "reasoning",
+          text: reasoningText,
+        };
 
-          // 记录每条 fallback 消息（日志标记：reasoning_filling_fallback）
-          logger.debug(
-            `[reasoningContentAdapt] reasoning_filling_fallback | index=${
-              messages.indexOf(msg)
-            } | hasToolCalls=${hasToolCalls} | textLength=${reasoningText.length} | msg.content.length=${msg.content.length}`,
-            undefined,
-            LogScope.AI_REGISTRY,
-          );
+        logger.debug(
+          `[reasoningContentAdapt] reasoning_filling_fallback | index=${idx} | hasToolCalls=${hasToolCalls} | textLength=${reasoningText.length} | msg.content.length=${msg.content.length}`,
+          undefined,
+          LogScope.AI_REGISTRY,
+        );
 
-          return {
-            ...msg,
-            content: [...msg.content, reasoningPart],
-          };
-        }
-
-        return msg;
+        return {
+          ...msg,
+          content: [...msg.content, reasoningPart],
+        };
       }) satisfies LanguageModelV3Prompt;
+
+      if (fallbackItems.length > 0) {
+        logger.info(
+          `[reasoningContentAdapt] Reasoning content backfill needed for ${fallbackItems.length} assistant message(s)`,
+          { fallbackItems },
+          LogScope.AI_REGISTRY,
+        );
+      }
 
       return { ...params, prompt: transformedMessages };
     },

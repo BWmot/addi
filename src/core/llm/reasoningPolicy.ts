@@ -1,18 +1,64 @@
 import type { Provider, Model } from "../../common/types";
 
 /**
- * Small provider/model policy helpers for reasoning-related behavior.
+ * Provider/model policy helpers for reasoning-related behavior.
  *
- * The current regression fix keeps gpt-5.5 models off the openai-completions
- * reasoningEffort path, because that compatibility route can still emit
- * chat/completions payloads that reject reasoning_effort.
+ * Policy: skip OpenAI reasoningEffort for models/providers that don't support it.
+ *
+ * Covered cases:
+ * - gpt-5.5 models on completions path (known rejection)
+ * - Third-party models using reasoning_content protocol (DeepSeek, MiMo, etc.)
+ *   — detected by model RID, name, family, and provider ID
+ * - All non-api.openai.com custom endpoints (conservative default)
+ *   — third-party proxies almost always use reasoning_content, not reasoning_effort
+ *
+ * Sending reasoning_effort to unsupported models causes degraded output,
+ * including repeated punctuation/characters (：, 。, etc.).
  */
 export function shouldSkipOpenAIReasoningEffort(provider: Provider, model: Model): boolean {
   if (provider.providerType !== "openai-completions") {
     return false;
   }
 
-  return model.rid.trim().toLowerCase().startsWith("gpt-5.5");
+  const rid = model.rid.trim().toLowerCase();
+  const pid = provider.id?.trim().toLowerCase() ?? "";
+  const name = model.name?.trim().toLowerCase() ?? "";
+  const family = model.family?.trim().toLowerCase() ?? "";
+
+  // gpt-5.5 — known rejection of reasoning_effort on completions path
+  if (rid.startsWith("gpt-5.5")) {
+    return true;
+  }
+
+  // Third-party OpenAI-compatible providers that use reasoning_content protocol
+  // (DeepSeek, MiMo, etc.) — reasoning_effort is an OpenAI-only concept.
+  // Check across all available model identifiers since proxy APIs may rename models.
+  if (
+    rid.includes("deepseek") ||
+    name.includes("deepseek") ||
+    family.includes("deepseek") ||
+    pid.includes("deepseek") ||
+    rid.includes("mimo") ||
+    name.includes("mimo") ||
+    family.includes("mimo") ||
+    pid.includes("mimo")
+  ) {
+    return true;
+  }
+
+  // Conservative guard: for non-OpenAI custom endpoints, default to skipping
+  // reasoning_effort.  Third-party models (proxied through openai-compatible)
+  // use the reasoning_content protocol, not reasoning_effort.  Sending
+  // reasoning_effort to these models can cause degraded output (e.g.
+  // repeated punctuation / characters like ： and 。).
+  if (
+    provider.apiEndpoint &&
+    !provider.apiEndpoint.includes("api.openai.com")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
