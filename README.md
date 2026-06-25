@@ -1,5 +1,10 @@
 # Addi — Extend Copilot with Your Own AI Models
 
+> [!IMPORTANT]
+> **This extension is no longer actively maintained** you can still use it or use `BYOK` of vscode to connect your own LLM provider. The extension will remove from the marketplace in the future. Please consider using [BYOK](https://code.visualstudio.com/docs/agent-customization/language-models#_bring-your-own-language-model-key) instead.
+>
+> **本扩展不再更新维护**，您仍然可以使用它，或者使用 VS Code 的 `BYOK` 功能连接您自己的 LLM 提供商。该扩展将在未来从市场中移除。请尽快迁移使用 [BYOK](https://code.visualstudio.com/docs/agent-customization/language-models#_bring-your-own-language-model-key) 代替。
+
 <a href="https://github.com/deepwn/addi/releases"><img alt="Release" src="https://img.shields.io/github/v/release/deepwn/addi?logo=github" /></a>
 <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg" /></a>
 <a href="https://marketplace.visualstudio.com/items?itemName=deepwn.addi"><img alt="VS Code" src="https://img.shields.io/badge/VS%20Code-%5E1.120-blue?logo=visual-studio-code" /></a>
@@ -61,16 +66,16 @@ Backup, migrate, or share provider configurations as JSON. Supports encrypted ex
 
 ## Documentation
 
-| Document                                                         | Description                                                 |
-| ---------------------------------------------------------------- | ----------------------------------------------------------- |
-| [User Guide](./docs/DOCUMENTATION.md)                            | Installation, configuration, usage, and troubleshooting     |
-| [Changelog](./CHANGELOG.md)                                      | Version history and release notes                           |
-| [Architecture Spec](./docs/architecture-spec.md)                 | Layered architecture, data flow, core design constraints    |
-| [Coding Standards](./docs/coding-standards.md)                   | Type safety, logging, error handling, naming conventions    |
-| [AI SDK Reference](./docs/ai-sdk-reference.md)                   | AI SDK v6 API types and mapping                             |
-| [VS Code API Reference](./docs/vscode-reference.md)              | VS Code Copilot API and Proposed API reference              |
-| [Reasoning Architecture](./docs/reasoning-architecture.md)       | Architecture reference for reasoning/thinking capabilities   |
-| [Config Export/Import](./docs/encrypted-config-export-import.md) | Encrypted JSON backup, migration, and sharing of configs    |
+| Document                                                         | Description                                                |
+| ---------------------------------------------------------------- | ---------------------------------------------------------- |
+| [User Guide](./docs/DOCUMENTATION.md)                            | Installation, configuration, usage, and troubleshooting    |
+| [Changelog](./CHANGELOG.md)                                      | Version history and release notes                          |
+| [Architecture Spec](./docs/architecture-spec.md)                 | Layered architecture, data flow, core design constraints   |
+| [Coding Standards](./docs/coding-standards.md)                   | Type safety, logging, error handling, naming conventions   |
+| [AI SDK Reference](./docs/ai-sdk-reference.md)                   | AI SDK v6 API types and mapping                            |
+| [VS Code API Reference](./docs/vscode-reference.md)              | VS Code Copilot API and Proposed API reference             |
+| [Reasoning Architecture](./docs/reasoning-architecture.md)       | Architecture reference for reasoning/thinking capabilities |
+| [Config Export/Import](./docs/encrypted-config-export-import.md) | Encrypted JSON backup, migration, and sharing of configs   |
 
 ## Feature Roadmap
 
