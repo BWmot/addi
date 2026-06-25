@@ -8,6 +8,16 @@ import { TokenFormatter } from "../../common/utils";
 import { ConfigManager } from "../../infrastructure/vscode/configService";
 import { ModelTester } from "../../core/llm/modelTester";
 
+/**
+ * Extended model data type with optional speed tracking fields
+ * (per coding-standards §1.2).
+ */
+interface ModelDataWithSpeed {
+  [key: string]: unknown;
+  averageSpeed?: number;
+  speedHistory?: number[];
+}
+
 export class EditorViewManager {
   public static readonly viewType = "addiEditor";
   private _panel: vscode.WebviewPanel | undefined;
@@ -24,7 +34,7 @@ export class EditorViewManager {
     isBatch?: boolean; // Flag for batch edit mode
     batchCount?: number; // Number of items in batch
   } = { mode: "edit", type: "provider" };
-  private _lastUpdateMessage: any | undefined;
+  private _lastUpdateMessage: unknown;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -118,7 +128,7 @@ export class EditorViewManager {
       }
     }
 
-    this._currentItem = item as any;
+    this._currentItem = item;
     this._lastVerifiedData = undefined;
     this._detectedSpeed = undefined;
 
@@ -175,7 +185,7 @@ export class EditorViewManager {
       }
     }
 
-    let dataToSend: any = {};
+    let dataToSend: Record<string, unknown> = {};
     if (mode === "create") {
       if (prefillData) {
         dataToSend = prefillData;
@@ -276,7 +286,7 @@ export class EditorViewManager {
     return result?.provider.id;
   }
 
-  private async _saveProvider(data: any) {
+  private async _saveProvider(data: Record<string, unknown>) {
     // Defensive: batch editing providers is not supported
     if (this._viewState.isBatch) {
       vscode.window.showErrorMessage(vscode.l10n.t("Batch editing providers is not supported."));
@@ -361,7 +371,7 @@ export class EditorViewManager {
     }
   }
 
-  private async _verifyModel(data: any) {
+  private async _verifyModel(data: Record<string, unknown>) {
     if (!this._currentProvider) {
       vscode.window.showErrorMessage(vscode.l10n.t("No provider context found."));
       return;
@@ -370,7 +380,7 @@ export class EditorViewManager {
     const maxInputTokens = TokenFormatter.parse(data.maxInputTokens);
     const maxOutputTokens = TokenFormatter.parse(data.maxOutputTokens);
 
-    const modelDraft: any = {
+    const modelDraft: Record<string, unknown> = {
       id: data.id,
       name: data.name,
       family: data.family,
@@ -431,7 +441,7 @@ export class EditorViewManager {
               msg += vscode.l10n.t("Speed: {0} t/s", result.speed.toFixed(1));
             }
 
-            const updates: any = {};
+            const updates: Record<string, unknown> = {};
             let hasUpdates = false;
 
             if (result.detectedMaxInputTokens) {
@@ -485,7 +495,7 @@ export class EditorViewManager {
     );
   }
 
-  private async _saveModel(data: any) {
+  private async _saveModel(data: Record<string, unknown>) {
     logger.debug(
       "_saveModel called",
       {
@@ -536,14 +546,14 @@ export class EditorViewManager {
     };
 
     if (this._detectedSpeed) {
-      (modelData as any).averageSpeed = this._detectedSpeed;
-      (modelData as any).speedHistory = [this._detectedSpeed];
+      (modelData as ModelDataWithSpeed).averageSpeed = this._detectedSpeed;
+      (modelData as ModelDataWithSpeed).speedHistory = [this._detectedSpeed];
     }
 
     if (this._viewState.mode === "create") {
       // For new models, don't set speedHistory (no history yet)
       if (this._detectedSpeed) {
-        delete (modelData as any).speedHistory;
+        delete (modelData as ModelDataWithSpeed).speedHistory;
       }
       if (!this._viewState.parentId) {
         vscode.window.showErrorMessage(
@@ -552,7 +562,7 @@ export class EditorViewManager {
         return;
       }
       try {
-        await this._manager.addModel(this._viewState.parentId, modelData as any);
+        await this._manager.addModel(this._viewState.parentId, modelData as ModelDraft);
         vscode.window.showInformationMessage(vscode.l10n.t('Model "{0}" added.', data.name));
         this._refreshTree();
         this._panel?.dispose();
@@ -586,8 +596,8 @@ export class EditorViewManager {
     if (this._detectedSpeed) {
       await this._manager.updateModelSpeed(parentId, model.id, this._detectedSpeed);
       // Remove speedHistory and averageSpeed from modelData to avoid overriding
-      delete (modelData as any).speedHistory;
-      delete (modelData as any).averageSpeed;
+      delete (modelData as ModelDataWithSpeed).speedHistory;
+      delete (modelData as ModelDataWithSpeed).averageSpeed;
     }
 
     const success = await this._manager.updateModel(parentId, model.id, modelData);
@@ -613,7 +623,7 @@ export class EditorViewManager {
 
     try {
       const ids = this._currentItems.map((i) => i.model.id);
-      const updatedCount = await this._manager.updateModels(parentId, ids, batchUpdateData as any);
+      const updatedCount = await this._manager.updateModels(parentId, ids, batchUpdateData as Record<string, unknown>);
       vscode.window.showInformationMessage(
         vscode.l10n.t("{0} model(s) updated successfully.", updatedCount),
       );

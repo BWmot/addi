@@ -3,6 +3,18 @@ import type { ModelMessage, UserContent, ToolContent, AssistantContent } from "a
 import { logger, LogScope } from "../../common/logger";
 import type { ModelCapabilities } from "../../common/types";
 
+
+// Extended proposed API interface per coding-standards §1.2
+interface DataPartExtended extends vscode.LanguageModelDataPart {
+  data?: unknown;
+  mediaType?: string;
+}
+
+// AI SDK tool result output type
+type ToolResultOutput =
+  | { type: "text"; value: string }
+  | { type: "json"; value: unknown }
+  | { type: "content"; value: unknown[] };
 export class MessageConverter {
   static async toAiCoreMessages(
     messages: readonly vscode.LanguageModelChatRequestMessage[],
@@ -32,8 +44,8 @@ export class MessageConverter {
             userContent.push({ type: "text", text: part.value });
           } else if (part instanceof vscode.LanguageModelDataPart) {
             // @ts-expect-error: vscode.LanguageModelDataPart.value might be missing in types
-            const data = part.value || (part as any).data;
-            const mime = part.mimeType || (part as any).mediaType || "application/octet-stream";
+            const data = part.value || (part as DataPartExtended).data;
+            const mime = part.mimeType || (part as DataPartExtended).mediaType || "application/octet-stream";
 
             if (mime.startsWith("image/")) {
               if (capabilities?.vision === false) {
@@ -75,7 +87,7 @@ export class MessageConverter {
             // Check for images or mixed content
             const hasImage = tr.content.some((c) => c instanceof vscode.LanguageModelDataPart);
 
-            let output: any;
+            let output: ToolResultOutput;
 
             if (hasImage) {
               const contentParts = tr.content
@@ -84,7 +96,7 @@ export class MessageConverter {
                     return { type: "text", text: c.value };
                   } else if (c instanceof vscode.LanguageModelDataPart) {
                     // @ts-expect-error -- VS Code proposed API may not expose .data in stable typings
-                    const data = c.value || (c as any).data;
+                    const data = c.value || (c as DataPartExtended).data;
                     const base64 =
                       data instanceof Uint8Array
                         ? MessageConverter.uint8ArrayToBase64(data)
@@ -125,11 +137,13 @@ export class MessageConverter {
               }
             }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
             toolContent.push({
               type: "tool-result",
               toolCallId: tr.callId,
               toolName: toolName,
               output: output,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any);
           }
 
@@ -157,6 +171,7 @@ export class MessageConverter {
               toolCallId: part.callId,
               toolName: part.name,
               input: part.input,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any);
           } else if (hasThinkingSupport && part instanceof vscode.LanguageModelThinkingPart) {
             // 处理 Reasoning/Thinking part

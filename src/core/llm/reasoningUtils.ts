@@ -193,30 +193,33 @@ export function collapseStreamSuffix(
 // ============================================================================
 
 /**
- * Collapse repeated whitespace runs (spaces, tabs, etc.) into a single space.
- * Also trims trailing whitespace.
+ * Collapse excessive horizontal whitespace runs (spaces, tabs) into a single space.
+ * Also trims trailing horizontal whitespace.
  *
  * Some DeepSeek-family models occasionally emit streams consisting entirely
  * of space characters (thousands of them).  This function prevents those
  * garbage runs from being passed to the UI.
  *
  * Strategy:
- *   1. Collapse any run of 2+ whitespace chars to a single space
- *   2. Trim trailing whitespace
+ *   1. Collapse runs of 10+ consecutive spaces/tabs → single space
+ *   2. Trim trailing spaces/tabs
  *
- * This is safe for LLM output because legitimate multi-space formatting
- * (e.g. code indentation) is never emitted as trailing repetitive whitespace
- * in a text-delta stream.
+ * ⚠️ Threshold of 10 is intentional:
+ *   - Code indentation (2-8 spaces) is preserved unchanged.
+ *   - DeepSeek garbage (100s–1000s of spaces) is collapsed.
+ *   - Newlines are preserved for markdown structure.
  *
  * @param text - The text to clean.
- * @returns The cleaned text with excessive whitespace collapsed.
+ * @returns The cleaned text with excessive horizontal whitespace collapsed.
  */
 export function collapseRepeatedWhitespace(text: string): string {
-  if (!text || text.length < 2) {
+  if (!text || text.length < 10) {
     return text;
   }
-  // Collapse runs of 2+ whitespace characters to a single space
-  const collapsed = text.replace(/\s{2,}/g, " ");
-  // Trim trailing whitespace
-  return collapsed.replace(/\s+$/, "");
+  // Collapse runs of 10+ horizontal whitespace chars (spaces/tabs) to a single space.
+  // ≤9 consecutive spaces (normal code indentation) are preserved.
+  // Newlines are preserved — markdown structure depends on consecutive \n.
+  const collapsed = text.replace(/[ \t]{10,}/g, " ");
+  // Trim trailing horizontal whitespace only (preserve trailing newlines)
+  return collapsed.replace(/[ \t]+$/, "");
 }

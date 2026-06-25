@@ -365,7 +365,8 @@ export class AIProviderRegistry {
     // 应用中间件链
     if (middlewares.length > 0) {
       modelInstance = wrapLanguageModel({
-        model: modelInstance as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      model: modelInstance as any,
         middleware: middlewares,
         modelId,
         providerId: provider.providerType,

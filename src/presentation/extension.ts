@@ -116,9 +116,9 @@ export function activate(context: vscode.ExtensionContext) {
   commandHandler.setEditorViewManager(editorViewManager);
 
   // Helper: register a command with error handling and auto-dispose
-  function registerCmd(id: string, handler: (...args: any[]) => any): void {
+  function registerCmd(id: string, handler: (...args: unknown[]) => unknown): void {
     context.subscriptions.push(
-      vscode.commands.registerCommand(id, async (...args: any[]) => {
+      vscode.commands.registerCommand(id, async (...args: unknown[]) => {
         try {
           await handler(...args);
         } catch (error) {

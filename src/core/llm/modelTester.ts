@@ -135,8 +135,8 @@ export class ModelTester {
           // Don't fail the whole test, just leave speed undefined
         }
       }
-    } catch (error: any) {
-      result.error = error.message || String(error);
+    } catch (error: unknown) {
+      result.error = (error as Error)?.message || String(error);
       logger.error("Model test failed", error, LogScope.MODEL_TESTER);
     }
 
@@ -185,7 +185,7 @@ export class ModelTester {
         test_tool: {
           description: "A test tool",
           inputSchema: jsonSchema({ type: "object", properties: {} }),
-        } as any,
+        },
       };
     }
 
@@ -196,7 +196,7 @@ export class ModelTester {
       maxTokens: payload.maxOutputTokens ?? 100,
       tools,
       abortSignal: signal,
-    } as any);
+    });
 
     if (payload.type === "tools") {
       // Check if tool was called
@@ -394,17 +394,17 @@ export class ModelTester {
       };
 
       // We expect this to fail and throw an error string
-      await ModelTester.performRequest(provider, modelDraft, payload as any, token);
+      await ModelTester.performRequest(provider, modelDraft, payload, token);
       return 0; // Surprisingly succeeded?
-    } catch (e: any) {
-      let errorMsg = (e.message || String(e)).toLowerCase();
+    } catch (e: unknown) {
+      let errorMsg = (e instanceof Error ? e.message : String(e)).toLowerCase();
 
       // Check for AI SDK specific error fields to capture the full error details
-      if (e.responseBody) {
-        errorMsg += " " + String(e.responseBody).toLowerCase();
+      if ((e as Record<string, unknown>)?.responseBody) {
+        errorMsg += " " + String((e as Record<string, unknown>)?.responseBody).toLowerCase();
       }
-      if (e.data) {
-        errorMsg += " " + JSON.stringify(e.data).toLowerCase();
+      if ((e as Record<string, unknown>)?.data) {
+        errorMsg += " " + JSON.stringify((e as Record<string, unknown>)?.data).toLowerCase();
       }
 
       onProgress?.(`Probing error message: ${errorMsg}`);
@@ -443,7 +443,7 @@ export class ModelTester {
   ): Promise<boolean> {
     try {
       const intValue = Math.floor(value);
-      const payload: any = { type: "text" };
+      const payload: Record<string, unknown> = { type: "text" };
 
       if (mode === "input") {
         // Construct a prompt with approximately 'value' tokens.

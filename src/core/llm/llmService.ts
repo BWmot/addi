@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+﻿import * as vscode from "vscode";
 import { streamText, generateText, type ModelMessage, type Tool } from "ai";
 import type { Provider, Model, ModelOptions } from "../../common/types";
 import { AIProviderRegistry } from "./aiRegistry";
@@ -27,6 +27,67 @@ interface ExecutionOptions {
   requestStartTime?: number;
   // Trace ID for correlating logs across the entire request chain
   traceId?: string;
+}
+
+/**
+ * Minimal interface for AI SDK stream parts (per coding-standards 搂1.1).
+ * Replaces `any` with known optional properties used by part handlers.
+ */
+interface StreamPart {
+  type: string;
+  text?: string;
+  delta?: string;
+  toolCallId?: string;
+  toolName?: string;
+  args?: unknown;
+  input?: unknown;
+  result?: unknown;
+  output?: unknown;
+  error?: unknown;
+  finishReason?: string;
+  id?: string;
+  providerMetadata?: unknown;
+}
+
+/**
+ * Minimal interface for AI SDK step objects in non-streaming mode.
+ */
+interface StepResult {
+  toolCalls?: Array<{
+    toolCallId: string;
+    toolName: string;
+    args?: unknown;
+    input?: unknown;
+  }>;
+  toolResults?: Array<{
+    toolCallId: string;
+    output: unknown;
+  }>;
+  reasoning?: string;
+  reasoningText?: string;
+  text?: string;
+}
+
+/**
+ * Minimal error-like interface (per coding-standards 搂1.1).
+ */
+interface ErrorLike {
+  name?: string;
+  message?: string;
+}
+
+/**
+ * Extended progress type for proposed API thinking parts (per coding-standards 搂1.2).
+ */
+interface ThinkingProgress extends vscode.Progress<vscode.LanguageModelResponsePart> {
+  report(value: vscode.LanguageModelResponsePart | vscode.LanguageModelThinkingPart): void;
+}
+
+/**
+ * Minimal interface for AI SDK streamText result in streaming mode.
+ */
+interface StreamTextResult {
+  fullStream: AsyncIterable<StreamPart>;
 }
 
 // ============================================================================
@@ -247,7 +308,7 @@ export class LLMService {
     system: string | undefined,
     tools: Record<string, Tool>,
     options: ExecutionOptions,
-  ): any {
+  ): Record<string, unknown> {
     const aiModel = this.registry.createModel(provider, model);
     const extraBody = this.parseExtraBody(model, provider);
     const extraHeaders = this.parseExtraHeaders(model, provider);
@@ -259,7 +320,7 @@ export class LLMService {
       mergedHeaders["X-Addi-Trace-Id"] = options.traceId;
     }
 
-    const baseOptions: any = {
+        const baseOptions: Record<string, unknown> = {
       model: aiModel,
       system,
       messages,
@@ -275,7 +336,7 @@ export class LLMService {
       headers: Object.keys(mergedHeaders).length > 0 ? mergedHeaders : undefined,
       extraBody: Object.keys(extraBody).length > 0 ? extraBody : undefined,
       // onFinish fallback for non-streaming: streaming mode reports via fullStream
-      onFinish: ({ usage }: any) => {
+      onFinish: ({ usage }: { usage: { outputTokens?: number } }) => {
         if (options.onStats && usage && !options._streamingReported) {
           const now = Date.now();
           options.onStats({
@@ -544,7 +605,7 @@ export class LLMService {
    * Handle streaming response from AI SDK.
    */
   private async executeStreaming(
-    options: any,
+    options: Record<string, unknown>,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
     executionOptions: ExecutionOptions,
@@ -568,7 +629,7 @@ export class LLMService {
     // colons etc. arrive one char at a time in streaming).
     let recentPunctCleaned = "";
 
-    let result: any;
+    let result: StreamTextResult | undefined;
     try {
       // Prevent onFinish fallback (from buildAiOptions) from double-firing
       // in streaming mode.  The finally block below is the sole stats reporter
@@ -610,7 +671,7 @@ export class LLMService {
         }
 
         if (part.type === "error") {
-          const error = part.error as any;
+          const error = part.error as ErrorLike;
           const errorMsg = error?.message || String(part.error);
           logger.error(
             `[${executionOptions.traceId ?? "?"}] Stream error part received`,
@@ -726,12 +787,12 @@ export class LLMService {
         // trailing-garbage patterns like "::::::" or "。。。。。。" or
         // Ali DS suffix looping like "我来试试。我来试试。"
         const tail = accumulatedText.length > 2000
-          ? "…" + accumulatedText.slice(-2000)
+          ? "..." + accumulatedText.slice(-2000)
           : accumulatedText;
         const suffixCleaned = collapseRepeatedSuffix(accumulatedText);
         const collapsed = collapseRepeatedWhitespace(suffixCleaned);
         const cleanedTail = collapsed.length > 2000
-          ? "…" + collapsed.slice(-2000)
+          ? "..." + collapsed.slice(-2000)
           : collapsed;
         logger.info(
           `[${executionOptions.traceId ?? "?"}] STREAM-TEXT response text (len=${accumulatedText.length}, cleaned=${collapsed.length})`,
@@ -813,7 +874,7 @@ export class LLMService {
    * Handle non-streaming response from AI SDK.
    */
   private async executeNonStreaming(
-    options: any,
+    options: Record<string, unknown>,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     executionOptions: ExecutionOptions,
   ): Promise<void> {
@@ -821,13 +882,14 @@ export class LLMService {
     let hasReportedReasoning = false;
 
     try {
-      const result = await generateText(options);
-      const steps = (result.steps as any[]) || [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await generateText(options as any);
+      const steps = (result.steps as unknown[]) || [];
 
       for (const step of steps) {
-        const reasoningBefore = this.extractReasoningContent(step);
-        this.processReasoning(step, progress, executionOptions);
-        this.processToolCalls(step, progress);
+        const reasoningBefore = this.extractReasoningContent(step as StepResult);
+        this.processReasoning(step as StepResult, progress, executionOptions);
+        this.processToolCalls(step as StepResult, progress);
         if (reasoningBefore) {
           hasReportedReasoning = true;
         }
@@ -921,12 +983,12 @@ export class LLMService {
    * 我们只需要正确转换到VSCode API格式。
    */
   private processResponsePart(
-    part: any,
+    part: StreamPart,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     options: ExecutionOptions,
   ): void {
     // Handler map for different stream part types
-    const handlers: Record<string, (part: any) => void> = {
+    const handlers: Record<string, (part: StreamPart) => void> = {
       // 文本内容 - AI SDK fullStream 使用 'text' 属性
       "text-delta": (p) => {
         const cleaned = collapseRepeatedPunctuation(p.text);
@@ -995,7 +1057,7 @@ export class LLMService {
    *   - part.providerMetadata (optional)
    */
   private handleThinkingDelta(
-    part: any,
+    part: StreamPart,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     options: ExecutionOptions,
   ): void {
@@ -1016,7 +1078,7 @@ export class LLMService {
    */
   private reportReasoning(
     text: string,
-    part: any,
+    part: StreamPart,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     options: ExecutionOptions,
   ): void {
@@ -1038,7 +1100,7 @@ export class LLMService {
    * 对于非流式响应，AI SDK会在steps中包含thinking内容。
    * 这个方法简化了提取逻辑，直接从标准字段获取。
    */
-  private extractReasoningContent(step: any): string {
+  private extractReasoningContent(step: StepResult): string {
     return extractReasoningContentFromStep(step);
   }
 
@@ -1047,7 +1109,7 @@ export class LLMService {
    * 对于非流式响应，AI SDK已将thinking内容放在step中。
    */
   private processReasoning(
-    step: any,
+    step: StepResult,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     options: ExecutionOptions,
   ): void {
@@ -1059,7 +1121,7 @@ export class LLMService {
 
     // Always report to VS Code UI
     const thinkingPart = new vscode.LanguageModelThinkingPart(reasoning);
-    progress.report(thinkingPart as any);
+    (progress as ThinkingProgress).report(thinkingPart);
 
     // Also invoke callback if present
     if (options.onReasoning) {
@@ -1071,7 +1133,7 @@ export class LLMService {
    * Process tool calls from a step.
    */
   private processToolCalls(
-    step: any,
+    step: StepResult,
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
   ): void {
     for (const tc of step.toolCalls || []) {
@@ -1079,7 +1141,9 @@ export class LLMService {
         new vscode.LanguageModelToolCallPart(tc.toolCallId, tc.toolName, tc.args || tc.input),
       );
 
-      const tr = step.toolResults?.find((r: any) => r.toolCallId === tc.toolCallId);
+      const tr = step.toolResults?.find(
+        (r: { toolCallId: string; output: unknown }) => r.toolCallId === tc.toolCallId,
+      );
       if (tr) {
         const res = typeof tr.output === "string" ? tr.output : JSON.stringify(tr.output);
         progress.report(
@@ -1095,7 +1159,7 @@ export class LLMService {
    * Handle errors during execution.
    */
   private handleError(
-    error: any,
+    error: ErrorLike,
     provider?: Provider,
     model?: Model,
     traceId?: string,
