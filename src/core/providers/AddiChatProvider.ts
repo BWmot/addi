@@ -5,6 +5,10 @@ import { logger, LogScope, generateTraceId } from "../../common/logger";
 import { ToolRegistry } from "../llm/toolRegistry";
 import type { LLMService } from "../llm/llmService";
 import { MessageConverter } from "../llm/messageConverter";
+import { AutoRouter } from "../llm/autoRouter";
+
+/** 虚拟路由模型的特殊 ID — 不会被任何真实模型的 UUID 冲突 */
+const AUTO_ROUTER_MODEL_ID = "_auto_router_";
 
 /**
  * Main Chat Provider Implementation for VS Code.
@@ -56,7 +60,29 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
       },
       LogScope.CHAT_PROVIDER,
     );
-    return filterProviders.flatMap((p) =>
+    // ── 虚拟 "Auto Router" 模型 ──
+    // 仅在有 ≥2 个可用模型时才显示（只有一个模型时路由无意义）
+    const allModels = filterProviders.flatMap((p) => p.models);
+    const autoRouterEntry: vscode.LanguageModelChatInformation | null =
+      allModels.length >= 2
+        ? {
+            id: `addi-model:${AUTO_ROUTER_MODEL_ID}`,
+            name: "Auto Router (Addi)",
+            family: "Addi",
+            version: "1.0.0",
+            maxInputTokens: Math.max(...allModels.map((m) => m.maxInputTokens), 0) || 128000,
+            maxOutputTokens: Math.max(...allModels.map((m) => m.maxOutputTokens), 0) || 16384,
+            tooltip: "自动分析请求并选择最佳模型",
+            isUserSelectable: true,
+            category: { label: "Addi Auto", order: 0 },
+            capabilities: {
+              imageInput: allModels.some((m) => m.capabilities?.vision),
+              toolCalling: allModels.some((m) => m.capabilities?.toolCalling !== false),
+            },
+          }
+        : null;
+
+    const providerModels = filterProviders.flatMap((p) =>
       p.models.map((m) => {
         const friendlyInput = TokenFormatter.format(m.maxInputTokens) || String(m.maxInputTokens);
         const friendlyOutput =
@@ -83,6 +109,13 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
         };
       }),
     );
+
+    const result: vscode.LanguageModelChatInformation[] = [];
+    if (autoRouterEntry) {
+      result.push(autoRouterEntry);
+    }
+    result.push(...providerModels);
+    return result;
   }
 
   async provideLanguageModelChatResponse(
@@ -127,7 +160,9 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
       },
       LogScope.CHAT_PROVIDER,
     );
-    const result = this.repository.findModel(modelId);
+    const result = modelId === AUTO_ROUTER_MODEL_ID
+      ? this.resolveAutoRouter(messages, toolDefinitions, traceId)
+      : this.repository.findModel(modelId);
     if (!result) {
       const allModels = this.repository.getProviders().flatMap((p) =>
         p.models.map((m) => ({
@@ -328,5 +363,61 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
       return fallback;
     }
     return undefined;
+  }
+
+  /**
+   * 自动路由：从所有已配置的 provider/model 中选择最佳模型。
+   * 返回 { provider, model } 供后续流程使用，若无可选模型则返回 null。
+   */
+  private resolveAutoRouter(
+    messages: readonly vscode.LanguageModelChatRequestMessage[],
+    toolDefinitions: ReadonlyArray<vscode.LanguageModelChatTool> | undefined,
+    traceId: string,
+  ): { provider: Provider; model: import("../../common/types").Model } | null {
+    const allProviders = this.repository.getProviders();
+
+    // 收集所有候选 (provider + model)
+    const candidates = allProviders.flatMap((p) =>
+      p.models.map((m) => ({ provider: p, model: m })),
+    );
+
+    if (candidates.length === 0) {
+      logger.warn(`[${traceId}] AutoRouter: no candidates available`, undefined, LogScope.CHAT_PROVIDER);
+      return null;
+    }
+
+    // 检测请求特征
+    const hasTools = (toolDefinitions?.length ?? 0) > 0;
+    const hasImages = messages.some((msg) => {
+      if (!("content" in msg)) return false;
+      const content = (msg as { content: unknown }).content;
+      if (!Array.isArray(content)) return false;
+      return content.some(
+        (part: unknown) =>
+          part instanceof vscode.LanguageModelDataPart &&
+          (part as vscode.LanguageModelDataPart).mimeType?.startsWith("image/"),
+      );
+    });
+
+    logger.info(
+      `[${traceId}] AutoRouter: analyzing request`,
+      { candidateCount: candidates.length, hasTools, hasImages },
+      LogScope.CHAT_PROVIDER,
+    );
+
+    const decision = AutoRouter.select(messages, hasTools, hasImages, candidates);
+
+    if (!decision) {
+      logger.warn(`[${traceId}] AutoRouter: no suitable model found`, undefined, LogScope.CHAT_PROVIDER);
+      return null;
+    }
+
+    logger.info(
+      `[${traceId}] AutoRouter: routed to ${decision.reason}`,
+      undefined,
+      LogScope.CHAT_PROVIDER,
+    );
+
+    return { provider: decision.provider, model: decision.model };
   }
 }
