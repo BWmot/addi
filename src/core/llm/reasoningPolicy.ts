@@ -62,6 +62,46 @@ export function shouldSkipOpenAIReasoningEffort(provider: Provider, model: Model
 }
 
 /**
+ * Determine whether streaming suffix-repetition cleanup should be applied.
+ *
+ * Some open-source / Chinese models (DeepSeek, GLM, MiMo, Qwen, etc.) can
+ * enter looping states where they emit the same sentence or clause repeatedly.
+ * The collapseStreamSuffix heuristic catches this, but it is aggressive enough
+ * to also eat legitimate repeated structures in normal Markdown responses
+ * (ASCII art, tables, horizontal rules, numbered lists).
+ *
+ * Therefore we ONLY enable it for model families known to exhibit the loop
+ * behaviour.  GPT, Claude, Gemini, and other models from major Western
+ * providers are excluded.
+ *
+ * Detection uses model RID, name, family, and provider ID so it works even
+ * when a proxy renames the model.
+ */
+export function needsSuffixRepeatCleanup(provider: Provider, model: Model): boolean {
+  const rid    = model.rid?.trim().toLowerCase()    ?? "";
+  const name   = model.name?.trim().toLowerCase()   ?? "";
+  const family = model.family?.trim().toLowerCase() ?? "";
+  const pid    = provider.id?.trim().toLowerCase()  ?? "";
+
+  const ids = [rid, name, family, pid];
+
+  const LOOP_PRONE_PATTERNS = [
+    "deepseek",
+    "mimo",
+    "glm",
+    "chatglm",
+    "qwen",
+    "baichuan",
+    "yi-",
+    "internlm",
+    "hunyuan",
+    "ernie",
+  ];
+
+  return LOOP_PRONE_PATTERNS.some(pat => ids.some(id => id.includes(pat)));
+}
+
+/**
  * Remove any existing OpenAI reasoningEffort entries when the skip policy applies.
  *
  * This is necessary because model/provider level providerOptions can already

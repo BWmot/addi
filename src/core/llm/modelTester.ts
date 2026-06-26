@@ -184,7 +184,7 @@ export class ModelTester {
       tools = {
         test_tool: {
           description: "A test tool",
-          inputSchema: jsonSchema({ type: "object", properties: {} }),
+          parameters: jsonSchema({ type: "object", properties: {} }),
         },
       };
     }

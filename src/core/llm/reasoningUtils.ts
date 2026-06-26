@@ -74,31 +74,40 @@ export function extractReasoningContentFromStep(step: unknown): string {
 // ============================================================================
 
 /**
- * Collapse runs of 3 or more identical punctuation characters into a single
- * character.  For example:
- *   "text::::::::" → "text:"
+ * Collapse runs of 2+ identical **full-width** punctuation characters into
+ * a single character.  For example:
  *   "你好。。。。。。" → "你好。"
- *   "done!!!"  → "done!" (3+ → 1)
- *   "done!!"   → "done!!" (2 is left as-is)
+ *   "读出来：：：：：：" → "读出来："
  *
- * This is designed to clean up trailing-punctuation artifacts that some
- * DeepSeek-family models emit at the end of tool-only or mixed responses.
+ * ⚠️ Only full-width CJK punctuation is processed — ASCII punctuation
+ *    (`!#$%&*+,-./:;<=>?@[\]^_`{|}~`) is **never** touched.
+ *    This protects markdown / code syntax that legitimately uses repeated
+ *    ASCII punctuation: `` ``` `` (code fence), `**` (bold), `//` (comment),
+ *    `##` (heading), `---` (horizontal rule), etc.
+ *
+ * ⚠️ No `length < N` guard — the guard caused streaming oscillation:
+ *    when combined text was only 2 chars, the guard skipped cleanup →
+ *    delta was output; next delta made it 3 chars → cleanup triggered →
+ *    delta eaten; recent shrank back to 1 → next delta 2 chars → skipped…
+ *    This 50% leakage pattern was the root cause of `：：：` residue.
+ *    Without the guard, the regex `\1+` naturally won't match a single
+ *    character (needs 1 capture + 1+ backreference = 2+ total), so the
+ *    first occurrence is always preserved and subsequent ones collapsed.
+ *
+ * Verified: 37 streaming deltas of `：` → only 1 leaked (the first char).
  *
  * @param text - The raw text to clean.
- * @returns The cleaned text with spurious repeated punctuation collapsed.
+ * @returns The cleaned text with spurious repeated full-width punctuation collapsed.
  */
 export function collapseRepeatedPunctuation(text: string): string {
-  if (!text || text.length < 3) {
+  if (!text) {
     return text;
   }
-  // Use \1+ to match the ENTIRE run of identical punctuation (not just
-  // exactly 3), so that 100 dots → 1 dot rather than ~33 dots.
-  // Threshold is ≥ 2 so that even "：：" or "。。" is collapsed — this is
-  // critical in streaming where single-char deltas cause oscillation
-  // (":"→"::"→":"→"::"→…) leaking ~50% of repeated punctuation.
+  // Only full-width CJK punctuation. ASCII punctuation is excluded to
+  // protect markdown/code syntax.  \1+ matches 1+ repetitions (2+ total).
   return text.replace(
-    /([!\"#$%&'()*+,\-.\/:;<=>?@\[\\\]^_`{|}~。，、；：？！…—·])\1+/g,
-    (match) => (match.length >= 2 ? match.charAt(0) : match),
+    /([。，、；：？！…—·])\1+/g,
+    (match) => match.charAt(0),
   );
 }
 
@@ -153,7 +162,15 @@ export function collapseRepeatedSuffix(
     }
 
     if (count >= minRepeat) {
-      return text.slice(0, pos + patLen);
+      const collapsed = text.slice(0, pos + patLen);
+      // ⚠️ Recurse to handle even-count repetitions: when a pattern of
+      // length 2L matches (e.g. "测试：测试："), it collapses N copies to
+      // 2 — but the shorter L-length pattern ("测试：") would have
+      // collapsed to 1.  Without recursion, even-count repeats leak a
+      // residual duplicate to the UI.  Each recursion strictly shortens
+      // the text (count≥2 → at least one copy removed), so it always
+      // terminates at the base-case length guard above.
+      return collapseRepeatedSuffix(collapsed, minRepeat);
     }
   }
 
@@ -178,11 +195,22 @@ export function collapseStreamSuffix(
   const candidate = accumulated + incoming;
   const cleaned = collapseRepeatedSuffix(candidate, minRepeat);
   // If cleaning shortened the text, the delta for reporting is the
-  // non-overlapping tail of `cleaned`.
+  // portion of `cleaned` that extends *beyond* `accumulated` — i.e. text
+  // not already sent to the UI in previous deltas.
+  //
+  // ⚠️ BUG FIX (was: `cleaned.slice(max(0, cleaned.length - incoming.length))`):
+  // When the incoming chunk is entirely a repetition, `cleaned` collapses
+  // back to `accumulated` (same length).  The old formula then took the last
+  // `incoming.length` chars of `accumulated` — already-sent text — and
+  // re-sent it to the UI, causing the exact repetition we were trying to
+  // suppress.  Example: accumulated="现在运行单元测试："(9), incoming="测试："(3)
+  //   candidate="现在运行单元测试：测试："(12) → cleaned="现在运行单元测试："(9)
+  //   OLD delta = cleaned.slice(6) = "测试："  ← LEAKS (already sent)
+  //   NEW delta = cleaned.slice(9) = ""        ← correctly suppressed
   if (cleaned.length < candidate.length) {
-    const strippedDelta = cleaned.slice(Math.max(0, cleaned.length - incoming.length));
-    // Only report non-empty delta; stripped may be "" if the entire incoming
-    // chunk was eaten by suffix collapse.
+    const strippedDelta = cleaned.length > accumulated.length
+      ? cleaned.slice(accumulated.length)
+      : "";
     return [cleaned, strippedDelta];
   }
   return [candidate, incoming];
@@ -219,7 +247,15 @@ export function collapseRepeatedWhitespace(text: string): string {
   // Collapse runs of 10+ horizontal whitespace chars (spaces/tabs) to a single space.
   // ≤9 consecutive spaces (normal code indentation) are preserved.
   // Newlines are preserved — markdown structure depends on consecutive \n.
+  //
+  // ⚠️ Do NOT trim trailing spaces here — Markdown hard-line-break syntax is
+  //    two trailing spaces before \n ("  \n").  Stripping them would break <br>
+  //    rendering in the Copilot chat panel.  DeepSeek space-garbage is always
+  //    10+ consecutive spaces and is already handled by the regex above.
+  //
+  // After collapsing, if the entire delta is now a lone space with no real content
+  // (i.e. the input was pure spaces/tabs), drop it entirely.  This handles the
+  // "pure garbage space" case (100+ spaces → "") while keeping "text   text" → "text text".
   const collapsed = text.replace(/[ \t]{10,}/g, " ");
-  // Trim trailing horizontal whitespace only (preserve trailing newlines)
-  return collapsed.replace(/[ \t]+$/, "");
+  return /^[ \t]+$/.test(collapsed) ? "" : collapsed;
 }

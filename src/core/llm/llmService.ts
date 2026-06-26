@@ -4,7 +4,7 @@ import type { Provider, Model, ModelOptions } from "../../common/types";
 import { AIProviderRegistry } from "./aiRegistry";
 import { MessageConverter } from "./messageConverter";
 import { extractReasoningContentFromStep, hasStreamPartVisibleContent, collapseRepeatedPunctuation, collapseRepeatedSuffix, collapseStreamSuffix, collapseRepeatedWhitespace } from "./reasoningUtils";
-import { shouldSkipOpenAIReasoningEffort, stripOpenAIReasoningEffort } from "./reasoningPolicy";
+import { shouldSkipOpenAIReasoningEffort, stripOpenAIReasoningEffort, needsSuffixRepeatCleanup } from "./reasoningPolicy";
 import { ToolOrchestrator } from "./toolOrchestrator";
 import { logger, LogScope, generateTraceId } from "../../common/logger";
 
@@ -221,7 +221,7 @@ export class LLMService {
       );
 
       if (useStreaming) {
-        await this.executeStreaming(aiOptions, progress, token, options);
+        await this.executeStreaming(aiOptions, progress, token, options, model, provider);
       } else {
         await this.executeNonStreaming(aiOptions, progress, options);
       }
@@ -609,6 +609,8 @@ export class LLMService {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     token: vscode.CancellationToken,
     executionOptions: ExecutionOptions,
+    model: Model,
+    provider: Provider,
   ): Promise<void> {
     const abortController = new AbortController();
     token.onCancellationRequested(() => {
@@ -627,7 +629,18 @@ export class LLMService {
     let recentCleanText = "";
     // Rolling buffer for punctuation-collapse (per-delta is too small;
     // colons etc. arrive one char at a time in streaming).
+    // Used for ALL models — collapseRepeatedPunctuation only touches CJK
+    // full-width punctuation (。，、；：？！…—·) and is safe to apply
+    // universally.  This catches streaming garbage like GPT-5.4-mini
+    // emitting hundreds of 。 one delta at a time.
     let recentPunctCleaned = "";
+    // Suffix-repetition + whitespace cleanup is model-specific:
+    // only DS/GLM/MiMo/Qwen etc. are known to emit looping text or
+    // garbage whitespace.  These cleanups are more aggressive (they
+    // can match legitimate structural repetition in Markdown) so they
+    // are gated behind enableCleanup.  Punctuation collapse is NOT
+    // gated — it is always safe.
+    const enableCleanup = needsSuffixRepeatCleanup(provider, model);
 
     let result: StreamTextResult | undefined;
     try {
@@ -681,32 +694,69 @@ export class LLMService {
           throw error;
         }
 
-        // ── Text-delta cleanup: punctuation collapse + suffix repetition ──
-        // Apply both cleanups before processResponsePart so the UI never
-        // sees the raw repeated text.  This also ensures downstream
-        // hasReportedText / hasReportedContent tracking uses cleaned values.
+        // ── Text-delta cleanup ──
+        // Apply cleanup before processResponsePart so the UI never sees
+        // raw repeated text.  This also ensures downstream hasReportedText /
+        // hasReportedContent tracking uses cleaned values.
         //
         // Punctuation collapse must be applied to the ACCUMULATED text
         // (not per-delta) because in streaming colons / dots arrive one
         // character at a time — a single-char delta will never trigger the
-        // ≥3 threshold.
+        // ≥2 threshold of the regex.
+        //
+        // ── Layer 1: CJK punctuation collapse — ALL models (universal) ──
+        // Only touches CJK full-width punctuation (。，、；：？！…—·).
+        // Safe for all models — never affects ASCII, Markdown, code, etc.
+        //
+        // ── Layer 2+3: Suffix repetition + whitespace — DS/GLM only ──
+        // These are more aggressive and can cause false positives on
+        // legitimate Markdown (ASCII art, table rows, code indentation).
+        // Gated behind enableCleanup (needsSuffixRepeatCleanup).
         if (part.type === "text-delta" && typeof part.text === "string") {
-          const combined = recentPunctCleaned + part.text;
+          // ── Layer 1: Punctuation collapse (universal) ──
+          // ⚠️ Sliding-window cap (200 chars): punctuation dedup only needs
+          // to see the most-recent chars to detect consecutive repeated CJK
+          // punctuation.  Unbounded growth wastes memory on long responses.
+          const PUNCT_LOOKBACK = 200;
+          const punctWindow = recentPunctCleaned.length > PUNCT_LOOKBACK
+            ? recentPunctCleaned.slice(-PUNCT_LOOKBACK)
+            : recentPunctCleaned;
+          const combined = punctWindow + part.text;
           const punctCleaned = collapseRepeatedPunctuation(combined);
-          const punctDelta = punctCleaned.slice(recentPunctCleaned.length);
-          recentPunctCleaned = punctCleaned;
+          const punctDelta = punctCleaned.slice(punctWindow.length);
+          recentPunctCleaned = (recentPunctCleaned.length > PUNCT_LOOKBACK
+            ? recentPunctCleaned.slice(0, recentPunctCleaned.length - PUNCT_LOOKBACK)
+            : "") + punctCleaned;
 
-          const [newRecent, cleanDelta] = collapseStreamSuffix(recentCleanText, punctDelta);
-          recentCleanText = newRecent;
+          // Start with punctuation-cleaned delta; layers 2+3 may refine it.
+          let cleanDelta = punctDelta;
 
-          // Whitespace cleanup: collapse runs of 2+ spaces and trim trailing
-          // whitespace.  Some DeepSeek-family models emit streams of pure
-          // spaces (thousands of chars) — this prevents them from reaching
-          // the UI while keeping legitimate single spaces intact.
-          const wsCleaned = collapseRepeatedWhitespace(cleanDelta);
-          if (wsCleaned.length > 0) {
-            // Mutate part.text so processResponsePart picks up the cleaned delta
-            part.text = wsCleaned;
+          // ── Layer 2+3: Suffix repetition + whitespace (DS/GLM only) ──
+          if (enableCleanup) {
+            // ⚠️ Sliding-window cap on recentCleanText (500 chars): the greedy
+            // collapseStreamSuffix algorithm only needs short lookback to detect
+            // DS-style loops (same short phrase emitted immediately after itself).
+            // Without this cap the buffer grows to document length and starts
+            // matching legitimate structural repetition.
+            const SUFFIX_LOOKBACK = 500;
+            const windowedRecent = recentCleanText.length > SUFFIX_LOOKBACK
+              ? recentCleanText.slice(-SUFFIX_LOOKBACK)
+              : recentCleanText;
+            const [newRecent, suffixDelta] = collapseStreamSuffix(windowedRecent, punctDelta);
+            // Preserve the prefix that wasn't part of the sliding window, then
+            // append the new cleaned tail from the windowed check.
+            recentCleanText = (recentCleanText.length > SUFFIX_LOOKBACK
+              ? recentCleanText.slice(0, recentCleanText.length - SUFFIX_LOOKBACK)
+              : "") + newRecent;
+
+            // Whitespace cleanup: collapse runs of 10+ spaces.  Some
+            // DeepSeek-family models emit streams of pure spaces (thousands
+            // of chars) — this prevents them from reaching the UI.
+            cleanDelta = collapseRepeatedWhitespace(suffixDelta);
+          }
+
+          if (cleanDelta.length > 0) {
+            part.text = cleanDelta;
             this.processResponsePart(part, progress, executionOptions);
           }
           // Always accumulate for diagnostic log (even fully-suppressed deltas)

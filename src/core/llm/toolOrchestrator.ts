@@ -21,7 +21,7 @@ export class ToolOrchestrator {
             : { type: "object", properties: {} };
           tools[tool.name] = {
             description: tool.description,
-            inputSchema: jsonSchema(schema),
+            parameters: jsonSchema(schema),
           } as Tool;
         } catch (e) {
           logger.error(`Failed to register host tool ${tool.name}`, e, LogScope.TOOL);
