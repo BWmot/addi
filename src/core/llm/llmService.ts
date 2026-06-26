@@ -3,7 +3,7 @@ import { streamText, generateText, type ModelMessage, type Tool } from "ai";
 import type { Provider, Model, ModelOptions } from "../../common/types";
 import { AIProviderRegistry } from "./aiRegistry";
 import { MessageConverter } from "./messageConverter";
-import { extractReasoningContentFromStep, hasStreamPartVisibleContent, collapseRepeatedPunctuation, collapseRepeatedSuffix, collapseStreamSuffix, collapseRepeatedWhitespace } from "./reasoningUtils";
+import { extractReasoningContentFromStep, hasStreamPartVisibleContent, cleanupStreamTextByProvider, collapseRepeatedPunctuation, collapseRepeatedSuffix, collapseStreamSuffix, collapseRepeatedWhitespace } from "./reasoningUtils";
 import { shouldSkipOpenAIReasoningEffort, stripOpenAIReasoningEffort, needsSuffixRepeatCleanup } from "./reasoningPolicy";
 import { ToolOrchestrator } from "./toolOrchestrator";
 import { logger, LogScope, generateTraceId } from "../../common/logger";
@@ -37,6 +37,7 @@ interface StreamPart {
   type: string;
   text?: string;
   delta?: string;
+  usage?: unknown;
   toolCallId?: string;
   toolName?: string;
   args?: unknown;
@@ -88,6 +89,7 @@ interface ThinkingProgress extends vscode.Progress<vscode.LanguageModelResponseP
  */
 interface StreamTextResult {
   fullStream: AsyncIterable<StreamPart>;
+  usage?: Promise<{ outputTokens?: number }>;
 }
 
 // ============================================================================
@@ -642,6 +644,13 @@ export class LLMService {
     // gated — it is always safe.
     const enableCleanup = needsSuffixRepeatCleanup(provider, model);
 
+    // ── Hard-stop circuit breaker for infinite repetition ──
+    // Tracks the last suffix pattern detected by collapseStreamSuffix.
+    // When the same pattern is detected on consecutive calls, increment counter.
+    // When counter reaches HARD_STOP, abort stream to prevent infinite loops.
+    let lastRepetitionPattern = "";
+    let repetitionPatternCount = 0;
+
     let result: StreamTextResult | undefined;
     try {
       // Prevent onFinish fallback (from buildAiOptions) from double-firing
@@ -739,15 +748,43 @@ export class LLMService {
             // Without this cap the buffer grows to document length and starts
             // matching legitimate structural repetition.
             const SUFFIX_LOOKBACK = 500;
+            const REPETITION_HARD_STOP = 5; // Hard-stop threshold for same pattern
             const windowedRecent = recentCleanText.length > SUFFIX_LOOKBACK
               ? recentCleanText.slice(-SUFFIX_LOOKBACK)
               : recentCleanText;
-            const [newRecent, suffixDelta] = collapseStreamSuffix(windowedRecent, punctDelta);
+            const [newRecent, suffixDelta, detectedPattern] = collapseStreamSuffix(windowedRecent, punctDelta);
             // Preserve the prefix that wasn't part of the sliding window, then
             // append the new cleaned tail from the windowed check.
             recentCleanText = (recentCleanText.length > SUFFIX_LOOKBACK
               ? recentCleanText.slice(0, recentCleanText.length - SUFFIX_LOOKBACK)
               : "") + newRecent;
+
+            // ── Hard-stop circuit breaker for infinite repetition ──
+            // When collapseStreamSuffix detects a repeating pattern, track if
+            // the SAME pattern appears on consecutive calls. If it repeats
+            // HARD_STOP times, the model is clearly in an infinite loop —
+            // abort the stream to prevent context pollution and agent interruption.
+            if (detectedPattern) {
+              // Pattern detected: check if it's the same as before
+              if (lastRepetitionPattern === detectedPattern) {
+                repetitionPatternCount++;
+                if (repetitionPatternCount >= REPETITION_HARD_STOP) {
+                  logger.warn(
+                    `[${executionOptions.traceId ?? "?"}] Repetition hard-stop triggered: ` +
+                    `pattern="${detectedPattern.substring(0, 20)}" repeated ${repetitionPatternCount} times, aborting stream`,
+                    { traceId: executionOptions.traceId },
+                    LogScope.LLM_SERVICE,
+                  );
+                  abortController.abort();
+                  // Stop processing; the error handler below will catch this
+                  break;
+                }
+              } else {
+                // Different pattern: reset counter
+                lastRepetitionPattern = detectedPattern;
+                repetitionPatternCount = 1;
+              }
+            }
 
             // Whitespace cleanup: collapse runs of 10+ spaces.  Some
             // DeepSeek-family models emit streams of pure spaces (thousands
@@ -1041,7 +1078,7 @@ export class LLMService {
     const handlers: Record<string, (part: StreamPart) => void> = {
       // 文本内容 - AI SDK fullStream 使用 'text' 属性
       "text-delta": (p) => {
-        const cleaned = collapseRepeatedPunctuation(p.text);
+        const cleaned = cleanupStreamTextByProvider(p.text ?? "", provider.providerType);
         progress.report(new vscode.LanguageModelTextPart(cleaned));
       },
 
@@ -1063,7 +1100,7 @@ export class LLMService {
       // 工具调用
       "tool-call": (p) => {
         progress.report(
-          new vscode.LanguageModelToolCallPart(p.toolCallId, p.toolName, p.args || p.input),
+          new vscode.LanguageModelToolCallPart(p.toolCallId ?? "", p.toolName ?? "", (p.args || p.input) as object),
         );
       },
 
@@ -1072,7 +1109,7 @@ export class LLMService {
         const toolRes = p.result || p.output;
         const res = typeof toolRes === "string" ? toolRes : JSON.stringify(toolRes);
         progress.report(
-          new vscode.LanguageModelToolResultPart(p.toolCallId, [
+          new vscode.LanguageModelToolResultPart(p.toolCallId ?? "", [
             new vscode.LanguageModelTextPart(res),
           ]),
         );
@@ -1133,7 +1170,7 @@ export class LLMService {
     options: ExecutionOptions,
   ): void {
     // 创建VSCode格式的thinking part
-    const thinkingPart = new vscode.LanguageModelThinkingPart(text, part.id, part.providerMetadata);
+    const thinkingPart = new vscode.LanguageModelThinkingPart(text, part.id, part.providerMetadata as { readonly [key: string]: any } | undefined);
 
     // 通知回调（如果有）
     if (options.onReasoning) {
@@ -1188,7 +1225,7 @@ export class LLMService {
   ): void {
     for (const tc of step.toolCalls || []) {
       progress.report(
-        new vscode.LanguageModelToolCallPart(tc.toolCallId, tc.toolName, tc.args || tc.input),
+        new vscode.LanguageModelToolCallPart(tc.toolCallId, tc.toolName, (tc.args || tc.input) as object),
       );
 
       const tr = step.toolResults?.find(

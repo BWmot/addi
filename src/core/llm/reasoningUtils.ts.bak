@@ -111,62 +111,6 @@ export function collapseRepeatedPunctuation(text: string): string {
   );
 }
 
-const MD_SAFE_CLEANUP_PROVIDER_TYPES = new Set(["openai-completions"]);
-
-export function shouldUseMarkdownSafeCleanup(providerType?: string): boolean {
-  return !!providerType && MD_SAFE_CLEANUP_PROVIDER_TYPES.has(providerType);
-}
-
-/**
- * Heuristic markdown detection for stream cleanup guards.
- *
- * The stream cleanup pipeline should avoid touching text when it looks like
- * markdown structure, because collapsing repeated punctuation / whitespace can
- * break fenced code blocks, tables and indentation-sensitive content.
- */
-export function looksLikeMarkdownStructure(text: string): boolean {
-  if (!text) {
-    return false;
-  }
-
-  const hasFence = /```/.test(text);
-  const hasTable = /(^|\n)\s*\|.*\|\s*(\n|$)/.test(text) && /(^|\n)\s*\|(?:\s*:?-+:?\s*\|)+\s*(\n|$)/.test(text);
-  const hasList = /(^|\n)\s{0,3}[-*+]\s+\S/.test(text);
-  const hasQuote = /(^|\n)\s{0,3}>\s?\S/.test(text);
-  const hasIndentedCode = /(^|\n)(?: {4}|\t)\S/.test(text);
-
-  return hasFence || hasTable || hasList || hasQuote || hasIndentedCode;
-}
-
-/**
- * Apply stream cleanup only when the text does not look like markdown.
- * This keeps markdown syntax intact while still removing model garbage from
- * plain prose.
- */
-export function cleanupPlainStreamText(text: string): string {
-  if (!text) {
-    return text;
-  }
-
-  if (looksLikeMarkdownStructure(text)) {
-    return text;
-  }
-
-  return collapseRepeatedWhitespace(
-    collapseRepeatedSuffix(
-      collapseRepeatedPunctuation(text),
-    ),
-  );
-}
-
-export function cleanupStreamTextByProvider(text: string, providerType?: string): string {
-  if (shouldUseMarkdownSafeCleanup(providerType)) {
-    return cleanupPlainStreamText(text);
-  }
-
-  return collapseRepeatedWhitespace(collapseRepeatedSuffix(collapseRepeatedPunctuation(text)));
-}
-
 // ============================================================================
 // Repeated Text Suffix Cleanup (e.g. Ali DS looping)
 // ============================================================================
@@ -238,43 +182,18 @@ export function collapseRepeatedSuffix(
  * `collapseRepeatedSuffix` only to the tail so that the per-delta cost
  * stays bounded.
  *
- * Enhanced to track detected patterns for hard-stop circuit breaker:
- * Returns third element [pattern] which is the repeating suffix that was
- * collapsed (empty string if no repetition detected).
- *
  * @param accumulated - Previously accumulated clean text (may be "").
  * @param incoming    - The new raw text delta just received from the stream.
- * @returns A tuple [cleanedOverallText, cleanedDeltaForReporting, detectedPattern]
- *   where `cleanedDeltaForReporting` is what should be sent to the UI,
- *   and `detectedPattern` is the repeating suffix that was removed (for tracking).
+ * @returns A tuple [cleanedOverallText, cleanedDeltaForReporting]
+ *   where `cleanedDeltaForReporting` is what should be sent to the UI.
  */
 export function collapseStreamSuffix(
   accumulated: string,
   incoming: string,
   minRepeat: number = 2,
-): [/* overall */ string, /* delta to report */ string, /* detected pattern */ string] {
+): [/* overall */ string, /* delta to report */ string] {
   const candidate = accumulated + incoming;
   const cleaned = collapseRepeatedSuffix(candidate, minRepeat);
-  
-  // Track which pattern was detected and removed for hard-stop mechanism
-  let detectedPattern = "";
-  if (cleaned.length < candidate.length) {
-    // Extract the removed portion
-    const removedLength = candidate.length - cleaned.length;
-    const removed = candidate.slice(cleaned.length);
-    
-    // Heuristic: find the repeating unit in removed text
-    // For "调用。调用。调用。" → pattern is "调用。"
-    for (let len = 1; len <= Math.floor(removedLength / 2); len++) {
-      const pattern = removed.slice(0, len);
-      const repetitions = Math.floor(removedLength / len);
-      if (removed.slice(0, repetitions * len) === pattern.repeat(repetitions)) {
-        detectedPattern = pattern;
-        break;
-      }
-    }
-  }
-  
   // If cleaning shortened the text, the delta for reporting is the
   // portion of `cleaned` that extends *beyond* `accumulated` — i.e. text
   // not already sent to the UI in previous deltas.
@@ -292,9 +211,9 @@ export function collapseStreamSuffix(
     const strippedDelta = cleaned.length > accumulated.length
       ? cleaned.slice(accumulated.length)
       : "";
-    return [cleaned, strippedDelta, detectedPattern];
+    return [cleaned, strippedDelta];
   }
-  return [candidate, incoming, ""];
+  return [candidate, incoming];
 }
 
 // ============================================================================
