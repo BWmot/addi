@@ -6,6 +6,7 @@ import type { Provider, Model } from "../src/common/types";
 import {
   shouldSkipOpenAIReasoningEffort,
   stripOpenAIReasoningEffort,
+  needsSuffixRepeatCleanup,
 } from "../src/core/llm/reasoningPolicy";
 
 describe("reasoningPolicy", () => {
@@ -82,5 +83,71 @@ describe("reasoningPolicy", () => {
         reasoningSummary: "detailed",
       },
     });
+  });
+});
+
+// ============================================================================
+// needsSuffixRepeatCleanup
+// ============================================================================
+
+describe("needsSuffixRepeatCleanup", () => {
+  const makeModel = (rid: string, name = "", family = ""): Model => ({
+    id: "local-id",
+    rid,
+    name,
+    family,
+    version: "1.0",
+    maxInputTokens: 128000,
+    maxOutputTokens: 32768,
+    capabilities: { reasoning: false, toolCalling: false },
+  });
+
+  const makeProvider = (id: string): Provider => ({
+    id,
+    name: id,
+    providerType: "openai-completions",
+    models: [],
+  });
+
+  const genericProvider = makeProvider("my-provider");
+
+  it("enables cleanup for DeepSeek by rid", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(genericProvider, makeModel("deepseek-v3")), true);
+  });
+
+  it("enables cleanup for DeepSeek by name", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(genericProvider, makeModel("custom-model", "DeepSeek V3")), true);
+  });
+
+  it("enables cleanup for GLM by family", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(genericProvider, makeModel("glm-4", "", "glm")), true);
+  });
+
+  it("enables cleanup for Qwen by rid", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(genericProvider, makeModel("qwen-max")), true);
+  });
+
+  it("enables cleanup for MiMo by rid", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(genericProvider, makeModel("mimo-7b")), true);
+  });
+
+  it("enables cleanup when provider id contains deepseek", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(makeProvider("deepseek-official"), makeModel("some-model")), true);
+  });
+
+  it("disables cleanup for GPT", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(genericProvider, makeModel("gpt-4o", "GPT-4o", "gpt")), false);
+  });
+
+  it("disables cleanup for Claude", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(genericProvider, makeModel("claude-3-5-sonnet", "Claude 3.5 Sonnet", "claude")), false);
+  });
+
+  it("disables cleanup for Gemini", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(genericProvider, makeModel("gemini-2.5-pro", "Gemini 2.5 Pro", "gemini")), false);
+  });
+
+  it("disables cleanup for GPT-4o-mini by name only", () => {
+    assert.strictEqual(needsSuffixRepeatCleanup(genericProvider, makeModel("gpt-4o-mini", "GPT-4o Mini")), false);
   });
 });
