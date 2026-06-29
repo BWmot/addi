@@ -226,6 +226,19 @@ export const ModelForm: React.FC<ModelFormProps> = ({
             rows={4}
           />
         </div>
+
+        <div className="form-group">
+          <label className="checkbox-item">
+            <input
+              type="checkbox"
+              checked={!!formData.options?.enableStreamCleanup}
+              onChange={(e) => handleOptionChange("enableStreamCleanup", e.target.checked)}
+              disabled={mode === "read"}
+            />{" "}
+            {t("model.streamCleanup")}
+          </label>
+          <div className="field-hint">{t("model.streamCleanupHint")}</div>
+        </div>
       </div>
 
       <div className="form-group section">

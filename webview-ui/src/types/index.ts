@@ -35,6 +35,11 @@ export interface ModelOptions {
    * [实验性] 从 <think> 标签提取 reasoning 内容
    */
   extractReasoningContent?: boolean;
+
+  /**
+   * [实验性] 启用流式输出清洗（去除重复尾巴/回环）
+   */
+  enableStreamCleanup?: boolean;
 }
 
 export interface ModelConfig {

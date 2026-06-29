@@ -98,6 +98,9 @@ const zh: I18nMessages = {
     extractReasoningContent: "从 <think> 标签提取推理内容",
     extractReasoningContentHint:
       "部分模型在 <think> XML 标签内返回思考内容。启用后可自动提取并显示。",
+      streamCleanup: "启用流式清洗",
+      streamCleanupHint:
+        "流式输出时去除重复尾巴和多余空白。仅建议对会出现回环或重复尾部输出的模型开启。",
     batchDisabled: "批量模式下不可编辑",
   },
 

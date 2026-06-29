@@ -78,27 +78,27 @@ export function shouldSkipOpenAIReasoningEffort(provider: Provider, model: Model
  * when a proxy renames the model.
  */
 export function needsSuffixRepeatCleanup(provider: Provider, model: Model): boolean {
-  const rid    = model.rid?.trim().toLowerCase()    ?? "";
-  const name   = model.name?.trim().toLowerCase()   ?? "";
+  const enabled = model.options?.enableStreamCleanup;
+  if (enabled === false) {
+    return false;
+  }
+
+  const rid = model.rid?.trim().toLowerCase() ?? "";
+  const name = model.name?.trim().toLowerCase() ?? "";
   const family = model.family?.trim().toLowerCase() ?? "";
-  const pid    = provider.id?.trim().toLowerCase()  ?? "";
+  const pid = provider.id?.trim().toLowerCase() ?? "";
 
   const ids = [rid, name, family, pid];
 
-  const LOOP_PRONE_PATTERNS = [
+  // 预留可扩展列表：默认只允许 DS/GLM 系列开启此清洗。
+  // 后续如发现别的模型也需要，只需继续追加模式即可。
+  const ALLOWED_PATTERNS = [
     "deepseek",
-    "mimo",
     "glm",
     "chatglm",
-    "qwen",
-    "baichuan",
-    "yi-",
-    "internlm",
-    "hunyuan",
-    "ernie",
   ];
 
-  return LOOP_PRONE_PATTERNS.some(pat => ids.some(id => id.includes(pat)));
+  return ALLOWED_PATTERNS.some((pat) => ids.some((id) => id.includes(pat)));
 }
 
 /**

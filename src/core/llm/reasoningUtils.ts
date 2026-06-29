@@ -130,12 +130,16 @@ export function looksLikeMarkdownStructure(text: string): boolean {
   }
 
   const hasFence = /```/.test(text);
+  const hasInlineCode = /`[^`\n]+`/.test(text);
   const hasTable = /(^|\n)\s*\|.*\|\s*(\n|$)/.test(text) && /(^|\n)\s*\|(?:\s*:?-+:?\s*\|)+\s*(\n|$)/.test(text);
-  const hasList = /(^|\n)\s{0,3}[-*+]\s+\S/.test(text);
+  const hasList = /(^|\n)\s{0,3}[-*+]\s+\S/.test(text) || /(^|\n)\s{0,3}\d+\.\s+\S/.test(text);
   const hasQuote = /(^|\n)\s{0,3}>\s?\S/.test(text);
   const hasIndentedCode = /(^|\n)(?: {4}|\t)\S/.test(text);
+  const hasHeading = /(^|\n)\s{0,3}#{1,6}\s+\S/.test(text);
+  const hasHorizontalRule = /(^|\n)\s{0,3}(?:[-*_]\s?){3,}\s*(\n|$)/.test(text);
+  const hasLinkOrImage = /!?\[[^\]]+\]\([^\)\n]+\)/.test(text);
 
-  return hasFence || hasTable || hasList || hasQuote || hasIndentedCode;
+  return hasFence || hasInlineCode || hasTable || hasList || hasQuote || hasIndentedCode || hasHeading || hasHorizontalRule || hasLinkOrImage;
 }
 
 /**
@@ -148,15 +152,21 @@ export function cleanupPlainStreamText(text: string): string {
     return text;
   }
 
+  // 只在“明显是纯文本”的情况下清洗。任何 Markdown 结构信号都直接跳过，
+  // 避免把列表、引用、表格、代码块、链接等内容误改坏。
   if (looksLikeMarkdownStructure(text)) {
     return text;
   }
 
-  return collapseRepeatedWhitespace(
+  const cleaned = collapseRepeatedWhitespace(
     collapseRepeatedSuffix(
       collapseRepeatedPunctuation(text),
     ),
   );
+
+  // 纯文本清洗也尽量保守：如果清洗后只减少了很少内容，说明原文可能
+  // 是正常表达（例如少量重复标点或空格），保留原文更安全。
+  return cleaned.length + 2 < text.length ? cleaned : text;
 }
 
 export function cleanupStreamTextByProvider(text: string, providerType?: string): string {
@@ -164,7 +174,13 @@ export function cleanupStreamTextByProvider(text: string, providerType?: string)
     return cleanupPlainStreamText(text);
   }
 
-  return collapseRepeatedWhitespace(collapseRepeatedSuffix(collapseRepeatedPunctuation(text)));
+  // 默认路径也收紧：先判定是否具有 Markdown/结构特征；有结构时完全不清洗。
+  if (looksLikeMarkdownStructure(text)) {
+    return text;
+  }
+
+  const cleaned = collapseRepeatedWhitespace(collapseRepeatedSuffix(collapseRepeatedPunctuation(text)));
+  return cleaned.length + 2 < text.length ? cleaned : text;
 }
 
 // ============================================================================

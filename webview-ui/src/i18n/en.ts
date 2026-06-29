@@ -100,6 +100,9 @@ const en: I18nMessages = {
     extractReasoningContent: "Extract reasoning from <think> tags",
     extractReasoningContentHint:
       "Some models return thinking inside <think> XML tags. Extracts and displays it automatically.",
+    streamCleanup: "Enable stream cleanup",
+    streamCleanupHint:
+      "Removes repeated suffixes and whitespace during streaming. Use only for models that exhibit looping or repeated tail output.",
     batchDisabled: "Not available in batch mode",
   },
 

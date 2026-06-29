@@ -10,6 +10,12 @@ export interface ModelOptions {
   /** Maximum number of tokens to generate */
   maxOutputTokens?: number;
   /** Sampling temperature (0-2). Higher = more creative/risky, lower = more focused/deterministic */
+
+  /**
+   * 是否启用流式输出清洗（用于修复 DS/GLM 等模型的重复尾巴/回环输出）。
+   * 默认关闭；如后续发现其他模型也存在类似问题，可在模型设置中单独开启。
+   */
+  enableStreamCleanup?: boolean;
   temperature?: number;
   /** Nucleus sampling - cumulative probability threshold */
   topP?: number;
@@ -82,6 +88,12 @@ export interface ModelOptions {
    * 启用后自动从 text 中提取 <think>...</think> 内容作为 reasoning part。
    */
   extractReasoningContent?: boolean;
+
+  /**
+   * 是否启用流式输出清洗（用于修复 DS/GLM 等模型的重复尾巴/回环输出）。
+   * 默认关闭；如后续发现其他模型也存在类似问题，可在模型设置中单独开启。
+   */
+  enableStreamCleanup?: boolean;
 }
 
 export interface RemoteModelInfo {

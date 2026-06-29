@@ -83,6 +83,8 @@ export interface I18nMessages {
     reasoningContentAdaptHint: string;
     extractReasoningContent: string;
     extractReasoningContentHint: string;
+    streamCleanup: string;
+    streamCleanupHint: string;
     batchDisabled: string;
   };
 

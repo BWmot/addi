@@ -748,7 +748,9 @@ export class LLMService {
             // Without this cap the buffer grows to document length and starts
             // matching legitimate structural repetition.
             const SUFFIX_LOOKBACK = 500;
-            const REPETITION_HARD_STOP = 5; // Hard-stop threshold for same pattern
+            const REPETITION_HARD_STOP = 8; // Hard-stop threshold for same pattern
+            const MIN_HARD_STOP_PATTERN_LENGTH = 16;
+            const WHITESPACE_PATTERN = /^\s+$/;
             const windowedRecent = recentCleanText.length > SUFFIX_LOOKBACK
               ? recentCleanText.slice(-SUFFIX_LOOKBACK)
               : recentCleanText;
@@ -765,8 +767,16 @@ export class LLMService {
             // HARD_STOP times, the model is clearly in an infinite loop —
             // abort the stream to prevent context pollution and agent interruption.
             if (detectedPattern) {
-              // Pattern detected: check if it's the same as before
-              if (lastRepetitionPattern === detectedPattern) {
+              const isWhitespacePattern = WHITESPACE_PATTERN.test(detectedPattern);
+              const isShortPattern = detectedPattern.length < MIN_HARD_STOP_PATTERN_LENGTH;
+
+              // Whitespace / short structural repeats are common in code, Markdown,
+              // and tool-output streams. Keep cleaning them, but do not abort.
+              if (isWhitespacePattern || isShortPattern) {
+                lastRepetitionPattern = "";
+                repetitionPatternCount = 0;
+              } else if (lastRepetitionPattern === detectedPattern) {
+                // Pattern detected: check if it's the same as before
                 repetitionPatternCount++;
                 if (repetitionPatternCount >= REPETITION_HARD_STOP) {
                   logger.warn(
@@ -878,12 +888,16 @@ export class LLMService {
           : accumulatedText;
         const suffixCleaned = collapseRepeatedSuffix(accumulatedText);
         const collapsed = collapseRepeatedWhitespace(suffixCleaned);
+        const streamTextSummary = collapsed
+          .replace(/```([\s\S]*?)```/g, (block) => block)
+          .replace(/\n{3,}/g, "\n\n")
+          .replace(/[ \t]{2,}\n/g, "\n");
         const cleanedTail = collapsed.length > 2000
           ? "..." + collapsed.slice(-2000)
           : collapsed;
         logger.info(
           `[${executionOptions.traceId ?? "?"}] STREAM-TEXT response text (len=${accumulatedText.length}, cleaned=${collapsed.length})`,
-          { tail, cleanedTail, traceId: executionOptions.traceId },
+          { tail, cleanedTail, streamTextSummary, traceId: executionOptions.traceId },
           LogScope.LLM_SERVICE,
         );
       }
@@ -1074,11 +1088,13 @@ export class LLMService {
     progress: vscode.Progress<vscode.LanguageModelResponsePart>,
     options: ExecutionOptions,
   ): void {
+    const providerType = options.providerType;
+
     // Handler map for different stream part types
     const handlers: Record<string, (part: StreamPart) => void> = {
       // 文本内容 - AI SDK fullStream 使用 'text' 属性
       "text-delta": (p) => {
-        const cleaned = cleanupStreamTextByProvider(p.text ?? "", provider.providerType);
+        const cleaned = cleanupStreamTextByProvider(p.text ?? "", providerType);
         progress.report(new vscode.LanguageModelTextPart(cleaned));
       },
 
