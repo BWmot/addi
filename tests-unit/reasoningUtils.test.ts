@@ -13,6 +13,8 @@ import {
   collapseRepeatedWhitespace,
   collapseRepeatedSuffix,
   collapseStreamSuffix,
+  cleanupStreamTextByProvider,
+  looksLikeMarkdownStructure,
 } from "../src/core/llm/reasoningUtils";
 
 // ============================================================================
@@ -99,6 +101,23 @@ describe("collapseRepeatedPunctuation", () => {
         collapseRepeatedPunctuation("std::vector"),
         "std::vector",
       );
+    });
+
+    it("should detect common markdown structure conservatively", () => {
+      assert.strictEqual(looksLikeMarkdownStructure("# Title\n\ntext"), true);
+      assert.strictEqual(looksLikeMarkdownStructure("- item1\n- item2"), true);
+      assert.strictEqual(looksLikeMarkdownStructure("```ts\nconst x = 1;\n```"), true);
+      assert.strictEqual(looksLikeMarkdownStructure("plain text only"), false);
+    });
+
+    it("should keep markdown-like structure unchanged in provider cleanup", () => {
+      const input = "# Title\n\n- item1\n- item2\n";
+      assert.strictEqual(cleanupStreamTextByProvider(input, "ds"), input);
+    });
+
+    it("should still clean obvious plain text garbage", () => {
+      const input = "读出来：：：：：：";
+      assert.strictEqual(cleanupStreamTextByProvider(input, "ds"), "读出来：");
     });
   });
 

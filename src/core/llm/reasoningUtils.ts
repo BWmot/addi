@@ -129,17 +129,21 @@ export function looksLikeMarkdownStructure(text: string): boolean {
     return false;
   }
 
-  const hasFence = /```/.test(text);
-  const hasInlineCode = /`[^`\n]+`/.test(text);
-  const hasTable = /(^|\n)\s*\|.*\|\s*(\n|$)/.test(text) && /(^|\n)\s*\|(?:\s*:?-+:?\s*\|)+\s*(\n|$)/.test(text);
-  const hasList = /(^|\n)\s{0,3}[-*+]\s+\S/.test(text) || /(^|\n)\s{0,3}\d+\.\s+\S/.test(text);
-  const hasQuote = /(^|\n)\s{0,3}>\s?\S/.test(text);
-  const hasIndentedCode = /(^|\n)(?: {4}|\t)\S/.test(text);
-  const hasHeading = /(^|\n)\s{0,3}#{1,6}\s+\S/.test(text);
-  const hasHorizontalRule = /(^|\n)\s{0,3}(?:[-*_]\s?){3,}\s*(\n|$)/.test(text);
-  const hasLinkOrImage = /!?\[[^\]]+\]\([^\)\n]+\)/.test(text);
+  // 保守策略：只要出现明显的结构信号，就认为可能包含 Markdown / 富文本结构，
+  // 这时宁可跳过清洗，也不要冒险破坏已有布局。
+  const lines = text.split(/\r?\n/);
+  const hasFence = lines.some((line) => /^\s*```/.test(line) || /^\s*~~~/.test(line));
+  const hasHeading = lines.some((line) => /^\s{0,3}#{1,6}\s+\S/.test(line));
+  const hasList = lines.some((line) => /^\s{0,3}([-*+]|\d+\.)\s+\S/.test(line));
+  const hasQuote = lines.some((line) => /^\s{0,3}>\s?\S/.test(line));
+  const hasIndentedCode = lines.some((line) => /^(?: {4}|\t)\S/.test(line));
+  const hasTable = lines.some((line) => /^\s*\|.*\|\s*$/.test(line))
+    && lines.some((line) => /^\s*\|(?:\s*:?-+:?\s*\|)+\s*$/.test(line));
+  const hasLinkOrImage = /!?\[[^\]\n]+\]\([^\)\n]+\)/.test(text);
+  const hasCodeSpan = /`[^`\n]+`/.test(text);
+  const hasHorizontalRule = lines.some((line) => /^\s{0,3}(?:[-*_]\s?){3,}\s*$/.test(line));
 
-  return hasFence || hasInlineCode || hasTable || hasList || hasQuote || hasIndentedCode || hasHeading || hasHorizontalRule || hasLinkOrImage;
+  return hasFence || hasHeading || hasList || hasQuote || hasIndentedCode || hasTable || hasLinkOrImage || hasCodeSpan || hasHorizontalRule;
 }
 
 /**
@@ -170,16 +174,14 @@ export function cleanupPlainStreamText(text: string): string {
 }
 
 export function cleanupStreamTextByProvider(text: string, providerType?: string): string {
-  if (shouldUseMarkdownSafeCleanup(providerType)) {
-    return cleanupPlainStreamText(text);
-  }
-
-  // 默认路径也收紧：先判定是否具有 Markdown/结构特征；有结构时完全不清洗。
+  // 保守修复：一旦看起来像 Markdown / 结构化文本，直接跳过可能破坏布局的清洗。
   if (looksLikeMarkdownStructure(text)) {
     return text;
   }
 
-  const cleaned = collapseRepeatedWhitespace(collapseRepeatedSuffix(collapseRepeatedPunctuation(text)));
+  const cleaned = shouldUseMarkdownSafeCleanup(providerType)
+    ? cleanupPlainStreamText(text)
+    : collapseRepeatedWhitespace(collapseRepeatedSuffix(collapseRepeatedPunctuation(text)));
   return cleaned.length + 2 < text.length ? cleaned : text;
 }
 

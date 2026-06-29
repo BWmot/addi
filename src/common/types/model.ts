@@ -89,11 +89,6 @@ export interface ModelOptions {
    */
   extractReasoningContent?: boolean;
 
-  /**
-   * 是否启用流式输出清洗（用于修复 DS/GLM 等模型的重复尾巴/回环输出）。
-   * 默认关闭；如后续发现其他模型也存在类似问题，可在模型设置中单独开启。
-   */
-  enableStreamCleanup?: boolean;
 }
 
 export interface RemoteModelInfo {
