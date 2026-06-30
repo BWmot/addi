@@ -3,7 +3,7 @@ import { streamText, generateText, type ModelMessage, type Tool } from "ai";
 import type { Provider, Model, ModelOptions } from "../../common/types";
 import { AIProviderRegistry } from "./aiRegistry";
 import { MessageConverter } from "./messageConverter";
-import { extractReasoningContentFromStep, hasStreamPartVisibleContent, cleanupStreamTextByProvider, collapseRepeatedPunctuation, collapseRepeatedSuffix, collapseStreamSuffix, collapseRepeatedWhitespace } from "./reasoningUtils";
+import { extractReasoningContentFromStep, hasStreamPartVisibleContent, cleanupStreamTextByProvider, collapseRepeatedPunctuation, collapseRepeatedSuffix, collapseStreamSuffix, collapseRepeatedWhitespace, looksLikeMarkdownStructure } from "./reasoningUtils";
 import { shouldSkipOpenAIReasoningEffort, stripOpenAIReasoningEffort, needsSuffixRepeatCleanup } from "./reasoningPolicy";
 import { ToolOrchestrator } from "./toolOrchestrator";
 import { logger, LogScope, generateTraceId } from "../../common/logger";
@@ -754,6 +754,23 @@ export class LLMService {
             const windowedRecent = recentCleanText.length > SUFFIX_LOOKBACK
               ? recentCleanText.slice(-SUFFIX_LOOKBACK)
               : recentCleanText;
+
+            // ── Markdown structure guard ──
+            // When accumulated text contains Markdown structures (code blocks,
+            // tables, headings, etc.), suffix/whitespace cleanup can corrupt
+            // legitimate structural repetition (e.g. table separators "---",
+            // code fences, ASCII-art dividers).  Skip cleanup and keep the
+            // punctuation-cleaned delta as-is — it will also be guarded by
+            // looksLikeMarkdownStructure in cleanupStreamTextByProvider below.
+            const candidateForCheck = windowedRecent + punctDelta;
+            if (looksLikeMarkdownStructure(candidateForCheck)) {
+              // Still update the sliding window for future context tracking,
+              // but do not apply suffix collapse or whitespace cleanup.
+              recentCleanText = (recentCleanText.length > SUFFIX_LOOKBACK
+                ? recentCleanText.slice(0, recentCleanText.length - SUFFIX_LOOKBACK)
+                : "") + punctDelta;
+              // cleanDelta stays as punctDelta (already set above)
+            } else {
             const [newRecent, suffixDelta, detectedPattern] = collapseStreamSuffix(windowedRecent, punctDelta);
             // Preserve the prefix that wasn't part of the sliding window, then
             // append the new cleaned tail from the windowed check.
@@ -800,6 +817,7 @@ export class LLMService {
             // DeepSeek-family models emit streams of pure spaces (thousands
             // of chars) — this prevents them from reaching the UI.
             cleanDelta = collapseRepeatedWhitespace(suffixDelta);
+            }
           }
 
           if (cleanDelta.length > 0) {
