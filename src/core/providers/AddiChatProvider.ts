@@ -72,9 +72,9 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
             version: "1.0.0",
             maxInputTokens: Math.max(...allModels.map((m) => m.maxInputTokens), 0) || 128000,
             maxOutputTokens: Math.max(...allModels.map((m) => m.maxOutputTokens), 0) || 16384,
-            tooltip: "自动分析请求并选择最佳模型",
+            tooltip: "Auto-selects the best Addi model for the request",
+            detail: "Addi Auto",
             isUserSelectable: true,
-            category: { label: "Addi Auto", order: 0 },
             capabilities: {
               imageInput: allModels.some((m) => m.capabilities?.vision),
               toolCalling: allModels.some((m) => m.capabilities?.toolCalling !== false),
@@ -87,7 +87,7 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
         const friendlyInput = TokenFormatter.format(m.maxInputTokens) || String(m.maxInputTokens);
         const friendlyOutput =
           TokenFormatter.format(m.maxOutputTokens) || String(m.maxOutputTokens);
-        const summary = `${friendlyInput}↑/${friendlyOutput}↓`;
+        const summary = `${friendlyInput} in / ${friendlyOutput} out`;
         return {
           id: `addi-model:${m.id}`,
           name: `[${p.name}] ${m.name}`,
@@ -96,11 +96,8 @@ export class AddiChatProvider implements vscode.LanguageModelChatProvider {
           maxInputTokens: m.maxInputTokens,
           maxOutputTokens: m.maxOutputTokens,
           tooltip: `${p.name} - ${summary}`,
+          detail: p.name,
           isUserSelectable: m.isUserSelectable ?? true,
-          category: {
-            label: p.name,
-            order: p.order ?? 100,
-          },
           capabilities: {
             imageInput: !!m.capabilities?.vision,
             // LanguageModelChatInformation.capabilities.toolCalling expects number | boolean

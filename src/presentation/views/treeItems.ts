@@ -34,6 +34,15 @@ export class ModelTreeItem extends vscode.TreeItem {
       this.contextValue = "model";
     }
 
+    // Set command so that clicking the tree item itself switches to this model.
+    // Models without an API key are also clickable: the setModelToCopilot handler
+    // will show a sensible error if the provider is not yet configured.
+    this.command = {
+      command: "addi.setModelToCopilot",
+      title: vscode.l10n.t("Switch to {0}", model.name),
+      arguments: [this],
+    };
+
     const capabilityHints: string[] = [];
     if (model.capabilities?.toolCalling) {
       capabilityHints.push("tool");

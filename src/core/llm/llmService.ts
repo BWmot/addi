@@ -764,11 +764,17 @@ export class LLMService {
             // looksLikeMarkdownStructure in cleanupStreamTextByProvider below.
             const candidateForCheck = windowedRecent + punctDelta;
             if (looksLikeMarkdownStructure(candidateForCheck)) {
-              // Still update the sliding window for future context tracking,
-              // but do not apply suffix collapse or whitespace cleanup.
-              recentCleanText = (recentCleanText.length > SUFFIX_LOOKBACK
-                ? recentCleanText.slice(0, recentCleanText.length - SUFFIX_LOOKBACK)
-                : "") + punctDelta;
+              // ⚠️ Guard path: append punctDelta to recentCleanText WITHOUT
+              // discarding the sliding window.  The original formula here
+              // replaced the window with punctDelta alone — this threw away
+              // accumulated context (e.g. table data rows), breaking future
+              // markdown structure detection for subsequent deltas.
+              // Fix: simple append with a length cap (same SUFFIX_LOOKBACK
+              // window as the non-guard path).
+              recentCleanText = recentCleanText + punctDelta;
+              if (recentCleanText.length > SUFFIX_LOOKBACK * 2) {
+                recentCleanText = recentCleanText.slice(-SUFFIX_LOOKBACK);
+              }
               // cleanDelta stays as punctDelta (already set above)
             } else {
             const [newRecent, suffixDelta, detectedPattern] = collapseStreamSuffix(windowedRecent, punctDelta);

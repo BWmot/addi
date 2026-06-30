@@ -84,6 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
     }),
   );
 
+  // Create LLM service and register the Addi language model provider.
   const llmService = new LLMService();
   const addiChatProvider = new AddiChatProvider(manager, llmService);
   vscode.lm.registerLanguageModelChatProvider("addi-provider", addiChatProvider);
@@ -141,6 +142,17 @@ export function activate(context: vscode.ExtensionContext) {
     return items;
   }
 
+  function resolveSingleModelItem(item: ModelTreeItem | undefined): ModelTreeItem | undefined {
+    if (item && item.model) {
+      return item;
+    }
+    const sel = treeView.selection as ModelTreeItem[];
+    if (sel && sel.length > 0 && sel[0]?.model) {
+      return sel[0];
+    }
+    return undefined;
+  }
+
   registerCmd("addi.manage", async () => {
     await vscode.commands.executeCommand("addiProviders.focus");
   });
@@ -187,9 +199,19 @@ export function activate(context: vscode.ExtensionContext) {
   registerCmd("addi.openSettings", () => {
     vscode.commands.executeCommand("workbench.action.openSettings", "@ext:deepwn.addi");
   });
-  registerCmd("addi.setModelToCopilot", (item: ModelTreeItem) =>
-    commandHandler.setModelToCopilot(item),
-  );
+  registerCmd("addi.setModelToCopilot", (item: ModelTreeItem | undefined) => {
+    const resolved = resolveSingleModelItem(item);
+    if (!resolved) {
+      logger.warn(
+        "setModelToCopilot: could not resolve model item",
+        { treeSelectionCount: treeView.selection.length },
+        LogScope.COMMAND,
+      );
+      UserFeedback.showWarning(vscode.l10n.t("Please select a model first."));
+      return;
+    }
+    return commandHandler.setModelToCopilot(resolved);
+  });
   registerCmd("addi.ineligibleModelInfo", () => {
     // No action, just provides hover via command title
   });

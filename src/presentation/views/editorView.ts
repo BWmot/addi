@@ -659,7 +659,7 @@ export class EditorViewManager {
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
+  <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
   }

@@ -139,11 +139,19 @@ export function looksLikeMarkdownStructure(text: string): boolean {
   const hasIndentedCode = lines.some((line) => /^(?: {4}|\t)\S/.test(line));
   const hasTable = lines.some((line) => /^\s*\|.*\|\s*$/.test(line))
     && lines.some((line) => /^\s*\|(?:\s*:?-+:?\s*\|)+\s*$/.test(line));
+  // Streaming table construction guard: during incremental streaming the
+  // separator row is built character-by-character (| → |- → |-| → ...).
+  // Before the full `|-|` pattern exists, hasTable won't trigger.  This
+  // check catches lines composed *only* of table separator characters
+  // (|, -, :, spaces) — a strong signal that a table is being built.
+  const isTableUnderConstruction = lines.some((line) =>
+    /^\s*\|[|\-: ]*\s*$/.test(line)
+  );
   const hasLinkOrImage = /!?\[[^\]\n]+\]\([^\)\n]+\)/.test(text);
   const hasCodeSpan = /`[^`\n]+`/.test(text);
   const hasHorizontalRule = lines.some((line) => /^\s{0,3}(?:[-*_]\s?){3,}\s*$/.test(line));
 
-  return hasFence || hasHeading || hasList || hasQuote || hasIndentedCode || hasTable || hasLinkOrImage || hasCodeSpan || hasHorizontalRule;
+  return hasFence || hasHeading || hasList || hasQuote || hasIndentedCode || hasTable || isTableUnderConstruction || hasLinkOrImage || hasCodeSpan || hasHorizontalRule;
 }
 
 /**

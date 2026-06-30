@@ -34,17 +34,26 @@ interface LanguageModelChatProvider<
 interface LanguageModelChatInformation {
   id: string;
   name: string;
-  vendor: string;
   family: string;
+  tooltip?: string;
+  detail?: string;
   version: string;
   maxInputTokens: number;
   maxOutputTokens: number;
-  supportsThinking?: boolean;
-  supportsToolCalls?: boolean;
-  isUserSelectable?: boolean;
-  configuration?: { [key: string]: any }; // If provider requires configuration
+  capabilities: {
+    imageInput?: boolean;
+    toolCalling?: boolean | number;
+  };
 }
 ```
+
+### LanguageModelChatInformation 注意事项
+
+- 只返回当前 VS Code API 明确定义的字段。不要把 QuickPick/TreeItem 风格字段混进模型元数据里。
+- 已确认不要返回 `category`。`category` 不是 `LanguageModelChatInformation` 字段，会让 Copilot Chat 输入框下方的模型按钮可以显示当前模型，但点击模型按钮无法弹出模型列表。
+- 模型来源/分组信息用 `detail` 或 `tooltip` 表达。真正的模型分组由 VS Code 的 language model provider groups 机制处理，不由 provider 返回的 `category` 控制。
+- `isUserSelectable` 是 VS Code host 内部仍会读取的兼容字段，但它不在当前 `@types/vscode` 的公开接口中。使用时只用于显隐控制，不要依赖它承载 UI 分组。
+- 修改 `provideLanguageModelChatInformation()` 后必须同时验证两条路径：侧边栏 `Addi: Set Model to Copilot` 能直接切换，以及 Copilot Chat 输入框下方的模型按钮能打开 picker。
 
 ---
 

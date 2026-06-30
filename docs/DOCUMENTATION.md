@@ -375,6 +375,18 @@ Models without Tool Calling cannot be used in Copilot Chat.
 
 ---
 
+### Copilot model button shows a model but does not open the picker
+
+**Cause**: Invalid metadata returned from `provideLanguageModelChatInformation()` can break VS Code's host model picker. In particular, do not return a `category` field from `LanguageModelChatInformation`.
+
+**Fix**:
+
+1. Keep returned model metadata aligned with the current `@types/vscode` `LanguageModelChatInformation` shape.
+2. Use `detail` or `tooltip` for source/group labels instead of `category`.
+3. Verify both flows after changes: the sidebar **Set Model to Copilot** command and the Copilot Chat model picker button.
+
+---
+
 ### API errors when using a model
 
 **Common causes and fixes**:

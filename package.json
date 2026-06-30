@@ -171,7 +171,7 @@
       "view/item/context": [
         {
           "command": "addi.setModelToCopilot",
-          "when": "view == addiProviders && viewItem == model",
+          "when": "view == addiProviders && (viewItem == model || viewItem == model-no-key || viewItem == model-ineligible || viewItem == model-hidden)",
           "group": "inline@0"
         },
         {

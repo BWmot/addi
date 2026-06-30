@@ -180,14 +180,19 @@ export class ModelCommandHandler extends BaseCommandHandler {
    * Set a model to the VS Code Chat UI
    */
   async setModelToCopilot(item: ModelTreeItem): Promise<void> {
-    const vendor = item.vendor;
+    if (!item || !item.model || !item.model.id) {
+      UserFeedback.showWarning(vscode.l10n.t("No model selected."));
+      logger.warn("setModelToCopilot called without a valid model item", undefined, LogScope.COMMAND);
+      return;
+    }
+
+    const vendor = item.vendor || "addi-provider";
     const modelId = vendor === "addi-provider" ? `addi-model:${item.model.id}` : item.model.rid;
     const family = item.model.family;
 
     logger.debug("Executing setModelToCopilot", { vendor, modelId, family }, LogScope.COMMAND);
 
     try {
-      // Ensure the model is visible in the picker before selecting it
       if (vendor === "addi-provider") {
         const result = this.manager.findModel(item.model.id);
         if (result) {
@@ -207,24 +212,32 @@ export class ModelCommandHandler extends BaseCommandHandler {
         }
       }
 
-      // Execute internal VS Code command to change the chat model
+      if (vendor === "addi-provider") {
+        const visibleModels = await vscode.lm.selectChatModels({ vendor, id: modelId });
+        if (visibleModels.length === 0) {
+          logger.warn(
+            "Requested Addi model is not visible to VS Code before chat.changeModel",
+            { vendor, modelId, family },
+            LogScope.COMMAND,
+          );
+        }
+      }
+
+      try {
+        await vscode.commands.executeCommand("workbench.action.chat.open");
+      } catch {
+        // Ignore if Chat is already available or the host handles this differently.
+      }
+
       await vscode.commands.executeCommand("workbench.action.chat.changeModel", {
         vendor,
         family,
         id: modelId,
       });
 
-      // Open chat side bar if not already open
-      try {
-        await vscode.commands.executeCommand("workbench.action.chat.open");
-      } catch {
-        // Ignore if already open
-      }
-
-      // Focus the chat input after model selection
       await vscode.commands.executeCommand("workbench.action.chat.focusInput");
 
-      logger.info("Chat model set to Copilot via command", {
+      logger.info("Chat model set via VS Code chat.changeModel", {
         vendor,
         modelId,
         family,
