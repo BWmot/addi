@@ -2,6 +2,14 @@
 
 All notable changes to the "addi" extension will be documented in this file.
 
+## Archived
+
+**This extension is no longer actively maintained** you can still use it or use `BYOK` of vscode to connect your own LLM provider. The extension will remove from the marketplace in the future. Please consider using [BYOK](https://code.visualstudio.com/docs/agent-customization/language-models#_bring-your-own-language-model-key) instead.
+
+## v1.1.3 - 2026-06-24
+
+- **chore**: Updated dependencies to latest versions, including `@ai-sdk/*`, `ai`, `@types/node`, `mocha`, `oxlint`, and webview UI packages
+
 ## v1.1.2 - 2026-06-02
 
 ### Fixed
